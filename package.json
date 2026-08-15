@@ -11,13 +11,17 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "keywords": "python3 tools/gen_keywords.py"
+    "keywords": "python3 tools/gen_keywords.py",
+    "build": "node scripts/build.mjs",
+    "cf:dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
     "eslint": "^9.13.0",
     "globals": "^15.11.0",
     "prettier": "^3.3.3",
-    "serve": "^14.2.4"
+    "serve": "^14.2.4",
+    "wrangler": "^4.42.0"
   }
 }

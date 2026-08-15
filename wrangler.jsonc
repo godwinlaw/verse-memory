@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "verse-memory",
+  "compatibility_date": "2026-08-14",
+  // Static-assets-only Worker: no server code, just the built static site.
+  // `npm run build` assembles ./dist from index.html, src/, data/, config.js.
+  "assets": {
+    "directory": "./dist",
+  },
+}

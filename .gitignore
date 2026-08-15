@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Build output & Cloudflare/Wrangler local state
+dist/
+.wrangler/
+
 # Deploy-time config (may contain environment specifics; copy from config.example.js)
 /config.js
 
