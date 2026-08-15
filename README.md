@@ -84,33 +84,43 @@ npm run keywords   # == python3 tools/gen_keywords.py
 
 Do not edit `data/keywords.js` by hand — re-run the generator.
 
-## Firebase (cloud sync)
+## Authentication & cloud sync (Firebase)
 
-The app works fully offline against `localStorage`. On top of that it syncs a
-member's progress across devices using Firebase (project `verse-memory`):
+Access is restricted to Google accounts in the Acts 2 Network Workspace domain,
+**gpmail.org**. Members sign in with Google; each member's progress then syncs
+across devices via Firebase (project `verse-memory`):
 
-- **Anonymous Auth** gives each browser a stable user id.
+- **Google sign-in**, gated to `@gpmail.org`. The account chooser is hinted with
+  Google's `hd` parameter, the client rejects and signs out any non-gpmail.org
+  account, and — authoritatively — **Firestore rules only allow verified
+  `@gpmail.org` identities** (`deploy/firestore.rules`). Never trust the client
+  alone; the rules are the real enforcement.
 - **Firestore** stores one doc per user at `users/{uid}` = `{ progress, log }`.
-- On startup the remote doc is pulled and reconciled with local state
+  On sign-in the remote doc is pulled and reconciled with local state
   (`mergeProgress` keeps the most recently reviewed record per verse); each local
   save is debounced and pushed back up.
 
 The Firebase modular SDK (v11.6.1) is imported from the gstatic CDN, preserving
-the no-build setup. If Firebase is offline/blocked/misconfigured, sync is skipped
-and the app keeps running on `localStorage`. The default project config lives in
-`src/config.js`; override per deployment via `window.__FIREBASE_CONFIG__` in
-`config.js`, or set it to `null` to disable sync.
+the no-build setup. If Firebase is unreachable/misconfigured the app degrades to
+local-only (`auth.status === "disabled"`) rather than locking members out. The
+default project config lives in `src/config.js`; override per deployment via
+`window.__FIREBASE_CONFIG__`, or set it to `null` to disable.
 
-**One-time Firebase console setup:**
+**One-time Firebase / Google Cloud console setup:**
 
-1. **Authentication → Sign-in method → enable "Anonymous".**
+1. **Authentication → Sign-in method → enable "Google".**
 2. **Firestore Database → create**, then deploy the rules:
    ```bash
    firebase deploy --only firestore:rules   # uses deploy/firestore.rules
    ```
+3. **Recommended — Google Cloud → APIs & Services → OAuth consent screen → set
+   User type to _Internal_.** This limits OAuth consent to the gpmail.org
+   Workspace, so only organization members can complete sign-in.
+4. Add the app's domain under **Authentication → Settings → Authorized domains**.
 
-Implementation: `src/firebase.js` (SDK load, auth, Firestore read/write) and
-`src/storage.js` (`registerRemoteSync`, `mergeProgress`, `mergeLog`).
+Implementation: `src/firebase.js` (SDK load, Google auth + domain gate, Firestore
+read/write) and `src/storage.js` (`registerRemoteSync`, `mergeProgress`,
+`mergeLog`). The allowed domain is `ALLOWED_DOMAIN` in `src/firebase.js`.
 
 ## Deployment
 

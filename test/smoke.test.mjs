@@ -8,6 +8,7 @@ import { norm, firstLetters, dayKey } from "../src/text.js";
 import { migrate, retrievability, freshness, isDue, nextStability, GROWTH_BASE } from "../src/srs.js";
 import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "../src/blanks.js";
 import { mergeProgress, mergeLog } from "../src/storage.js";
+import { emailAllowed, ALLOWED_DOMAIN } from "../src/firebase.js";
 import { passages } from "../data/passages.js";
 
 test("text helpers", () => {
@@ -75,6 +76,17 @@ test("mergeLog unions days and keeps the larger count", () => {
 test("merge helpers tolerate null/undefined inputs", () => {
   assert.deepEqual(mergeProgress(null, undefined), {});
   assert.deepEqual(mergeLog(undefined, null), {});
+});
+
+test("emailAllowed only accepts the gpmail.org domain", () => {
+  assert.equal(ALLOWED_DOMAIN, "gpmail.org");
+  assert.equal(emailAllowed("member@gpmail.org"), true);
+  assert.equal(emailAllowed("Member@GPMail.org"), true, "case-insensitive");
+  assert.equal(emailAllowed("member@gmail.com"), false);
+  assert.equal(emailAllowed("member@evilgpmail.org"), false, "must match full domain");
+  assert.equal(emailAllowed("member@gpmail.org.evil.com"), false);
+  assert.equal(emailAllowed(null), false);
+  assert.equal(emailAllowed(""), false);
 });
 
 test("chunksFor splits a passage into ordered chunks that rejoin to the text", () => {

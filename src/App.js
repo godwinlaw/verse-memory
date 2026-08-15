@@ -17,7 +17,7 @@ import {
 import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "./blanks.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
 import { appConfig } from "./config.js";
-import { initFirebaseSync } from "./firebase.js";
+import { initAuth, signIn, signOutUser, ALLOWED_DOMAIN } from "./firebase.js";
 import { passages } from "../data/passages.js";
 
 /* Mock roster for the leaderboard (until a real backend is wired up). */
@@ -36,6 +36,7 @@ export class App extends React.Component {
     mode: null, queue: [], qi: 0, phase: "prompt", revealed: false, flipLetters: false, showHelp: false,
     answers: {}, blanksChecked: false, blankLevel: 1, blankHint: true, typed: "", typeGraded: false, lastTypeScore: undefined,
     scrambleOrder: [], scrambleWrong: -1, scrambleLevel: 1, search: "", filter: "All", sessionCount: 0, peers: null,
+    auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
   };
 
   componentDidMount() {
@@ -49,9 +50,14 @@ export class App extends React.Component {
       loaded: true,
       peers: this.makePeers(passages.length),
     });
-    // Optional cloud sync: pull remote progress and reconcile with local. No-op
-    // when Firebase isn't configured/reachable, so the app never blocks on it.
-    initFirebaseSync({ onRemoteData: (remote) => this.hydrateRemote(remote) });
+    // Auth + cloud sync. Access is gated to gpmail.org Google accounts; on a
+    // valid sign-in, remote progress is pulled and reconciled with local. If
+    // Firebase is unreachable, status becomes "disabled" and the app runs
+    // local-only rather than locking members out.
+    initAuth({
+      onChange: (auth) => this.setState({ auth }),
+      onRemoteData: (remote) => this.hydrateRemote(remote),
+    });
   }
   /* Reconcile cloud progress pulled at startup with whatever is on this device,
    * then persist the merged result (which also pushes it back to the cloud). */
@@ -59,6 +65,18 @@ export class App extends React.Component {
     const progress = mergeProgress(this.state.progress, remote.progress);
     const log = mergeLog(this.state.log, remote.log);
     this.save(progress, log);
+  }
+  signIn() {
+    this.setState({ auth: { status: "signing-in" } });
+    // On success the auth observer flips status to "signed-in"; handle failure
+    // (popup closed/blocked, or a non-gpmail.org account) here.
+    signIn().catch((e) => {
+      const denied = e && e.code === "not-allowed-domain";
+      this.setState({ auth: { status: denied ? "denied" : "signed-out", error: denied ? null : "sign-in-failed" } });
+    });
+  }
+  signOut() {
+    signOutUser().catch(() => {});
   }
   makePeers(goal) {
     let s = 7; const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; };
@@ -226,6 +244,8 @@ export class App extends React.Component {
 
     return {
       groupName: this.props.groupName ?? appConfig.groupName,
+      user: s.auth.user || null,
+      signOut: () => this.signOut(),
       goal, memorized, learning, remaining, pctLabel: pct + "%",
       deadlineLabel: this.deadline().toLocaleDateString("en-GB", { day: "numeric", month: "long" }),
       barStyle: "position:absolute;inset:0 auto 0 0;width:" + pct + "%;background:#f2f2f3",
@@ -363,6 +383,36 @@ export class App extends React.Component {
         </div>
         ${v.nav.map((n, i) => html`<button key=${i} onClick=${n.onClick} style=${sx(n.style)}>${n.label}</button>`)}
         <button className="btn btn-primary" onClick=${v.startDue} style=${sx("letter-spacing:.06em")}>REVIEW NOW</button>
+        ${v.user && html`
+          <div style=${sx("display:flex;align-items:center;gap:10px;padding-left:16px;margin-left:4px;border-left:1px solid var(--color-divider)")}>
+            <span title=${v.user.email} style=${sx("font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>${v.user.email}</span>
+            <button className="btn btn-secondary" onClick=${v.signOut} style=${sx("font-size:12px;padding:4px 10px")}>Sign out</button>
+          </div>`}
+      </div>`;
+  }
+
+  /* Login gate shown until an approved gpmail.org member is signed in. */
+  authGate(a) {
+    const busy = a.status === "loading" || a.status === "signing-in";
+    const denied = a.status === "denied";
+    const failed = a.status === "signed-out" && a.error === "sign-in-failed";
+    return html`
+      <div style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);display:flex;align-items:center;justify-content:center;padding:36px")}>
+        <div className="blueprint" style=${sx("max-width:460px;width:100%;padding:40px 40px 36px;display:flex;flex-direction:column;gap:18px")}>
+          ${corners()}
+          <div style=${sx("display:flex;flex-direction:column;gap:2px")}>
+            <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.06em")}>THE MEMORY BOARD</div>
+            <div style=${sx("font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}>${this.props.groupName ?? appConfig.groupName}</div>
+          </div>
+          <p style=${sx("margin:0;font-size:14px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 70%, transparent)")}>
+            Sign in with your <strong>@${ALLOWED_DOMAIN}</strong> account to track your passages and sync across devices.
+          </p>
+          ${denied && html`<div style=${sx("font-size:13px;line-height:1.55;padding:10px 12px;border:1px solid #a4553f;color:#a4553f")}>That account isn't part of ${ALLOWED_DOMAIN}. Please sign in with your Acts 2 Network (@${ALLOWED_DOMAIN}) account.</div>`}
+          ${failed && html`<div style=${sx("font-size:13px;line-height:1.55;padding:10px 12px;border:1px solid #a4553f;color:#a4553f")}>Sign-in didn't complete. Please try again.</div>`}
+          <button className="btn btn-primary" onClick=${() => this.signIn()} disabled=${busy} style=${sx("align-self:flex-start;letter-spacing:.04em" + (busy ? ";opacity:.6;cursor:default" : ""))}>
+            ${busy ? "Connecting…" : "Sign in with Google"}
+          </button>
+        </div>
       </div>`;
   }
 
@@ -700,6 +750,10 @@ export class App extends React.Component {
   render() {
     if (!this.state.loaded)
       return html`<div style=${sx("padding:80px 36px;font-family:var(--font-body);color:color-mix(in srgb, var(--color-text) 55%, transparent)")}>Loading the board…</div>`;
+    // Require a gpmail.org sign-in before the app. "disabled" (Firebase
+    // unreachable) falls through to local-only so members aren't locked out.
+    const a = this.state.auth;
+    if (a.status !== "signed-in" && a.status !== "disabled") return this.authGate(a);
     const v = this.renderVals();
     return html`
       <div style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)")}>
