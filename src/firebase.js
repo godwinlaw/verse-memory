@@ -1,10 +1,10 @@
 /* Firebase authentication + cloud sync.
  *
- * Access is restricted to Google accounts in the Acts 2 Network Workspace domain
- * (gpmail.org). Sign-in uses Google with the `hd` hint, but the real enforcement
- * is twofold: (1) we reject and sign out any non-gpmail.org account on the
- * client, and (2) Firestore security rules (deploy/firestore.rules) allow access
- * only to verified @gpmail.org identities. Never rely on the client alone.
+ * Access is restricted to Google accounts in the Acts 2 Network Workspace
+ * domains (see ALLOWED_DOMAINS below). Enforcement is twofold: (1) the client
+ * rejects and signs out any account outside those domains, and (2) Firestore
+ * security rules (deploy/firestore.rules) allow access only to verified
+ * identities in them. Only the second is security — never rely on the client.
  *
  * Once a member is signed in, their progress syncs across devices:
  *   • Firestore stores one document per user at
@@ -19,8 +19,12 @@
  * Setup checklist (Firebase console):
  *   1. Authentication → Sign-in method → enable "Google".
  *   2. Firestore Database → create, then deploy deploy/firestore.rules.
- *   3. (Recommended) In Google Cloud → OAuth consent screen, set User type to
- *      Internal so only gpmail.org Workspace users can consent.
+ *   3. Add the app's domain under Authentication → Settings → Authorized
+ *      domains.
+ *
+ * Note: because sign-in spans two Workspace domains, Google's single-domain `hd`
+ * hint is not used and the OAuth consent screen cannot be locked to one
+ * Workspace. Domain membership is enforced by emailAllowed() and the rules.
  */
 
 import { firebaseConfig, isFirebaseConfigured } from "./config.js";
@@ -31,8 +35,16 @@ const SDK_VERSION = "11.6.1";
 const SDK = `https://www.gstatic.com/firebasejs/${SDK_VERSION}`;
 const PUSH_DEBOUNCE_MS = 800;
 
-// Google Workspace domains permitted to sign in (Acts 2 Network).
+/* Google Workspace domains permitted to sign in (Acts 2 Network).
+ *
+ * This list is only half the gate. The authoritative check is in
+ * deploy/firestore.rules — adding or removing a domain means editing BOTH and
+ * redeploying the rules; changing this file alone is insecure and ineffective. */
 export const ALLOWED_DOMAINS = ["gpmail.org", "acts2.network"];
+
+/* The domain named on the sign-in screen. Accounts in any ALLOWED_DOMAINS entry
+ * can sign in; naming one keeps the prompt short. */
+export const PRIMARY_DOMAIN = "acts2.network";
 
 let services = null; // memoized { app, auth, db, authMod, dbMod }
 
@@ -82,7 +94,7 @@ export async function initAuth({ onChange = () => {}, onRemoteData } = {}) {
       onChange({ status: "denied", reason: user.email || "" });
       try {
         await signOut(s.auth);
-      } catch (e) {}
+      } catch {}
       return;
     }
 
@@ -111,7 +123,7 @@ export async function signIn() {
   if (!emailAllowed(cred.user && cred.user.email)) {
     try {
       await signOut(s.auth);
-    } catch (e) {}
+    } catch {}
     const err = new Error("not-allowed-domain");
     err.code = "not-allowed-domain";
     throw err;
@@ -160,7 +172,7 @@ export async function fetchRoster() {
   let s;
   try {
     s = await loadServices();
-  } catch (e) {
+  } catch {
     return [];
   }
   const { collection, getDocs } = s.dbMod;

@@ -1,0 +1,87 @@
+/* View-model for the leaderboard.
+ *
+ * The roster fetched from Firestore has self removed (see App.loadRoster); this
+ * module adds "You" back from local state, so your own row always reflects the
+ * newest progress even before it has synced. */
+
+/* The filters offered above the board. `field` is the profile attribute each one
+ * narrows by, which is also what makes the option lists self-building: every
+ * distinct value present in the roster becomes a choice. */
+const FILTERS = [
+  { key: "group", field: "ministryGroup", label: "Ministry group" },
+  { key: "gender", field: "gender", label: "Gender" },
+  { key: "gradClass", field: "gradClass", label: "Class" },
+];
+
+const ANY = "All";
+const PLACES = ["First", "Second", "Third"];
+
+/* Distinct non-empty values of one attribute across the roster. Numbers sort
+ * descending (newest class first); everything else alphabetically. */
+function distinctValues(rows, field) {
+  const values = rows.map((r) => r[field]).filter((x) => x != null && x !== "");
+  return [...new Set(values)].sort((a, b) => (typeof a === "number" ? b - a : String(a).localeCompare(String(b))));
+}
+
+export function leaderboardVals({ state, totals, myStreak, actions }) {
+  const me = state.profile || {};
+  const roster = (state.peers || []).concat([
+    {
+      name: "You",
+      count: totals.memorized,
+      streak: myStreak,
+      me: true,
+      ministryGroup: me.ministryGroup,
+      gender: me.gender,
+      gradClass: me.gradClass,
+    },
+  ]);
+
+  const selected = state.leaderFilter;
+  // Compare as strings: a <select> hands back its value as text, so a numeric
+  // graduating class would never match a strict ===.
+  const passes = (row) =>
+    FILTERS.every((f) => selected[f.key] === ANY || String(row[f.field]) === String(selected[f.key]));
+
+  const ranked = roster.filter(passes).sort((a, b) => b.count - a.count);
+  const top = Math.max(1, ranked[0] ? ranked[0].count : 1);
+
+  return {
+    daysLeftLabel: totals.daysLeft + " days remaining",
+
+    leaderFilters: FILTERS.map((f) => ({
+      key: f.key,
+      label: f.label,
+      value: selected[f.key],
+      onChange: (e) => actions.setLeaderFilter(f.key, e.target.value),
+      opts: [ANY, ...distinctValues(roster, f.field)],
+      fmt: (o) => (f.key === "gradClass" && o !== ANY ? "Class of " + o : o),
+    })),
+
+    leaderCount: ranked.length,
+    leaderEmpty: ranked.length === 0,
+
+    podium: ranked.slice(0, PLACES.length).map((p, i) => ({
+      place: PLACES[i],
+      name: p.name,
+      count: p.count,
+      cardStyle:
+        "padding:20px 22px;display:flex;flex-direction:column;gap:8px;" +
+        (p.me ? "background:var(--color-accent-900);color:#f2f2f3;border-color:var(--color-accent-900)" : ""),
+    })),
+
+    board: ranked.map((p, i) => ({
+      rank: i + 1,
+      name: p.name,
+      count: p.count,
+      streak: p.streak + " days",
+      rowStyle: p.me ? "background:var(--color-accent-100)" : "",
+      barStyle:
+        "height:100%;background:" +
+        (p.me ? "var(--color-accent-900)" : "var(--color-accent)") +
+        ";width:" +
+        Math.round((p.count / top) * 100) +
+        "%",
+    })),
+  };
+}
