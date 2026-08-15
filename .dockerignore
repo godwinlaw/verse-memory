@@ -1,0 +1,13 @@
+.git
+.gitignore
+node_modules
+design
+docs
+tools
+keyword-review.md
+*.docx
+.drone.yml
+Dockerfile
+.dockerignore
+README.md
+config.js

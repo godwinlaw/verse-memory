@@ -1,0 +1,47 @@
+# Drone CI pipeline — A2N standard CI/CD (self-hosted at build.gracepointonline.org).
+# GitHub Actions is unavailable on the org's legacy plan, so we use Drone.
+#
+# Build/test/publish is automated: lint on every push/PR, and on main we build
+# the container and push it to Amazon ECR (us-east-1) for ECS deployment.
+# Configure the referenced secrets in the Drone repo settings.
+---
+kind: pipeline
+type: docker
+name: default
+
+steps:
+  - name: test
+    image: node:20-alpine
+    commands:
+      - npm install --no-audit --no-fund
+      - npm run lint
+      - npm run format:check
+      - npm test
+
+  - name: publish
+    image: plugins/ecr
+    settings:
+      repo: memory-board
+      # TODO: set to the org's ECR registry, e.g. <account-id>.dkr.ecr.us-east-1.amazonaws.com
+      registry: REPLACE_WITH_ECR_REGISTRY
+      region: us-east-1
+      dockerfile: Dockerfile
+      tags:
+        - latest
+        - ${DRONE_COMMIT_SHA:0:8}
+      access_key:
+        from_secret: aws_access_key_id
+      secret_key:
+        from_secret: aws_secret_access_key
+    when:
+      branch:
+        - main
+      event:
+        - push
+
+trigger:
+  branch:
+    - main
+  event:
+    - push
+    - pull_request

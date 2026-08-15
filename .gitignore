@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Deploy-time config (may contain environment specifics; copy from config.example.js)
+/config.js
+
+# Bulky design export kept locally for provenance, not in the repo
+/design/claude-design/
+
+# Python tooling
+tools/__pycache__/
+tools/.venv/
+*.pyc
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

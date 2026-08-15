@@ -1,0 +1,67 @@
+/* Smoke tests for the pure logic modules. These run in Node (no browser) and
+ * guard the spaced-repetition and exercise-generation behavior. Run: npm test */
+
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { norm, firstLetters, dayKey } from "../src/text.js";
+import { migrate, retrievability, freshness, isDue, nextStability, GROWTH_BASE } from "../src/srs.js";
+import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "../src/blanks.js";
+import { passages } from "../data/passages.js";
+
+test("text helpers", () => {
+  assert.equal(norm("Self-Control;"), "selfcontrol");
+  assert.equal(firstLetters("self-control; abide"), "s-c; a");
+  assert.match(dayKey(new Date("2026-08-14T12:00:00Z")), /^2026-08-14$/);
+});
+
+test("migrate returns defaults for unseen verse", () => {
+  const rec = migrate(undefined);
+  assert.deepEqual(rec, { hits: 0, status: "new", last: null, stability: 0 });
+});
+
+test("migrate back-fills stability for legacy records", () => {
+  const rec = migrate({ hits: 2, status: "learning", last: Date.now() });
+  assert.ok(rec.stability > 0, "legacy record should get a stability");
+});
+
+test("retrievability and freshness bounds", () => {
+  const fresh = { hits: 1, status: "learning", last: Date.now(), stability: 2 };
+  const r = retrievability(fresh);
+  assert.ok(r > 0.9 && r <= 1, `just-reviewed verse should be near-fully fresh, got ${r}`);
+  assert.equal(freshness({ hits: 0, status: "new", last: null, stability: 0 }), 0);
+});
+
+test("never-reviewed verse is due; very fresh verse is not", () => {
+  assert.equal(isDue(migrate(undefined)), true);
+  assert.equal(isDue({ hits: 1, status: "learning", last: Date.now(), stability: 5 }), false);
+});
+
+test("nextStability grows and rewards free recall over recognition", () => {
+  const prev = { hits: 1, status: "learning", last: Date.now(), stability: 2 };
+  const write = nextStability(prev, { mode: "type", score: 1 });
+  const flip = nextStability(prev, { mode: "flip" });
+  assert.ok(write > prev.stability, "review should increase stability");
+  assert.ok(write > flip, "writing it out should build more stability than a flashcard");
+  assert.ok(GROWTH_BASE > 1);
+});
+
+test("keyBlankSet picks valid, in-range word indices", () => {
+  const p = passages[0];
+  const words = p.text.split(" ");
+  const blanks = keyBlankSet(p.text, p.id, 1);
+  assert.ok(blanks.size > 0, "should blank at least one word");
+  for (const i of blanks) assert.ok(i >= 0 && i < words.length, `index ${i} in range`);
+  // Fuller level blanks at least as many words as the light level.
+  assert.ok(keyBlankSet(p.text, p.id, 2).size >= keyBlankSet(p.text, p.id, 0).size);
+  assert.equal(BLANK_LEVELS.length, 3);
+});
+
+test("chunksFor splits a passage into ordered chunks that rejoin to the text", () => {
+  const p = passages[0];
+  for (let level = 0; level < SCRAMBLE_LEVELS.length; level++) {
+    const chunks = chunksFor(p.text, level);
+    assert.ok(chunks.length >= 1);
+    assert.equal(chunks.join(" ").replace(/\s+/g, " ").trim(), p.text.replace(/\s+/g, " ").trim());
+  }
+});

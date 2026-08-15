@@ -1,0 +1,23 @@
+{
+  "name": "memory-board",
+  "version": "1.0.0",
+  "description": "The Memory Board — a spaced-repetition Bible verse memorization app for Acts 2 Network - Berkeley.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "serve -l 8080 .",
+    "start": "serve -l 8080 .",
+    "test": "node --test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "keywords": "python3 tools/gen_keywords.py"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0",
+    "prettier": "^3.3.3",
+    "serve": "^14.2.4"
+  }
+}
