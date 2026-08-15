@@ -109,8 +109,11 @@ default project config lives in `src/config.js`; override per deployment via
 **One-time Firebase / Google Cloud console setup:**
 
 1. **Authentication → Sign-in method → enable "Google".**
-2. **Firestore Database → create**, then deploy the rules:
+2. **Firestore Database → create**, then deploy the rules from the repo root
+   (project + rules path are configured in `.firebaserc` / `firebase.json`):
    ```bash
+   npm i -g firebase-tools     # if needed
+   firebase login              # once
    firebase deploy --only firestore:rules   # uses deploy/firestore.rules
    ```
 3. **Recommended — Google Cloud → APIs & Services → OAuth consent screen → set

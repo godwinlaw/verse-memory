@@ -7,6 +7,11 @@ node_modules/
 # Bulky design export kept locally for provenance, not in the repo
 /design/claude-design/
 
+# Firebase CLI local cache / logs (firebase.json and .firebaserc ARE tracked)
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
 # Python tooling
 tools/__pycache__/
 tools/.venv/
