@@ -29,7 +29,8 @@ const SDK_VERSION = "11.6.1";
 const SDK = `https://www.gstatic.com/firebasejs/${SDK_VERSION}`;
 const PUSH_DEBOUNCE_MS = 800;
 
-export const ALLOWED_DOMAIN = "gpmail.org";
+// Google Workspace domains permitted to sign in (Acts 2 Network).
+export const ALLOWED_DOMAINS = ["gpmail.org", "acts2.network"];
 
 let services = null; // memoized { app, auth, db, authMod, dbMod }
 
@@ -45,9 +46,14 @@ async function loadServices() {
   return services;
 }
 
-/* True only for a verified-looking address in the allowed Workspace domain. */
+/* True only for an address in one of the allowed Workspace domains. Matches the
+ * exact domain after the final "@" (case-insensitive), so look-alikes like
+ * "evilgpmail.org" or "gpmail.org.evil.com" are rejected. */
 export function emailAllowed(email) {
-  return typeof email === "string" && email.toLowerCase().endsWith("@" + ALLOWED_DOMAIN);
+  if (typeof email !== "string") return false;
+  const at = email.lastIndexOf("@");
+  if (at < 0) return false;
+  return ALLOWED_DOMAINS.includes(email.slice(at + 1).toLowerCase());
 }
 
 /* Begin observing auth state. Drives onChange({ status, user?, reason? }) where
@@ -72,11 +78,17 @@ export async function initAuth({ onChange = () => {}, onRemoteData } = {}) {
 
     if (!emailAllowed(user.email)) {
       onChange({ status: "denied", reason: user.email || "" });
-      try { await signOut(s.auth); } catch (e) {}
+      try {
+        await signOut(s.auth);
+      } catch (e) {}
       return;
     }
 
-    try { await setupSync(s, user.uid, onRemoteData); } catch (e) { console.warn("sync setup failed:", e); }
+    try {
+      await setupSync(s, user.uid, onRemoteData);
+    } catch (e) {
+      console.warn("sync setup failed:", e);
+    }
     onChange({
       status: "signed-in",
       user: { uid: user.uid, email: user.email, name: user.displayName, photo: user.photoURL },
@@ -84,16 +96,20 @@ export async function initAuth({ onChange = () => {}, onRemoteData } = {}) {
   });
 }
 
-/* Start the Google sign-in popup, restricted to the gpmail.org domain. Resolves
- * to the user on success; the auth observer in initAuth then takes over. */
+/* Start the Google sign-in popup. Google's `hd` hint only accepts a single
+ * domain, so with multiple allowed domains we don't set it and instead enforce
+ * membership via emailAllowed() below and the Firestore rules. Resolves to the
+ * user on success; the auth observer in initAuth then takes over. */
 export async function signIn() {
   const s = await loadServices();
   const { GoogleAuthProvider, signInWithPopup, signOut } = s.authMod;
   const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ hd: ALLOWED_DOMAIN, prompt: "select_account" });
+  provider.setCustomParameters({ prompt: "select_account" });
   const cred = await signInWithPopup(s.auth, provider);
   if (!emailAllowed(cred.user && cred.user.email)) {
-    try { await signOut(s.auth); } catch (e) {}
+    try {
+      await signOut(s.auth);
+    } catch (e) {}
     const err = new Error("not-allowed-domain");
     err.code = "not-allowed-domain";
     throw err;
@@ -111,8 +127,8 @@ async function setupSync(s, uid, onRemoteData) {
   const userDoc = doc(s.db, "users", uid);
 
   const push = debounce(({ progress, log }) => {
-    setDoc(userDoc, { progress, log, updatedAt: Date.now() }, { merge: true }).catch(
-      (e) => console.warn("Firebase push failed:", e),
+    setDoc(userDoc, { progress, log, updatedAt: Date.now() }, { merge: true }).catch((e) =>
+      console.warn("Firebase push failed:", e),
     );
   }, PUSH_DEBOUNCE_MS);
   registerRemoteSync(push);

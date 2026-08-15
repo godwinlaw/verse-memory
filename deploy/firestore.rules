@@ -2,8 +2,8 @@ rules_version = '2';
 
 // Firestore security rules for The Memory Board.
 // Access is restricted to verified Google accounts in the Acts 2 Network
-// Workspace domain (gpmail.org). This is the authoritative enforcement — the
-// client-side domain check and Google `hd` hint are conveniences, not security.
+// Workspace domains (gpmail.org, acts2.network). This is the authoritative
+// enforcement — the client-side domain check is a convenience, not security.
 // Deploy with: firebase deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -11,7 +11,7 @@ service cloud.firestore {
     function isActsUser() {
       return request.auth != null
         && request.auth.token.email_verified == true
-        && request.auth.token.email.lower().matches('.*@gpmail[.]org$');
+        && request.auth.token.email.lower().matches('.*@(gpmail[.]org|acts2[.]network)$');
     }
 
     // Per-user progress documents: users/{uid} = { progress, log, updatedAt }.

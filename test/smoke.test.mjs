@@ -8,7 +8,7 @@ import { norm, firstLetters, dayKey } from "../src/text.js";
 import { migrate, retrievability, freshness, isDue, nextStability, GROWTH_BASE } from "../src/srs.js";
 import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "../src/blanks.js";
 import { mergeProgress, mergeLog } from "../src/storage.js";
-import { emailAllowed, ALLOWED_DOMAIN } from "../src/firebase.js";
+import { emailAllowed, ALLOWED_DOMAINS } from "../src/firebase.js";
 import { passages } from "../data/passages.js";
 
 test("text helpers", () => {
@@ -78,13 +78,15 @@ test("merge helpers tolerate null/undefined inputs", () => {
   assert.deepEqual(mergeLog(undefined, null), {});
 });
 
-test("emailAllowed only accepts the gpmail.org domain", () => {
-  assert.equal(ALLOWED_DOMAIN, "gpmail.org");
+test("emailAllowed accepts only the approved Acts 2 Network domains", () => {
+  assert.deepEqual(ALLOWED_DOMAINS, ["gpmail.org", "acts2.network"]);
   assert.equal(emailAllowed("member@gpmail.org"), true);
-  assert.equal(emailAllowed("Member@GPMail.org"), true, "case-insensitive");
+  assert.equal(emailAllowed("member@acts2.network"), true);
+  assert.equal(emailAllowed("Member@ACTS2.Network"), true, "case-insensitive");
   assert.equal(emailAllowed("member@gmail.com"), false);
   assert.equal(emailAllowed("member@evilgpmail.org"), false, "must match full domain");
   assert.equal(emailAllowed("member@gpmail.org.evil.com"), false);
+  assert.equal(emailAllowed("member@sub.acts2.network"), false, "subdomains not allowed");
   assert.equal(emailAllowed(null), false);
   assert.equal(emailAllowed(""), false);
 });

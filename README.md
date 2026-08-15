@@ -86,15 +86,16 @@ Do not edit `data/keywords.js` by hand — re-run the generator.
 
 ## Authentication & cloud sync (Firebase)
 
-Access is restricted to Google accounts in the Acts 2 Network Workspace domain,
-**gpmail.org**. Members sign in with Google; each member's progress then syncs
-across devices via Firebase (project `verse-memory`):
+Access is restricted to Google accounts in the Acts 2 Network Workspace domains,
+**gpmail.org** and **acts2.network**. Members sign in with Google; each member's
+progress then syncs across devices via Firebase (project `verse-memory`):
 
-- **Google sign-in**, gated to `@gpmail.org`. The account chooser is hinted with
-  Google's `hd` parameter, the client rejects and signs out any non-gpmail.org
-  account, and — authoritatively — **Firestore rules only allow verified
-  `@gpmail.org` identities** (`deploy/firestore.rules`). Never trust the client
-  alone; the rules are the real enforcement.
+- **Google sign-in**, gated to `@gpmail.org` / `@acts2.network`. The client
+  rejects and signs out any account outside those domains, and —
+  authoritatively — **Firestore rules only allow verified identities in those
+  domains** (`deploy/firestore.rules`). Never trust the client alone; the rules
+  are the real enforcement. The allowed set is `ALLOWED_DOMAINS` in
+  `src/firebase.js`.
 - **Firestore** stores one doc per user at `users/{uid}` = `{ progress, log }`.
   On sign-in the remote doc is pulled and reconciled with local state
   (`mergeProgress` keeps the most recently reviewed record per verse); each local
@@ -116,10 +117,12 @@ default project config lives in `src/config.js`; override per deployment via
    firebase login              # once
    firebase deploy --only firestore:rules   # uses deploy/firestore.rules
    ```
-3. **Recommended — Google Cloud → APIs & Services → OAuth consent screen → set
-   User type to _Internal_.** This limits OAuth consent to the gpmail.org
-   Workspace, so only organization members can complete sign-in.
-4. Add the app's domain under **Authentication → Settings → Authorized domains**.
+3. Add the app's domain under **Authentication → Settings → Authorized domains**.
+
+Note: because sign-in spans two Workspace domains (gpmail.org, acts2.network),
+the Google `hd` hint isn't used and the OAuth consent screen can't be locked to a
+single Workspace. Domain membership is enforced by `emailAllowed()` and the
+Firestore rules instead.
 
 Implementation: `src/firebase.js` (SDK load, Google auth + domain gate, Firestore
 read/write) and `src/storage.js` (`registerRemoteSync`, `mergeProgress`,
