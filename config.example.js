@@ -14,11 +14,16 @@ window.__APP_CONFIG__ = {
   deadline: "2026-09-30", // YYYY-MM-DD, the memorization goal date
 };
 
-// Set to your Firebase project's web config to enable cloud sync, or leave null.
-window.__FIREBASE_CONFIG__ = null;
+// Cloud sync uses the default Firebase project baked into src/config.js. Leave
+// this unset to use it. Override only to point at a different project, or set
+// it to null to disable cloud sync entirely for this deployment.
+//
 // window.__FIREBASE_CONFIG__ = {
 //   apiKey: "...",
 //   authDomain: "your-project.firebaseapp.com",
 //   projectId: "your-project",
+//   storageBucket: "your-project.firebasestorage.app",
+//   messagingSenderId: "...",
 //   appId: "...",
 // };
+// window.__FIREBASE_CONFIG__ = null; // disable cloud sync

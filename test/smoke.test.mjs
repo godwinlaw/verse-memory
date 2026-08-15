@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { norm, firstLetters, dayKey } from "../src/text.js";
 import { migrate, retrievability, freshness, isDue, nextStability, GROWTH_BASE } from "../src/srs.js";
 import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "../src/blanks.js";
+import { mergeProgress, mergeLog } from "../src/storage.js";
 import { passages } from "../data/passages.js";
 
 test("text helpers", () => {
@@ -55,6 +56,25 @@ test("keyBlankSet picks valid, in-range word indices", () => {
   // Fuller level blanks at least as many words as the light level.
   assert.ok(keyBlankSet(p.text, p.id, 2).size >= keyBlankSet(p.text, p.id, 0).size);
   assert.equal(BLANK_LEVELS.length, 3);
+});
+
+test("mergeProgress keeps the most recently reviewed record per verse", () => {
+  const local = { 1: { last: 100, hits: 1 }, 2: { last: 500, hits: 2 } };
+  const remote = { 1: { last: 300, hits: 2 }, 3: { last: 50, hits: 1 } };
+  const merged = mergeProgress(local, remote);
+  assert.equal(merged[1].last, 300, "newer remote record wins for verse 1");
+  assert.equal(merged[2].last, 500, "local-only verse 2 retained");
+  assert.equal(merged[3].last, 50, "remote-only verse 3 adopted");
+});
+
+test("mergeLog unions days and keeps the larger count", () => {
+  const merged = mergeLog({ "2026-08-13": 3, "2026-08-14": 1 }, { "2026-08-14": 5, "2026-08-15": 2 });
+  assert.deepEqual(merged, { "2026-08-13": 3, "2026-08-14": 5, "2026-08-15": 2 });
+});
+
+test("merge helpers tolerate null/undefined inputs", () => {
+  assert.deepEqual(mergeProgress(null, undefined), {});
+  assert.deepEqual(mergeLog(undefined, null), {});
 });
 
 test("chunksFor splits a passage into ordered chunks that rejoin to the text", () => {

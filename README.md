@@ -53,7 +53,8 @@ HTTP; opening `index.html` from the filesystem will not work.
 ├── tools/
 │   └── gen_keywords.py    # spaCy keyword generator -> data/keywords.js
 ├── deploy/
-│   └── nginx.conf         # static-serving config for the container
+│   ├── nginx.conf         # static-serving config for the container
+│   └── firestore.rules    # Firestore security rules (cloud sync)
 ├── design/                # provenance: source docs + original design export
 ├── docs/                  # standards & reference (A2N dev best practices)
 ├── Dockerfile             # nginx image (container-based deploy, per A2N)
@@ -83,12 +84,33 @@ npm run keywords   # == python3 tools/gen_keywords.py
 
 Do not edit `data/keywords.js` by hand — re-run the generator.
 
-## Firebase (optional cloud sync)
+## Firebase (cloud sync)
 
-The app works fully offline against `localStorage`. Firebase is an optional
-backend for syncing progress across devices and powering a real leaderboard. It
-stays dormant until `window.__FIREBASE_CONFIG__` is set (see `config.example.js`).
-The wiring seam is in `src/firebase.js` and `src/storage.js` (`registerRemoteSync`).
+The app works fully offline against `localStorage`. On top of that it syncs a
+member's progress across devices using Firebase (project `verse-memory`):
+
+- **Anonymous Auth** gives each browser a stable user id.
+- **Firestore** stores one doc per user at `users/{uid}` = `{ progress, log }`.
+- On startup the remote doc is pulled and reconciled with local state
+  (`mergeProgress` keeps the most recently reviewed record per verse); each local
+  save is debounced and pushed back up.
+
+The Firebase modular SDK (v11.6.1) is imported from the gstatic CDN, preserving
+the no-build setup. If Firebase is offline/blocked/misconfigured, sync is skipped
+and the app keeps running on `localStorage`. The default project config lives in
+`src/config.js`; override per deployment via `window.__FIREBASE_CONFIG__` in
+`config.js`, or set it to `null` to disable sync.
+
+**One-time Firebase console setup:**
+
+1. **Authentication → Sign-in method → enable "Anonymous".**
+2. **Firestore Database → create**, then deploy the rules:
+   ```bash
+   firebase deploy --only firestore:rules   # uses deploy/firestore.rules
+   ```
+
+Implementation: `src/firebase.js` (SDK load, auth, Firestore read/write) and
+`src/storage.js` (`registerRemoteSync`, `mergeProgress`, `mergeLog`).
 
 ## Deployment
 

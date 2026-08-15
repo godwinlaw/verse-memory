@@ -15,8 +15,9 @@ import {
   freshColor, freshBar, SEED_STABILITY, FADING_R,
 } from "./srs.js";
 import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "./blanks.js";
-import { storage } from "./storage.js";
+import { storage, mergeProgress, mergeLog } from "./storage.js";
 import { appConfig } from "./config.js";
+import { initFirebaseSync } from "./firebase.js";
 import { passages } from "../data/passages.js";
 
 /* Mock roster for the leaderboard (until a real backend is wired up). */
@@ -48,6 +49,16 @@ export class App extends React.Component {
       loaded: true,
       peers: this.makePeers(passages.length),
     });
+    // Optional cloud sync: pull remote progress and reconcile with local. No-op
+    // when Firebase isn't configured/reachable, so the app never blocks on it.
+    initFirebaseSync({ onRemoteData: (remote) => this.hydrateRemote(remote) });
+  }
+  /* Reconcile cloud progress pulled at startup with whatever is on this device,
+   * then persist the merged result (which also pushes it back to the cloud). */
+  hydrateRemote(remote) {
+    const progress = mergeProgress(this.state.progress, remote.progress);
+    const log = mergeLog(this.state.log, remote.log);
+    this.save(progress, log);
   }
   makePeers(goal) {
     let s = 7; const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; };

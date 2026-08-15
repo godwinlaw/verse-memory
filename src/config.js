@@ -13,8 +13,21 @@ export const appConfig = {
   ...appOverrides,
 };
 
-/* Firebase web config, if provided at deploy time. Firebase web configuration
- * (apiKey, projectId, ...) is public by design and safe to expose to clients;
- * access is governed by Firebase Security Rules, not by hiding this object.
- * Null until a Firebase project is wired up. */
-export const firebaseConfig = (typeof window !== "undefined" && window.__FIREBASE_CONFIG__) || null;
+/* Firebase web config. Firebase web configuration (apiKey, projectId, ...) is
+ * public by design and safe to expose to clients; access is governed by
+ * Firebase Security Rules, not by hiding this object. The default below points
+ * at the project's Firebase; a deploy can override it via window.__FIREBASE_CONFIG__
+ * (e.g. a separate staging project). Set to null to disable cloud sync. */
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAjX1oxuaJXlRenLg_TvPZIT-MT2WZTe1A",
+  authDomain: "verse-memory.firebaseapp.com",
+  projectId: "verse-memory",
+  storageBucket: "verse-memory.firebasestorage.app",
+  messagingSenderId: "223583873519",
+  appId: "1:223583873519:web:eb490a7c3f51a14897ae1a",
+};
+
+const firebaseOverride = typeof window !== "undefined" ? window.__FIREBASE_CONFIG__ : undefined;
+export const firebaseConfig = firebaseOverride === undefined ? DEFAULT_FIREBASE_CONFIG : firebaseOverride;
+
+export const isFirebaseConfigured = () => firebaseConfig != null;

@@ -69,3 +69,26 @@ function remoteSync(progress, log) {
     try { syncFn({ progress, log }); } catch (e) {}
   }
 }
+
+/* Merge local and remote progress without losing data: per verse, keep the most
+ * recently reviewed record (larger `last`). Used to reconcile cloud state pulled
+ * on startup with whatever is already on this device. Pure. */
+export function mergeProgress(local, remote) {
+  const a = local || {}, b = remote || {};
+  const out = {};
+  for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const la = a[id], lb = b[id];
+    if (!la) out[id] = lb;
+    else if (!lb) out[id] = la;
+    else out[id] = (lb.last || 0) > (la.last || 0) ? lb : la;
+  }
+  return out;
+}
+
+/* Merge daily review logs: union of days, keeping the larger count per day. */
+export function mergeLog(local, remote) {
+  const a = local || {}, b = remote || {};
+  const out = { ...a };
+  for (const day of Object.keys(b)) out[day] = Math.max(a[day] || 0, b[day] || 0);
+  return out;
+}
