@@ -23,29 +23,10 @@ import {
 } from "./srs.js";
 import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "./blanks.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
+import { MINISTRY_GROUPS, GENDERS, isProfileComplete, mergeProfile } from "./profile.js";
 import { appConfig } from "./config.js";
-import { initAuth, signIn, signOutUser, ALLOWED_DOMAINS } from "./firebase.js";
+import { initAuth, signIn, signOutUser, fetchRoster } from "./firebase.js";
 import { passages } from "../data/passages.js";
-
-/* Mock roster for the leaderboard (until a real backend is wired up). */
-const NAMES = [
-  "Ruth Anyanwu",
-  "Caleb Moretti",
-  "Hannah Vos",
-  "Dev Ramanathan",
-  "Marta Kovač",
-  "Isaiah Bell",
-  "Yuki Tanabe",
-  "Simone Okafor",
-  "Peter Halloran",
-  "Abigail Sørensen",
-  "Tomás Rivera",
-  "Grace Mbeki",
-  "Nathan Fiore",
-  "Elin Bergström",
-  "Josiah Kim",
-  "Priya Nadar",
-];
 
 const MODES = [
   {
@@ -53,6 +34,12 @@ const MODES = [
     name: "Flashcard",
     short: "Card",
     desc: "Reference first. Say it aloud, then reveal the text to check.",
+  },
+  {
+    key: "scramble",
+    name: "Order the phrases",
+    short: "Order",
+    desc: "The passage is cut into phrases and shuffled. Put them back.",
   },
   {
     key: "blanks",
@@ -65,12 +52,6 @@ const MODES = [
     name: "Write it out",
     short: "Write",
     desc: "Type the whole passage from memory and get it graded word by word.",
-  },
-  {
-    key: "scramble",
-    name: "Order the phrases",
-    short: "Order",
-    desc: "The passage is cut into phrases and shuffled. Put them back.",
   },
 ];
 
@@ -94,6 +75,7 @@ export class App extends React.Component {
     blankHint: true,
     typed: "",
     typeGraded: false,
+    typeFirstLetter: false,
     lastTypeScore: undefined,
     scrambleOrder: [],
     scrambleWrong: -1,
@@ -103,6 +85,11 @@ export class App extends React.Component {
     sessionCount: 0,
     peers: null,
     auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
+    profile: {}, // { ministryGroup, gender, gradClass, updatedAt }
+    profileDraft: null, // in-progress edits for the profile form
+    editingProfile: false, // reopen the profile form for an already-complete profile
+    ministryOpen: false, // ministry-group combobox dropdown visibility
+    leaderFilter: { group: "All", gender: "All", gradClass: "All" },
   };
 
   componentDidMount() {
@@ -110,18 +97,23 @@ export class App extends React.Component {
       passages,
       progress: storage.loadProgress(),
       log: storage.loadLog(),
+      profile: storage.loadProfile(),
       blankLevel: storage.loadBlankLevel(this.state.blankLevel, BLANK_LEVELS.length),
       blankHint: storage.loadBlankHint(this.state.blankHint),
+      typeFirstLetter: storage.loadTypeFirstLetter(this.state.typeFirstLetter),
       scrambleLevel: storage.loadScrambleLevel(this.state.scrambleLevel, SCRAMBLE_LEVELS.length),
       loaded: true,
-      peers: this.makePeers(passages.length),
     });
     // Auth + cloud sync. Access is gated to gpmail.org Google accounts; on a
-    // valid sign-in, remote progress is pulled and reconciled with local. If
-    // Firebase is unreachable, status becomes "disabled" and the app runs
-    // local-only rather than locking members out.
+    // valid sign-in, remote progress is pulled and reconciled with local, and
+    // the leaderboard roster is loaded. If Firebase is unreachable, status
+    // becomes "disabled" and the app runs local-only rather than locking
+    // members out.
     initAuth({
-      onChange: (auth) => this.setState({ auth }),
+      onChange: (auth) => {
+        this.setState({ auth });
+        if (auth.status === "signed-in") this.loadRoster();
+      },
       onRemoteData: (remote) => this.hydrateRemote(remote),
     });
   }
@@ -131,6 +123,46 @@ export class App extends React.Component {
     const progress = mergeProgress(this.state.progress, remote.progress);
     const log = mergeLog(this.state.log, remote.log);
     this.save(progress, log);
+    this.saveProfile(mergeProfile(this.state.profile, remote.profile));
+  }
+  saveProfile(profile) {
+    this.setState({ profile });
+    storage.saveProfile(profile);
+  }
+  /* Open the profile form for editing an already-complete profile. */
+  startEditProfile() {
+    this.setState({ editingProfile: true, profileDraft: { ...this.state.profile } });
+  }
+  cancelEditProfile() {
+    this.setState({ editingProfile: false, profileDraft: null });
+  }
+  /* Set one field of the in-progress draft, seeding from the saved profile so
+   * untouched fields carry over. */
+  setProfileField(key, value) {
+    const base = this.state.profileDraft || this.state.profile || {};
+    this.setState({ profileDraft: { ...base, [key]: value } });
+  }
+  /* Persist the draft and leave the form. Stamped with updatedAt so a
+   * cross-device merge keeps the most recent edit (see profile.mergeProfile). */
+  submitProfile() {
+    const draft = this.state.profileDraft || this.state.profile || {};
+    // Fall back to the Google account's display name if the member never touched
+    // the (pre-filled) name field.
+    const googleName = (this.state.auth.user && this.state.auth.user.name) || "";
+    const name = String(draft.name != null ? draft.name : googleName).trim();
+    // Class is typed freely; keep a numeric year as a number (so members of the
+    // same class group together) but preserve any other text as entered.
+    const gc = String(draft.gradClass || "").trim();
+    const next = {
+      name,
+      ministryGroup: String(draft.ministryGroup || "").trim(),
+      gender: draft.gender,
+      gradClass: /^\d+$/.test(gc) ? Number(gc) : gc,
+      updatedAt: Date.now(),
+    };
+    if (!isProfileComplete(next)) return;
+    this.saveProfile(next);
+    this.setState({ editingProfile: false, profileDraft: null });
   }
   signIn() {
     this.setState({ auth: { status: "signing-in" } });
@@ -144,17 +176,47 @@ export class App extends React.Component {
   signOut() {
     signOutUser().catch(() => {});
   }
-  makePeers(goal) {
-    let s = 7;
-    const rnd = () => {
-      s = (s * 1103515245 + 12345) % 2147483648;
-      return s / 2147483648;
-    };
-    return NAMES.map((n) => ({
-      name: n,
-      count: Math.floor(Math.pow(rnd(), 1.5) * goal * 0.8) + 3,
-      streak: Math.floor(rnd() * 40),
-    }));
+  /* Pull every registered member from Firestore and shape them into leaderboard
+   * rows. Self is dropped here and re-added live from local state in renderVals,
+   * so "You" always reflects the newest, un-synced progress. Members who haven't
+   * finished a profile are skipped. No-op (empty roster) when Firebase is
+   * unconfigured/unreachable, leaving the board as just "You". */
+  async loadRoster() {
+    let rows;
+    try {
+      rows = await fetchRoster();
+    } catch (e) {
+      return;
+    }
+    const meUid = this.state.auth.user && this.state.auth.user.uid;
+    const peers = rows
+      .filter((r) => r.uid !== meUid && isProfileComplete(r.profile))
+      .map((r) => ({
+        name: r.profile.name || r.name || r.email || "Member",
+        count: this.committedCount(r.progress),
+        streak: this.streakOf(r.log),
+        ministryGroup: r.profile.ministryGroup,
+        gender: r.profile.gender,
+        gradClass: r.profile.gradClass,
+      }));
+    this.setState({ peers });
+  }
+  /* Committed passages in a stored progress map: those that read as "memorized"
+   * under the same migration the local board uses. */
+  committedCount(progress) {
+    return Object.values(progress || {}).filter((r) => migrate(r).status === "memorized").length;
+  }
+  /* Consecutive-day review streak from a log map (pure; shared by peers + self). */
+  streakOf(log) {
+    const l = log || {};
+    let n = 0;
+    const d = new Date();
+    if (!l[dayKey(d)]) d.setDate(d.getDate() - 1);
+    while (l[dayKey(d)]) {
+      n++;
+      d.setDate(d.getDate() - 1);
+    }
+    return n;
   }
   save(progress, log) {
     this.setState({ progress, log });
@@ -231,14 +293,7 @@ export class App extends React.Component {
     return { mode: s.mode, blankLevel: s.blankLevel, score: s.lastTypeScore };
   }
   streak() {
-    let n = 0;
-    const d = new Date();
-    if (!this.state.log[dayKey(d)]) d.setDate(d.getDate() - 1);
-    while (this.state.log[dayKey(d)]) {
-      n++;
-      d.setDate(d.getDate() - 1);
-    }
-    return n;
+    return this.streakOf(this.state.log);
   }
   dueList() {
     // Pure spaced-repetition order: stalest first. Never-reviewed verses have
@@ -308,7 +363,10 @@ export class App extends React.Component {
       ["leaderboard", "Leaderboard"],
     ].map(([k, label]) => ({
       label,
-      onClick: () => this.setState({ view: k }),
+      onClick: () => {
+        this.setState({ view: k });
+        if (k === "leaderboard") this.loadRoster();
+      },
       style:
         "background:none;border:none;cursor:pointer;font-family:var(--font-heading);font-weight:600;font-size:15px;letter-spacing:.06em;padding:4px 2px;border-bottom:2px solid " +
         (s.view === k || (k === "board" && s.view === "done") ? "var(--color-accent)" : "transparent") +
@@ -337,10 +395,41 @@ export class App extends React.Component {
     }
     const maxDay = Math.max(4, ...logDays.map((x) => x.n));
 
-    const peers = (s.peers || [])
-      .concat([{ name: "You", count: memorized, streak: this.streak(), me: true }])
-      .sort((a, b) => b.count - a.count);
+    const me = s.profile || {};
+    const allPeers = (s.peers || []).concat([
+      {
+        name: "You",
+        count: memorized,
+        streak: this.streak(),
+        me: true,
+        ministryGroup: me.ministryGroup,
+        gender: me.gender,
+        gradClass: me.gradClass,
+      },
+    ]);
+    // Leaderboard filters: narrow the roster by profile attributes. "All" passes
+    // everything; class compares as a string so the <select> value matches.
+    const lf = s.leaderFilter;
+    const inFilter = (p) =>
+      (lf.group === "All" || p.ministryGroup === lf.group) &&
+      (lf.gender === "All" || p.gender === lf.gender) &&
+      (lf.gradClass === "All" || String(p.gradClass) === String(lf.gradClass));
+    const peers = allPeers.filter(inFilter).sort((a, b) => b.count - a.count);
     const topCount = Math.max(1, peers[0] ? peers[0].count : 1);
+    const distinct = (key) =>
+      [...new Set(allPeers.map((p) => p[key]).filter((x) => x != null && x !== ""))].sort((a, b) =>
+        typeof a === "number" ? b - a : String(a).localeCompare(String(b)),
+      );
+    const leaderFilters = [
+      { key: "group", label: "Ministry group", value: lf.group, options: distinct("ministryGroup") },
+      { key: "gender", label: "Gender", value: lf.gender, options: distinct("gender") },
+      { key: "gradClass", label: "Class", value: lf.gradClass, options: distinct("gradClass") },
+    ].map((f) => ({
+      ...f,
+      onChange: (e) => this.setState({ leaderFilter: { ...lf, [f.key]: e.target.value } }),
+      opts: ["All", ...f.options],
+      fmt: (o) => (f.key === "gradClass" && o !== "All" ? "Class of " + o : o),
+    }));
 
     const filtered = s.passages.filter((p) => {
       const st = this.statusOf(p.id);
@@ -398,14 +487,21 @@ export class App extends React.Component {
     const blanksTotal = blankWords.filter((w) => w.isBlank).length;
     const blanksRight = blankWords.filter((w) => w.isBlank && norm(w.value) === norm(w.word)).length;
 
-    const typedWords = s.typed.split(/\s+/).filter(Boolean).map(norm);
+    // "Write it out" grades typed words against the passage. In first-letter
+    // mode each expected word is reduced to its initial (norm(w)[0]) and the
+    // typed answer is read as a run of individual letters, so "f t h w" or
+    // "fthw" both grade against "for the has word".
+    const fl = s.typeFirstLetter;
+    const typedWords = fl
+      ? s.typed.toLowerCase().match(/[a-z0-9]/g) || []
+      : s.typed.split(/\s+/).filter(Boolean).map(norm);
+    const typeKey = (w) => (fl ? norm(w).slice(0, 1) : norm(w));
     let ti = 0;
     const typeDiff = words.map((w) => {
+      const key = typeKey(w);
       const hit =
-        typedWords[ti] === norm(w)
-          ? true
-          : typedWords.indexOf(norm(w), ti) > -1 && typedWords.indexOf(norm(w), ti) < ti + 3;
-      if (hit) ti = Math.max(ti + 1, typedWords.indexOf(norm(w), ti) + 1);
+        typedWords[ti] === key ? true : typedWords.indexOf(key, ti) > -1 && typedWords.indexOf(key, ti) < ti + 3;
+      if (hit) ti = Math.max(ti + 1, typedWords.indexOf(key, ti) + 1);
       return {
         word: w,
         style: hit
@@ -414,6 +510,21 @@ export class App extends React.Component {
       };
     });
     const typeHits = typeDiff.filter((d) => d.style.indexOf("a4553f") < 0).length;
+
+    // First-letter mode reveals live, word by word: the Nth letter typed maps to
+    // the Nth word. A correct initial pops the whole word into view; a wrong one
+    // shows just the letter typed, in red; untyped words stay as blanks.
+    const typeReveal = words.map((w, i) => {
+      const got = fl ? typedWords[i] : undefined;
+      const want = norm(w).slice(0, 1);
+      if (got == null) return { text: w.replace(/[A-Za-z0-9]/g, "·"), style: "color:var(--color-neutral-400)" };
+      if (got === want) return { text: w, style: "color:var(--color-text)" };
+      return {
+        text: got,
+        style: "color:#a4553f;text-decoration:underline;text-decoration-style:wavy;text-underline-offset:4px",
+      };
+    });
+    const revealHits = fl ? words.filter((w, i) => typedWords[i] === norm(w).slice(0, 1)).length : 0;
 
     const chunks = curText ? chunksFor(curText, s.scrambleLevel) : [];
     const shuf = this.shuffled(chunks, (cur ? cur.id : 1) * 13);
@@ -437,7 +548,10 @@ export class App extends React.Component {
     return {
       groupName: this.props.groupName ?? appConfig.groupName,
       user: s.auth.user || null,
+      userName: me.name || (s.auth.user && s.auth.user.name) || (s.auth.user && s.auth.user.email) || "",
       signOut: () => this.signOut(),
+      editProfile: () => this.startEditProfile(),
+      profileSummary: isProfileComplete(me) ? me.ministryGroup + " · Class of " + me.gradClass : "Set up your profile",
       goal,
       memorized,
       learning,
@@ -654,6 +768,27 @@ export class App extends React.Component {
         })),
       typeScore: words.length ? Math.round((typeHits / words.length) * 100) + "%" : "—",
       typeDiff,
+      // First-letter mode is a live drill: it shows the reveal continuously and
+      // has no separate "Grade it" step.
+      typeLive: s.mode === "type" && s.typeFirstLetter,
+      typeReveal,
+      typeRevealScore: words.length ? Math.round((revealHits / words.length) * 100) + "%" : "—",
+      typeFirstLetterOn: s.typeFirstLetter,
+      // Switching the first-letter toggle changes how the input is graded, so
+      // clear any in-progress answer and drop back to the ungraded state.
+      toggleTypeFirstLetter: () => {
+        const on = !s.typeFirstLetter;
+        storage.saveTypeFirstLetter(on);
+        this.setState({ typeFirstLetter: on, typed: "", typeGraded: false });
+      },
+      typeFirstLetterStyle:
+        "padding:5px 11px;font-size:12px;font-family:var(--font-heading);font-weight:600;letter-spacing:.06em;cursor:pointer;border:1px solid var(--color-divider);background:" +
+        (s.typeFirstLetter ? "var(--color-accent)" : "transparent") +
+        ";color:" +
+        (s.typeFirstLetter ? "var(--color-bg)" : "var(--color-text)"),
+      typePlaceholder: s.typeFirstLetter
+        ? "Type just the first letter of each word — e.g. “f t h w”. Spacing and punctuation are ignored."
+        : "Type the passage from memory. Punctuation and capitals are ignored.",
       isScramble: s.mode === "scramble",
       scrambleChunks,
       scrambleBuilt: placed.map((i) => chunks[i]).join(" "),
@@ -675,7 +810,15 @@ export class App extends React.Component {
           (i === s.scrambleLevel ? "var(--color-bg)" : "var(--color-text)"),
       })),
       scrambleLevelDesc: "Cutting into " + (SCRAMBLE_LEVELS[s.scrambleLevel] || SCRAMBLE_LEVELS[1]).desc,
-      advance: () => this.next(),
+      advance: () => {
+        // First-letter mode never runs "Grade it", so capture its live score
+        // before advancing so the review is recorded with the right performance.
+        if (s.mode === "type" && s.typeFirstLetter) {
+          this.setState({ lastTypeScore: words.length ? revealHits / words.length : 0 }, () => this.next());
+        } else {
+          this.next();
+        }
+      },
       endSession: () => this.setState({ view: "board" }),
       doneHeadline: s.sessionCount + (s.sessionCount === 1 ? " passage refreshed" : " passages refreshed"),
       doneBody:
@@ -687,6 +830,9 @@ export class App extends React.Component {
         daysLeft +
         " days to go.",
       daysLeftLabel: daysLeft + " days remaining",
+      leaderFilters,
+      leaderCount: peers.length,
+      leaderEmpty: peers.length === 0,
       podium: peers.slice(0, 3).map((p, i) => ({
         place: ["First", "Second", "Third"][i],
         name: p.name,
@@ -723,26 +869,34 @@ export class App extends React.Component {
         <div
           style=${sx("font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 50%, transparent)")}
         >
-          ${v.groupName} · ESV
+          ${v.groupName}
         </div>
       </div>
       ${v.nav.map((n, i) => html`<button key=${i} onClick=${n.onClick} style=${sx(n.style)}>${n.label}</button>`)}
       <button className="btn btn-primary" onClick=${v.startDue} style=${sx("letter-spacing:.06em")}>REVIEW NOW</button>
+      <button
+        className="btn btn-secondary"
+        onClick=${v.editProfile}
+        title="Edit your profile"
+        style=${sx("font-size:12px;padding:4px 10px")}
+      >
+        ${v.profileSummary}
+      </button>
       ${
-          v.user &&
-          html` <div
-            style=${sx("display:flex;align-items:center;gap:10px;padding-left:16px;margin-left:4px;border-left:1px solid var(--color-divider)")}
+        v.user &&
+        html` <div
+          style=${sx("display:flex;align-items:center;gap:10px;padding-left:16px;margin-left:4px;border-left:1px solid var(--color-divider)")}
+        >
+          <span
+            title=${v.user.email}
+            style=${sx("font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}
+            >${v.userName}</span
           >
-            <span
-              title=${v.user.email}
-              style=${sx("font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}
-              >${v.user.email}</span
-            >
-            <button className="btn btn-secondary" onClick=${v.signOut} style=${sx("font-size:12px;padding:4px 10px")}>
-              Sign out
-            </button>
-          </div>`
-        }
+          <button className="btn btn-secondary" onClick=${v.signOut} style=${sx("font-size:12px;padding:4px 10px")}>
+            Sign out
+          </button>
+        </div>`
+      }
     </div>`;
   }
 
@@ -751,7 +905,9 @@ export class App extends React.Component {
     const busy = a.status === "loading" || a.status === "signing-in";
     const denied = a.status === "denied";
     const failed = a.status === "signed-out" && a.error === "sign-in-failed";
-    const domains = ALLOWED_DOMAINS.map((d) => "@" + d).join(" or ");
+    // Both domains in ALLOWED_DOMAINS still sign in; we just show the primary
+    // one on the login screen to keep the prompt simple.
+    const domains = "@acts2.network";
     return html` <div
       style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);display:flex;align-items:center;justify-content:center;padding:36px")}
     >
@@ -785,6 +941,147 @@ export class App extends React.Component {
         >
           ${busy ? "Connecting…" : "Sign in with Google"}
         </button>
+      </div>
+    </div>`;
+  }
+
+  /* Profile form. Shown full-screen after sign-in until the member has chosen a
+   * ministry group, gender, and graduating class (isSetup=true, no cancel), and
+   * reopened for edits from the header (isSetup=false). Drives state.profileDraft
+   * via setProfileField and commits with submitProfile. */
+  profileView(isSetup) {
+    const cur = this.state.profileDraft || this.state.profile || {};
+    // Name is pre-filled from the Google account (auth displayName) until the
+    // member edits it, so nothing to type when Google already provides one.
+    const googleName = (this.state.auth.user && this.state.auth.user.name) || "";
+    const nameVal = cur.name != null ? cur.name : googleName;
+    const complete = isProfileComplete({ ...cur, name: nameVal });
+    // Ministry-group combobox: filter the list by what's typed (substring,
+    // case-insensitive) and render the matches in a dropdown below the input.
+    const q = (cur.ministryGroup || "").trim().toLowerCase();
+    const ministryMatches = MINISTRY_GROUPS.filter((g) => g.toLowerCase().includes(q));
+    const optStyle = (g) =>
+      "display:block;width:100%;text-align:left;padding:8px 12px;border:none;border-bottom:1px solid var(--color-divider);cursor:pointer;font-family:var(--font-body);font-size:14px;color:var(--color-text);background:" +
+      (cur.ministryGroup === g ? "var(--color-accent-100)" : "transparent");
+    const fieldLabel =
+      "font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)";
+    const field = "display:flex;flex-direction:column;gap:7px";
+    const genderBtn = (g) =>
+      "flex:1;padding:9px 12px;font-family:var(--font-heading);font-weight:600;letter-spacing:.04em;cursor:pointer;border:1px solid var(--color-divider);background:" +
+      (cur.gender === g ? "var(--color-accent)" : "transparent") +
+      ";color:" +
+      (cur.gender === g ? "var(--color-bg)" : "var(--color-text)");
+    return html` <div
+      style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);display:flex;align-items:center;justify-content:center;padding:36px")}
+    >
+      <div
+        className="blueprint"
+        style=${sx("max-width:480px;width:100%;padding:40px 40px 36px;display:flex;flex-direction:column;gap:20px")}
+      >
+        ${corners()}
+        <div style=${sx("display:flex;flex-direction:column;gap:2px")}>
+          <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.06em")}>
+            ${isSetup ? "SET UP YOUR PROFILE" : "EDIT YOUR PROFILE"}
+          </div>
+          <div
+            style=${sx("font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+          >
+            ${this.props.groupName ?? appConfig.groupName}
+          </div>
+        </div>
+        <p
+          style=${sx("margin:0;font-size:14px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 70%, transparent)")}
+        >
+          Tell us a bit about yourself. Your name, ministry group, gender, and graduating class shape the leaderboard
+          and group stats.
+        </p>
+
+        <label style=${sx(field)}>
+          <span style=${sx(fieldLabel)}>Name</span>
+          <input
+            className="input"
+            value=${nameVal}
+            onChange=${(e) => this.setProfileField("name", e.target.value)}
+            placeholder="Your full name"
+          />
+        </label>
+
+        <div style=${sx(field)}>
+          <span style=${sx(fieldLabel)}>Ministry group</span>
+          <div style=${sx("position:relative")}>
+            <input
+              className="input"
+              value=${cur.ministryGroup || ""}
+              onChange=${(e) => {
+                this.setProfileField("ministryGroup", e.target.value);
+                this.setState({ ministryOpen: true });
+              }}
+              onFocus=${() => this.setState({ ministryOpen: true })}
+              onBlur=${() => setTimeout(() => this.setState({ ministryOpen: false }), 120)}
+              placeholder="Start typing to search…"
+              style=${sx("width:100%;box-sizing:border-box")}
+            />
+            ${
+              this.state.ministryOpen &&
+              ministryMatches.length > 0 &&
+              html`<div
+                style=${sx("position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:5;max-height:210px;overflow:auto;background:var(--color-bg);border:1px solid var(--color-divider)")}
+              >
+                ${ministryMatches.map(
+                  (g) =>
+                    html`<button
+                      key=${g}
+                      onMouseDown=${(e) => {
+                        e.preventDefault();
+                        this.setState({ ministryOpen: false }, () => this.setProfileField("ministryGroup", g));
+                      }}
+                      style=${sx(optStyle(g))}
+                    >
+                      ${g}
+                    </button>`,
+                )}
+              </div>`
+            }
+          </div>
+        </div>
+
+        <div style=${sx(field)}>
+          <span style=${sx(fieldLabel)}>Gender</span>
+          <div style=${sx("display:flex;gap:8px")}>
+            ${GENDERS.map(
+              (g) =>
+                html`<button key=${g} onClick=${() => this.setProfileField("gender", g)} style=${sx(genderBtn(g))}>
+                  ${g}
+                </button>`,
+            )}
+          </div>
+        </div>
+
+        <label style=${sx(field)}>
+          <span style=${sx(fieldLabel)}>Graduating class</span>
+          <input
+            className="input"
+            value=${cur.gradClass == null ? "" : cur.gradClass}
+            onChange=${(e) => this.setProfileField("gradClass", e.target.value)}
+            placeholder="e.g. 2016"
+            inputmode="numeric"
+          />
+        </label>
+
+        <div style=${sx("display:flex;gap:10px;margin-top:4px")}>
+          <button
+            className="btn btn-primary"
+            onClick=${() => this.submitProfile()}
+            disabled=${!complete}
+            style=${sx("letter-spacing:.04em" + (complete ? "" : ";opacity:.6;cursor:default"))}
+          >
+            ${isSetup ? "Save and continue" : "Save changes"}
+          </button>
+          ${
+            !isSetup &&
+            html`<button className="btn btn-secondary" onClick=${() => this.cancelEditProfile()}>Cancel</button>`
+          }
+        </div>
       </div>
     </div>`;
   }
@@ -828,17 +1125,17 @@ export class App extends React.Component {
         </div>
         <div style=${sx("display:grid;grid-template-columns:1fr 1fr;border-left:1px solid rgba(242,242,243,.25)")}>
           ${v.heroStats.map(
-              (st, i) =>
-                html` <div key=${i} style=${sx(st.style)}>
-                  <div style=${sx("font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.6")}>
-                    ${st.label}
-                  </div>
-                  <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:40px;line-height:1")}>
-                    ${st.value}
-                  </div>
-                  <div style=${sx("font-size:11px;opacity:.6")}>${st.note}</div>
-                </div>`,
-            )}
+            (st, i) =>
+              html` <div key=${i} style=${sx(st.style)}>
+                <div style=${sx("font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.6")}>
+                  ${st.label}
+                </div>
+                <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:40px;line-height:1")}>
+                  ${st.value}
+                </div>
+                <div style=${sx("font-size:11px;opacity:.6")}>${st.note}</div>
+              </div>`,
+          )}
         </div>
       </div>
 
@@ -855,24 +1152,24 @@ export class App extends React.Component {
           <div className="blueprint" style=${sx("display:flex;flex-direction:column")}>
             ${corners()}
             ${v.queue.map(
-                (q, i) =>
-                  html` <button key=${i} onClick=${q.onClick} style=${sx(q.style)}>
-                    <span
-                      style=${sx("font-family:var(--font-heading);font-size:11px;letter-spacing:.1em;width:34px;flex:none;opacity:.5;text-align:left")}
-                      >${q.num}</span
-                    >
-                    <span
-                      style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px;width:170px;flex:none;text-align:left")}
-                      >${q.ref}</span
-                    >
-                    <span
-                      style=${sx("font-size:13px;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:color-mix(in srgb, var(--color-text) 60%, transparent)")}
-                      >${q.snippet}</span
-                    >
-                    <span style=${sx(q.freshStyle)}>${q.freshLabel}</span>
-                    <span style=${sx(q.tagStyle)}>${q.statusLabel}</span>
-                  </button>`,
-              )}
+              (q, i) =>
+                html` <button key=${i} onClick=${q.onClick} style=${sx(q.style)}>
+                  <span
+                    style=${sx("font-family:var(--font-heading);font-size:11px;letter-spacing:.1em;width:34px;flex:none;opacity:.5;text-align:left")}
+                    >${q.num}</span
+                  >
+                  <span
+                    style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px;width:170px;flex:none;text-align:left")}
+                    >${q.ref}</span
+                  >
+                  <span
+                    style=${sx("font-size:13px;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:color-mix(in srgb, var(--color-text) 60%, transparent)")}
+                    >${q.snippet}</span
+                  >
+                  <span style=${sx(q.freshStyle)}>${q.freshLabel}</span>
+                  <span style=${sx(q.tagStyle)}>${q.statusLabel}</span>
+                </button>`,
+            )}
           </div>
         </div>
 
@@ -880,29 +1177,29 @@ export class App extends React.Component {
           <h4 style=${sx("margin:0;letter-spacing:.02em")}>Ways to review</h4>
           <div style=${sx("display:grid;grid-template-columns:1fr 1fr;gap:14px")}>
             ${v.modes.map(
-                (m, i) =>
-                  html` <button
-                    key=${i}
-                    className="blueprint"
-                    onClick=${m.onClick}
-                    style=${sx("background:transparent;cursor:pointer;padding:18px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;font-family:var(--font-body);color:var(--color-text)")}
+              (m, i) =>
+                html` <button
+                  key=${i}
+                  className="blueprint"
+                  onClick=${m.onClick}
+                  style=${sx("background:transparent;cursor:pointer;padding:18px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;font-family:var(--font-body);color:var(--color-text)")}
+                >
+                  ${corners()}
+                  <div
+                    style=${sx("font-family:var(--font-heading);font-size:11px;letter-spacing:.14em;color:var(--color-accent-700)")}
                   >
-                    ${corners()}
-                    <div
-                      style=${sx("font-family:var(--font-heading);font-size:11px;letter-spacing:.14em;color:var(--color-accent-700)")}
-                    >
-                      ${m.index}
-                    </div>
-                    <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:19px;line-height:1.1")}>
-                      ${m.name}
-                    </div>
-                    <div
-                      style=${sx("font-size:12px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 58%, transparent)")}
-                    >
-                      ${m.desc}
-                    </div>
-                  </button>`,
-              )}
+                    ${m.index}
+                  </div>
+                  <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:19px;line-height:1.1")}>
+                    ${m.name}
+                  </div>
+                  <div
+                    style=${sx("font-size:12px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 58%, transparent)")}
+                  >
+                    ${m.desc}
+                  </div>
+                </button>`,
+            )}
           </div>
         </div>
       </div>
@@ -1015,48 +1312,48 @@ export class App extends React.Component {
           <div style=${sx("text-align:right")}>Action</div>
         </div>
         ${v.rows.map(
-            (r) =>
-              html` <div key=${r.id} style=${sx(r.rowStyle)}>
-                <div
-                  style=${sx("font-family:var(--font-heading);font-size:12px;letter-spacing:.08em;color:color-mix(in srgb, var(--color-text) 45%, transparent)")}
+          (r) =>
+            html` <div key=${r.id} style=${sx(r.rowStyle)}>
+              <div
+                style=${sx("font-family:var(--font-heading);font-size:12px;letter-spacing:.08em;color:color-mix(in srgb, var(--color-text) 45%, transparent)")}
+              >
+                ${r.num}
+              </div>
+              <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:17px")}>${r.ref}</div>
+              <div
+                style=${sx("font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:color-mix(in srgb, var(--color-text) 62%, transparent);padding-right:20px")}
+              >
+                ${r.snippet}
+              </div>
+              <div style=${sx("padding-right:20px;display:flex;flex-direction:column;gap:4px")}>
+                <span
+                  style=${sx("font-family:var(--font-heading);font-size:12px;font-weight:600;color:" + r.freshColor)}
+                  >${r.freshLabel}</span
                 >
-                  ${r.num}
-                </div>
-                <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:17px")}>${r.ref}</div>
-                <div
-                  style=${sx("font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:color-mix(in srgb, var(--color-text) 62%, transparent);padding-right:20px")}
+                <div style=${sx(r.freshBarStyle)}></div>
+              </div>
+              <div style=${sx("display:flex;align-items:center;gap:6px")}>
+                <span style=${sx(r.tagStyle)}>${r.statusLabel}</span>
+                ${r.fading ? html`<span style=${sx("font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;color:" + freshColor(50) + ";border:1px solid " + freshColor(50))}>Fading</span>` : null}
+              </div>
+              <div style=${sx("display:flex;gap:8px;justify-content:flex-end")}>
+                <button
+                  className="btn btn-secondary"
+                  onClick=${r.onReview}
+                  style=${sx("font-size:12px;padding:4px 10px")}
                 >
-                  ${r.snippet}
-                </div>
-                <div style=${sx("padding-right:20px;display:flex;flex-direction:column;gap:4px")}>
-                  <span
-                    style=${sx("font-family:var(--font-heading);font-size:12px;font-weight:600;color:" + r.freshColor)}
-                    >${r.freshLabel}</span
-                  >
-                  <div style=${sx(r.freshBarStyle)}></div>
-                </div>
-                <div style=${sx("display:flex;align-items:center;gap:6px")}>
-                  <span style=${sx(r.tagStyle)}>${r.statusLabel}</span>
-                  ${r.fading ? html`<span style=${sx("font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;color:" + freshColor(50) + ";border:1px solid " + freshColor(50))}>Fading</span>` : null}
-                </div>
-                <div style=${sx("display:flex;gap:8px;justify-content:flex-end")}>
-                  <button
-                    className="btn btn-secondary"
-                    onClick=${r.onReview}
-                    style=${sx("font-size:12px;padding:4px 10px")}
-                  >
-                    Review
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick=${r.onToggle}
-                    style=${sx("font-size:12px;padding:4px 10px")}
-                  >
-                    ${r.toggleLabel}
-                  </button>
-                </div>
-              </div>`,
-          )}
+                  Review
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick=${r.onToggle}
+                  style=${sx("font-size:12px;padding:4px 10px")}
+                >
+                  ${r.toggleLabel}
+                </button>
+              </div>
+            </div>`,
+        )}
       </div>
     </div>`;
   }
@@ -1102,160 +1399,199 @@ export class App extends React.Component {
         </div>
 
         ${
-            v.isFlip &&
-            html` <div style=${sx("display:flex;flex-direction:column;gap:26px")}>
-              ${
-                v.flipHidden &&
-                html` <div style=${sx("display:flex;flex-direction:column;align-items:center;gap:18px;padding:44px 0")}>
-                  ${
-                    v.flipLettersOn
-                      ? html`<p
-                          style=${sx("margin:0;font-size:21px;line-height:1.9;max-width:74ch;letter-spacing:.06em;font-family:var(--font-heading);color:var(--color-text)")}
-                        >
-                          ${v.flipFirstLetters}
-                        </p>`
-                      : html`<div
-                          style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent);text-align:center;max-width:420px")}
-                        >
-                          Say it aloud from memory, then reveal to check yourself.
-                        </div>`
-                  }
-                  <div style=${sx("display:flex;gap:10px;align-items:center")}>
-                    <button className="btn btn-secondary" onClick=${v.toggleFlipLetters}>
-                      ${v.flipLettersOn ? "Hide first letters" : "Show first letters"}
-                    </button>
-                    <button className="btn btn-primary" onClick=${v.reveal}>Reveal the passage</button>
-                  </div>
-                </div>`
-              }
-              ${
-                v.flipShown &&
-                html` <div style=${sx("display:flex;flex-direction:column;gap:22px")}>
-                  <p style=${sx("margin:0;font-size:21px;line-height:1.62;max-width:74ch")}>${v.curText}</p>
-                  <div><button className="btn btn-secondary" onClick=${v.hide}>Hide the passage</button></div>
-                </div>`
-              }
-            </div>`
-          }
-        ${
-            v.isBlanks &&
-            html` <div style=${sx("display:flex;flex-direction:column;gap:20px")}>
-              <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
-                <span
-                  style=${sx("font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
-                  >Blanks</span
-                >
-                <div style=${sx("display:flex;gap:6px")}>
-                  ${v.blankLevels.map((lv) => html`<button key=${lv.key} onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
+          v.isFlip &&
+          html` <div style=${sx("display:flex;flex-direction:column;gap:26px")}>
+            ${
+              v.flipHidden &&
+              html` <div style=${sx("display:flex;flex-direction:column;align-items:center;gap:18px;padding:44px 0")}>
+                ${
+                  v.flipLettersOn
+                    ? html`<p
+                        style=${sx("margin:0;font-size:21px;line-height:1.9;max-width:74ch;letter-spacing:.06em;font-family:var(--font-heading);color:var(--color-text)")}
+                      >
+                        ${v.flipFirstLetters}
+                      </p>`
+                    : html`<div
+                        style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent);text-align:center;max-width:420px")}
+                      >
+                        Say it aloud from memory, then reveal to check yourself.
+                      </div>`
+                }
+                <div style=${sx("display:flex;gap:10px;align-items:center")}>
+                  <button className="btn btn-secondary" onClick=${v.toggleFlipLetters}>
+                    ${v.flipLettersOn ? "Hide first letters" : "Show first letters"}
+                  </button>
+                  <button className="btn btn-primary" onClick=${v.reveal}>Reveal the passage</button>
                 </div>
-                <span style=${sx("font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
-                  >${v.blankLevelDesc}</span
-                >
-                <span style=${sx("width:1px;height:20px;background:var(--color-divider);margin:0 4px")}></span>
-                <span
-                  style=${sx("font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
-                  >First letter</span
-                >
-                <button onClick=${v.toggleBlankHint} style=${sx(v.blankHintStyle)}>
-                  ${v.blankHintOn ? "On" : "Off"}
-                </button>
-              </div>
-              <div
-                style=${sx("font-size:21px;line-height:2.1;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 7px;align-items:baseline")}
+              </div>`
+            }
+            ${
+              v.flipShown &&
+              html` <div style=${sx("display:flex;flex-direction:column;gap:22px")}>
+                <p style=${sx("margin:0;font-size:21px;line-height:1.62;max-width:74ch")}>${v.curText}</p>
+                <div><button className="btn btn-secondary" onClick=${v.hide}>Hide the passage</button></div>
+              </div>`
+            }
+          </div>`
+        }
+        ${
+          v.isBlanks &&
+          html` <div style=${sx("display:flex;flex-direction:column;gap:20px")}>
+            <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+              <span
+                style=${sx("font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                >Blanks</span
               >
-                ${v.blankWords.map(
-                  (w, i) =>
-                    html` <span key=${i} style=${sx(w.wrapStyle)}
-                      >${
-                    w.isBlank
-                      ? html`<input
-                          id=${w.id}
-                          value=${w.value}
-                          onChange=${w.onChange}
-                          onKeyDown=${w.onKeyDown}
-                          placeholder=${w.hint}
-                          style=${sx(w.inputStyle)}
-                        />`
-                      : w.word
-                  }</span
-                    >`,
-                )}
+              <div style=${sx("display:flex;gap:6px")}>
+                ${v.blankLevels.map((lv) => html`<button key=${lv.key} onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
               </div>
-              <div style=${sx("display:flex;gap:10px;align-items:center")}>
-                <button className="btn btn-primary" onClick=${v.checkBlanks}>Check</button>
-                <div style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)")}>
-                  ${v.blanksResult}
-                </div>
+              <span style=${sx("font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                >${v.blankLevelDesc}</span
+              >
+              <span style=${sx("width:1px;height:20px;background:var(--color-divider);margin:0 4px")}></span>
+              <span
+                style=${sx("font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                >First letter</span
+              >
+              <button onClick=${v.toggleBlankHint} style=${sx(v.blankHintStyle)}>
+                ${v.blankHintOn ? "On" : "Off"}
+              </button>
+            </div>
+            <div
+              style=${sx("font-size:21px;line-height:2.1;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 7px;align-items:baseline")}
+            >
+              ${v.blankWords.map(
+                (w, i) =>
+                  html` <span key=${i} style=${sx(w.wrapStyle)}
+                    >${
+                      w.isBlank
+                        ? html`<input
+                            id=${w.id}
+                            value=${w.value}
+                            onChange=${w.onChange}
+                            onKeyDown=${w.onKeyDown}
+                            placeholder=${w.hint}
+                            style=${sx(w.inputStyle)}
+                          />`
+                        : w.word
+                    }</span
+                  >`,
+              )}
+            </div>
+            <div style=${sx("display:flex;gap:10px;align-items:center")}>
+              <button className="btn btn-primary" onClick=${v.checkBlanks}>Check</button>
+              <div style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)")}>
+                ${v.blanksResult}
               </div>
-            </div>`
-          }
+            </div>
+          </div>`
+        }
         ${
-            v.isType &&
-            html` <div style=${sx("display:flex;flex-direction:column;gap:18px")}>
-              ${v.typeUngraded && html`<textarea className="input" value=${v.typed} onChange=${v.onTyped} placeholder="Type the passage from memory. Punctuation and capitals are ignored." style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
-              ${
-                v.typeGraded &&
-                html` <div style=${sx("display:flex;flex-direction:column;gap:16px")}>
-                  <div style=${sx("display:flex;align-items:baseline;gap:12px")}>
-                    <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:52px;line-height:1")}>
-                      ${v.typeScore}
+          v.isType &&
+          html` <div style=${sx("display:flex;flex-direction:column;gap:18px")}>
+            <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+              <span
+                style=${sx("font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                >First letters only</span
+              >
+              <button onClick=${v.toggleTypeFirstLetter} style=${sx(v.typeFirstLetterStyle)}>
+                ${v.typeFirstLetterOn ? "On" : "Off"}
+              </button>
+              <span style=${sx("font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                >Type just the first letter of each word instead of the whole passage.</span
+              >
+            </div>
+            ${
+              v.typeLive
+                ? html` <textarea
+                      className="input"
+                      value=${v.typed}
+                      onChange=${v.onTyped}
+                      placeholder=${v.typePlaceholder}
+                      style=${sx("min-height:90px;font-size:19px;line-height:1.9;letter-spacing:.35em")}
+                    ></textarea>
+                    <div style=${sx("display:flex;align-items:baseline;gap:12px")}>
+                      <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:34px;line-height:1")}>
+                        ${v.typeRevealScore}
+                      </div>
+                      <div
+                        style=${sx("font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                      >
+                        words revealed
+                      </div>
                     </div>
                     <div
-                      style=${sx("font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                      style=${sx("font-size:21px;line-height:2;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 8px")}
                     >
-                      words matched
-                    </div>
-                  </div>
-                  <div
-                    style=${sx("font-size:19px;line-height:1.8;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 7px")}
-                  >
-                    ${v.typeDiff.map((d, i) => html`<span key=${i} style=${sx(d.style)}>${d.word}</span>`)}
-                  </div>
-                </div>`
-              }
-              <div style=${sx("display:flex;gap:10px")}>
-                <button className="btn btn-primary" onClick=${v.checkTyped}>${v.typeButtonLabel}</button>
-              </div>
-            </div>`
-          }
+                      ${v.typeReveal.map((r, i) => html`<span key=${i} style=${sx(r.style)}>${r.text}</span>`)}
+                    </div>`
+                : html` ${v.typeUngraded && html`<textarea className="input" value=${v.typed} onChange=${v.onTyped} placeholder=${v.typePlaceholder} style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
+                    ${
+                      v.typeGraded &&
+                      html` <div style=${sx("display:flex;flex-direction:column;gap:16px")}>
+                        <div style=${sx("display:flex;align-items:baseline;gap:12px")}>
+                          <div
+                            style=${sx("font-family:var(--font-heading);font-weight:600;font-size:52px;line-height:1")}
+                          >
+                            ${v.typeScore}
+                          </div>
+                          <div
+                            style=${sx("font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                          >
+                            words matched
+                          </div>
+                        </div>
+                        <div
+                          style=${sx("font-size:19px;line-height:1.8;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 7px")}
+                        >
+                          ${v.typeDiff.map((d, i) => html`<span key=${i} style=${sx(d.style)}>${d.word}</span>`)}
+                        </div>
+                      </div>`
+                    }
+                    <div style=${sx("display:flex;gap:10px")}>
+                      <button className="btn btn-primary" onClick=${v.checkTyped}>${v.typeButtonLabel}</button>
+                    </div>`
+            }
+          </div>`
+        }
         ${
-            v.isScramble &&
-            html` <div style=${sx("display:flex;flex-direction:column;gap:22px")}>
-              <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
-                <span
-                  style=${sx("font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
-                  >Granularity</span
-                >
-                <div style=${sx("display:flex;gap:6px")}>
-                  ${v.scrambleLevels.map((lv) => html`<button key=${lv.key} onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
-                </div>
-                <span style=${sx("font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
-                  >${v.scrambleLevelDesc}</span
-                >
-              </div>
-              <div
-                style=${sx("min-height:96px;border:1px dashed var(--color-divider);padding:16px 18px;font-size:19px;line-height:1.65;color:var(--color-text)")}
+          v.isScramble &&
+          html` <div style=${sx("display:flex;flex-direction:column;gap:22px")}>
+            <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+              <span
+                style=${sx("font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                >Granularity</span
               >
-                ${v.scrambleEmpty && html`<span style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 45%, transparent)")}>Click the phrases below in the right order.</span>`}
-                ${" " + v.scrambleBuilt}
+              <div style=${sx("display:flex;gap:6px")}>
+                ${v.scrambleLevels.map((lv) => html`<button key=${lv.key} onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
               </div>
-              <div style=${sx("display:flex;flex-wrap:wrap;gap:10px")}>
-                ${v.scrambleChunks.map((c, i) => html`<button key=${i} onClick=${c.onClick} style=${sx(c.style)}>${c.text}</button>`)}
+              <span style=${sx("font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                >${v.scrambleLevelDesc}</span
+              >
+            </div>
+            <div
+              style=${sx("min-height:96px;border:1px dashed var(--color-divider);padding:16px 18px;font-size:19px;line-height:1.65;color:var(--color-text)")}
+            >
+              ${v.scrambleEmpty && html`<span style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 45%, transparent)")}>Click the phrases below in the right order.</span>`}
+              ${" " + v.scrambleBuilt}
+            </div>
+            <div style=${sx("display:flex;flex-wrap:wrap;gap:10px")}>
+              ${v.scrambleChunks.map((c, i) => html`<button key=${i} onClick=${c.onClick} style=${sx(c.style)}>${c.text}</button>`)}
+            </div>
+            <div style=${sx("display:flex;gap:10px;align-items:center")}>
+              <button
+                className="btn btn-secondary"
+                onClick=${v.resetScramble}
+                style=${sx("font-size:12px;padding:4px 12px")}
+              >
+                Start over
+              </button>
+              <div style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)")}>
+                ${v.scrambleResult}
               </div>
-              <div style=${sx("display:flex;gap:10px;align-items:center")}>
-                <button
-                  className="btn btn-secondary"
-                  onClick=${v.resetScramble}
-                  style=${sx("font-size:12px;padding:4px 12px")}
-                >
-                  Start over
-                </button>
-                <div style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)")}>
-                  ${v.scrambleResult}
-                </div>
-              </div>
-            </div>`
-          }
+            </div>
+          </div>`
+        }
         ${v.showHelp && html`<div style=${sx("border-left:2px solid var(--color-accent);padding:4px 0 4px 16px;font-size:15px;line-height:1.65;color:color-mix(in srgb, var(--color-text) 70%, transparent);max-width:74ch")}>${v.curText}</div>`}
 
         <div
@@ -1310,27 +1646,65 @@ export class App extends React.Component {
         </div>
       </div>
 
+      <div
+        className="blueprint"
+        style=${sx("padding:16px 20px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end")}
+      >
+        ${corners()}
+        ${v.leaderFilters.map(
+          (f) =>
+            html` <label key=${f.key} style=${sx("display:flex;flex-direction:column;gap:6px")}>
+              <span
+                style=${sx("font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+                >${f.label}</span
+              >
+              <select
+                className="input"
+                value=${f.value}
+                onChange=${f.onChange}
+                style=${sx("min-width:170px;padding-top:7px;padding-bottom:7px")}
+              >
+                ${f.opts.map((o) => html`<option key=${o} value=${o}>${o === "All" ? "Everyone" : f.fmt(o)}</option>`)}
+              </select>
+            </label>`,
+        )}
+        <div
+          style=${sx("margin-left:auto;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)")}
+        >
+          ${v.leaderCount} ${v.leaderCount === 1 ? "person" : "people"}
+        </div>
+      </div>
+
+      ${
+        v.leaderEmpty &&
+        html`<div
+          style=${sx("font-size:14px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 60%, transparent)")}
+        >
+          No one matches these filters yet.
+        </div>`
+      }
+
       <div style=${sx("display:grid;grid-template-columns:repeat(3,1fr);gap:18px")}>
         ${v.podium.map(
-            (p, i) =>
-              html` <div key=${i} className="blueprint" style=${sx(p.cardStyle)}>
-                ${corners()}
-                <div style=${sx("font-family:var(--font-heading);font-size:11px;letter-spacing:.16em;opacity:.6")}>
-                  ${p.place}
+          (p, i) =>
+            html` <div key=${i} className="blueprint" style=${sx(p.cardStyle)}>
+              ${corners()}
+              <div style=${sx("font-family:var(--font-heading);font-size:11px;letter-spacing:.16em;opacity:.6")}>
+                ${p.place}
+              </div>
+              <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:24px;line-height:1.1")}>
+                ${p.name}
+              </div>
+              <div style=${sx("display:flex;align-items:baseline;gap:8px")}>
+                <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1")}>
+                  ${p.count}
                 </div>
-                <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:24px;line-height:1.1")}>
-                  ${p.name}
+                <div style=${sx("font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.6")}>
+                  of ${v.goal}
                 </div>
-                <div style=${sx("display:flex;align-items:baseline;gap:8px")}>
-                  <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1")}>
-                    ${p.count}
-                  </div>
-                  <div style=${sx("font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.6")}>
-                    of ${v.goal}
-                  </div>
-                </div>
-              </div>`,
-          )}
+              </div>
+            </div>`,
+        )}
       </div>
 
       <div className="blueprint" style=${sx("padding:0 20px 10px")}>
@@ -1347,25 +1721,25 @@ export class App extends React.Component {
           </thead>
           <tbody>
             ${v.board.map(
-                (b, i) =>
-                  html` <tr key=${i} style=${sx(b.rowStyle)}>
-                    <td
-                      style=${sx("font-family:var(--font-heading);color:color-mix(in srgb, var(--color-text) 45%, transparent)")}
-                    >
-                      ${b.rank}
-                    </td>
-                    <td style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px")}>${b.name}</td>
-                    <td style=${sx("font-family:var(--font-heading);font-size:17px")}>${b.count}</td>
-                    <td>
-                      <div style=${sx("height:8px;background:var(--color-neutral-200)")}>
-                        <div style=${sx(b.barStyle)}></div>
-                      </div>
-                    </td>
-                    <td style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)")}>
-                      ${b.streak}
-                    </td>
-                  </tr>`,
-              )}
+              (b, i) =>
+                html` <tr key=${i} style=${sx(b.rowStyle)}>
+                  <td
+                    style=${sx("font-family:var(--font-heading);color:color-mix(in srgb, var(--color-text) 45%, transparent)")}
+                  >
+                    ${b.rank}
+                  </td>
+                  <td style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px")}>${b.name}</td>
+                  <td style=${sx("font-family:var(--font-heading);font-size:17px")}>${b.count}</td>
+                  <td>
+                    <div style=${sx("height:8px;background:var(--color-neutral-200)")}>
+                      <div style=${sx(b.barStyle)}></div>
+                    </div>
+                  </td>
+                  <td style=${sx("font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)")}>
+                    ${b.streak}
+                  </td>
+                </tr>`,
+            )}
           </tbody>
         </table>
       </div>
@@ -1383,6 +1757,10 @@ export class App extends React.Component {
     // unreachable) falls through to local-only so members aren't locked out.
     const a = this.state.auth;
     if (a.status !== "signed-in" && a.status !== "disabled") return this.authGate(a);
+    // Members complete a profile (ministry group, gender, class) before the app,
+    // so their stats can be grouped. The same form reopens for later edits.
+    const needProfile = !isProfileComplete(this.state.profile);
+    if (needProfile || this.state.editingProfile) return this.profileView(needProfile);
     const v = this.renderVals();
     return html` <div
       style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)")}
