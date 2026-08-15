@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "serve -l 8080 .",
     "start": "serve -l 8080 .",
-    "test": "node --test",
+    "test": "node --test 'test/**/*.test.mjs'",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -10,8 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev            # serve at http://localhost:8080 (must be over HTTP — see below)
-npm test               # run the node:test suite in test/
-node --test test/smoke.test.mjs                        # run one test file
+npm test               # run the node:test suite (test/**/*.test.mjs — one file per module)
+node --test test/grading.test.mjs                       # run one test file
 node --test --test-name-pattern="emailAllowed"         # run tests matching a name
 npm run lint           # ESLint (flat config)
 npm run format         # Prettier write   (format:check for CI-style check)
@@ -31,13 +31,26 @@ Because the app uses ES modules, **it must be served over HTTP** — opening `in
 
 `html` is htm bound to `React.createElement`, so views are written as tagged-template "JSX". Inline styles are **CSS strings parsed to React style objects by `sx()`** at the boundary (`style=${sx("...")}`) — that is why the design's style strings can be pasted verbatim.
 
-### One component, pure logic extracted
+### State shell + view-model + views
 
-`src/App.js` is a single class `App extends React.Component` (class component, not hooks) that owns all state and drives every view (board / list / review / done / leaderboard). Its `renderVals()` builds one large plain view-model object; the `header/boardView/listView/reviewView/...` methods are near-verbatim transcriptions of the design markup that consume it. Keep rendering logic thin — real logic lives in these pure modules:
+`src/App.js` is a single class `App extends React.Component` (class component, not hooks), but it is a thin **stateful shell**: it owns `state`, builds one `actions` table of callbacks in `buildActions()` (every `setState`, `localStorage` write, or `document.getElementById` for blank focus lives behind it), and dispatches to a view per top-level screen (board / list / review / done / leaderboard / auth-gate / profile-form). It does not render markup itself beyond that dispatch.
 
-- `src/srs.js` — the spaced-repetition model. A progress record is `{ hits, status, last, stability }`. Freshness = retrievability `R = e^(−t/S)` (Ebbinghaus). `migrate()` back-fills `stability` for legacy records; `nextStability()` rewards free recall > cued recall > recognition. All pure functions of `(record, now)`.
+Between state and markup sit two directories, and the rule for where a change belongs is which of these it changes:
+
+- **`src/viewmodel/*.js`** — `state + actions` → one flat object of strings and callbacks, no markup, no DOM. `index.js` assembles the object a view consumes from `totals.js`, `chrome.js` (nav + identity), and one file per screen (`board.js`, `list.js`, `review.js`, `leaderboard.js`, `gate.js`). Change **what is shown** here.
+- **`src/views/*.js`** — view-model → markup. Pure functions of `v` with no imports from `App.js` and no state. One file per screen, mirroring `viewmodel/`. Change **how something looks** here.
+- **`src/ui/tokens.js`** — style strings used in more than one place (`muted()`, `segButton()`, `LABEL_SECTION`, `SCREEN_*`, `statusTag()`, …). A style string that appears once stays inline in its view; hoisting it would trade the design's readability for indirection.
+
+Real logic — the part worth unit-testing — lives below `viewmodel/`, in pure modules of `(state, now)` or `(input)`:
+
+- `src/srs.js` — the spaced-repetition model. A progress record is `{ hits, status, last, stability }`. Freshness = retrievability `R = e^(−t/S)` (Ebbinghaus). `migrate()` back-fills `stability` for legacy records; `nextStability()` rewards free recall > cued recall > recognition.
+- `src/progress.js` — reading a progress map: `progressReader()` binds per-passage questions (status, freshness, due), plus `dueOrder()`, `committedCount()`, `streakOf()`.
+- `src/grading.js` — grading a typed attempt against a passage (`gradeWritten`) and the first-letter live-reveal drill (`revealFirstLetters`). This is the app's trickiest logic and previously lived inline in a render method with no tests.
+- `src/review.js` — review `MODES`, session sizing constants, and `seededShuffle` (Fisher–Yates over a mulberry32 PRNG, seeded by passage id).
 - `src/blanks.js` — "Fill the blanks" word selection and "Order the phrases" chunking.
-- `src/text.js` — `norm`, `firstLetters`, `dayKey`.
+- `src/text.js` — `norm`, `firstLetters`, `dayKey` (local-day, not UTC — see `progress.streakOf`, which depends on that).
+
+`test/views.test.mjs` renders every screen (via `test/helpers/scenarios.mjs` fixtures, `new App(props)` + assign `state` + `.render()`, no mount) to static markup and asserts zero React console warnings — this is what keeps a view template honest without a browser.
 
 ### Data + the keyword generator
 
@@ -70,5 +83,5 @@ Two independent paths:
 ## Conventions
 
 - 2-space indent; Prettier `printWidth` 120, double quotes, trailing commas (`.prettierrc.json`). Run `npm run format` before committing.
-- Tests use `node:test` + `node:assert` and target the pure modules (`srs`, `blanks`, `storage` merges, `emailAllowed`); rendering/browser code is not unit-tested.
+- Tests use `node:test` + `node:assert`, one file per module (`test/<module>.test.mjs`), matched by `test/**/*.test.mjs`. Pure modules (`srs`, `blanks`, `grading`, `progress`, `review`, `storage` merges, `emailAllowed`) are asserted directly; `test/views.test.mjs` renders every view-layer screen to static markup via `test/helpers/dom-env.mjs` (React/ReactDOM/htm installed from dev-only npm copies — the shipped app still loads them from CDN) and asserts it throws nothing and logs no React warnings.
 - Scripture text is ESV © Crossway — the MIT LICENSE covers code only.

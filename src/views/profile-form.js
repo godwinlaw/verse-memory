@@ -15,7 +15,7 @@ const FIELD = "display:flex;flex-direction:column;gap:7px";
 const NUMERIC_KEYBOARD = { inputMode: "numeric" };
 
 export function profileFormView(v) {
-  return html` <div style=${sx(SCREEN_CENTERED)}>
+  return html`<div style=${sx(SCREEN_CENTERED)}>
     <div
       className="blueprint"
       style=${sx("max-width:480px;width:100%;padding:40px 40px 36px;display:flex;flex-direction:column;gap:20px")}

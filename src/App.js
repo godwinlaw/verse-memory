@@ -452,7 +452,7 @@ export class App extends React.Component {
       deadline: this.deadline(),
       actions: this.actions,
     });
-    return html` <div
+    return html`<div
       style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)")}
     >
       ${headerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)} ${v.isReview && reviewView(v)}

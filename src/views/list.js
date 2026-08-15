@@ -7,7 +7,7 @@ import { muted } from "../ui/tokens.js";
 const COLUMNS = "grid-template-columns:56px 190px 1fr 110px 130px 210px;gap:0";
 
 export function listView(v) {
-  return html` <div
+  return html`<div
     style=${sx("max-width:1280px;margin:0 auto;padding:40px 36px 80px;display:flex;flex-direction:column;gap:24px")}
   >
     <div style=${sx("display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap")}>

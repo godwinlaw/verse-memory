@@ -4,7 +4,7 @@ import { html, sx } from "../dom.js";
 import { LABEL_META, muted } from "../ui/tokens.js";
 
 export function headerView(v) {
-  return html` <div
+  return html`<div
     style=${sx("display:flex;align-items:center;gap:32px;padding:16px 36px;border-bottom:1px solid var(--color-divider);position:sticky;top:0;background:var(--color-bg);z-index:20")}
   >
     <div style=${sx("display:flex;flex-direction:column;gap:1px;margin-right:auto")}>
@@ -25,7 +25,7 @@ export function headerView(v) {
     </button>
     ${
       v.user &&
-      html` <div
+      html`<div
         style=${sx("display:flex;align-items:center;gap:10px;padding-left:16px;margin-left:4px;border-left:1px solid var(--color-divider)")}
       >
         <span

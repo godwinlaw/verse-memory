@@ -4,7 +4,7 @@ import { html, sx } from "../dom.js";
 import { muted } from "../ui/tokens.js";
 
 export function doneView(v) {
-  return html` <div
+  return html`<div
     style=${sx("max-width:700px;margin:0 auto;padding:90px 36px;display:flex;flex-direction:column;gap:20px;align-items:flex-start")}
   >
     <div style=${sx("font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent-700)")}>

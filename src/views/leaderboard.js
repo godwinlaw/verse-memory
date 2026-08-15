@@ -5,7 +5,7 @@ import { html, sx, corners } from "../dom.js";
 import { LABEL_META, muted } from "../ui/tokens.js";
 
 export function leaderboardView(v) {
-  return html` <div
+  return html`<div
     style=${sx("max-width:1080px;margin:0 auto;padding:40px 36px 80px;display:flex;flex-direction:column;gap:26px")}
   >
     <div style=${sx("display:flex;align-items:flex-end;gap:20px")}>

@@ -67,6 +67,9 @@
   --shadow-lg: 0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
 }
 
+html {
+  margin: 0;
+}
 body {
   background: var(--color-bg);
   color: var(--color-text);
@@ -205,6 +208,21 @@ p {
 a {
   color: var(--color-accent);
   text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--color-accent-700);
+}
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
 }
 img {
   display: block;

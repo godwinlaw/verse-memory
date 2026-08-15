@@ -8,7 +8,7 @@ import { html, sx, corners } from "../dom.js";
 import { LABEL_META, muted } from "../ui/tokens.js";
 
 export function boardView(v) {
-  return html` <div
+  return html`<div
     style=${sx("max-width:1280px;margin:0 auto;padding:40px 36px 80px;display:flex;flex-direction:column;gap:40px")}
   >
     <div

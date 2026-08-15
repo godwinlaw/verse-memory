@@ -4,16 +4,16 @@
  * mode panel is active. Each mode gets its own function below; they are mutually
  * exclusive, selected by the isFlip/isBlanks/isType/isScramble flags. */
 
-import { html, sx, corners } from "../dom.js";
+import { html, sx, corners, React } from "../dom.js";
 import { LABEL_META, LABEL_SECTION, muted } from "../ui/tokens.js";
 
 /* Flashcard: reference only, optionally scaffolded with first letters, until
  * the member reveals the text. */
 function flipPanel(v) {
-  return html` <div style=${sx("display:flex;flex-direction:column;gap:26px")}>
+  return html`<div style=${sx("display:flex;flex-direction:column;gap:26px")}>
     ${
       v.flipHidden &&
-      html` <div style=${sx("display:flex;flex-direction:column;align-items:center;gap:18px;padding:44px 0")}>
+      html`<div style=${sx("display:flex;flex-direction:column;align-items:center;gap:18px;padding:44px 0")}>
         ${
           v.flipLettersOn
             ? html`<p
@@ -35,7 +35,7 @@ function flipPanel(v) {
     }
     ${
       v.flipShown &&
-      html` <div style=${sx("display:flex;flex-direction:column;gap:22px")}>
+      html`<div style=${sx("display:flex;flex-direction:column;gap:22px")}>
         <p style=${sx("margin:0;font-size:21px;line-height:1.62;max-width:74ch")}>${v.curText}</p>
         <div><button className="btn btn-secondary" onClick=${v.hide}>Hide the passage</button></div>
       </div>`
@@ -45,7 +45,7 @@ function flipPanel(v) {
 
 /* Fill the blanks: the passage with its key words replaced by inputs. */
 function blanksPanel(v) {
-  return html` <div style=${sx("display:flex;flex-direction:column;gap:20px")}>
+  return html`<div style=${sx("display:flex;flex-direction:column;gap:20px")}>
     <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
       <span style=${sx(LABEL_SECTION)}>Blanks</span>
       <div style=${sx("display:flex;gap:6px")}>
@@ -87,7 +87,7 @@ function blanksPanel(v) {
 /* Write it out: free recall, graded word by word. In first-letter mode it is a
  * live drill — the reveal updates as you type, with no separate grade step. */
 function typePanel(v) {
-  return html` <div style=${sx("display:flex;flex-direction:column;gap:18px")}>
+  return html`<div style=${sx("display:flex;flex-direction:column;gap:18px")}>
     <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
       <span style=${sx(LABEL_SECTION)}>First letters only</span>
       <button onClick=${v.toggleTypeFirstLetter} style=${sx(v.typeFirstLetterStyle)}>
@@ -99,7 +99,8 @@ function typePanel(v) {
     </div>
     ${
       v.typeLive
-        ? html` <textarea
+        ? html`<${React.Fragment}
+            ><textarea
               className="input"
               value=${v.typed}
               onChange=${v.onTyped}
@@ -116,11 +117,13 @@ function typePanel(v) {
             </div>
             <div style=${sx("font-size:21px;line-height:2;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 8px")}>
               ${v.typeReveal.map((r, i) => html`<span key=${i} style=${sx(r.style)}>${r.text}</span>`)}
-            </div>`
-        : html` ${v.typeUngraded && html`<textarea className="input" value=${v.typed} onChange=${v.onTyped} placeholder=${v.typePlaceholder} style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
+            </div></${React.Fragment}
+          >`
+        : html`<${React.Fragment}
+            >${v.typeUngraded && html`<textarea className="input" value=${v.typed} onChange=${v.onTyped} placeholder=${v.typePlaceholder} style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
             ${
               v.typeGraded &&
-              html` <div style=${sx("display:flex;flex-direction:column;gap:16px")}>
+              html`<div style=${sx("display:flex;flex-direction:column;gap:16px")}>
                 <div style=${sx("display:flex;align-items:baseline;gap:12px")}>
                   <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:52px;line-height:1")}>
                     ${v.typeScore}
@@ -136,7 +139,8 @@ function typePanel(v) {
             }
             <div style=${sx("display:flex;gap:10px")}>
               <button className="btn btn-primary" onClick=${v.checkTyped}>${v.typeButtonLabel}</button>
-            </div>`
+            </div></${React.Fragment}
+          >`
     }
   </div>`;
 }
@@ -144,7 +148,7 @@ function typePanel(v) {
 /* Order the phrases: the passage cut into chunks, rebuilt by clicking them in
  * sequence. */
 function scramblePanel(v) {
-  return html` <div style=${sx("display:flex;flex-direction:column;gap:22px")}>
+  return html`<div style=${sx("display:flex;flex-direction:column;gap:22px")}>
     <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
       <span style=${sx(LABEL_SECTION)}>Granularity</span>
       <div style=${sx("display:flex;gap:6px")}>
@@ -171,7 +175,7 @@ function scramblePanel(v) {
 }
 
 export function reviewView(v) {
-  return html` <div
+  return html`<div
     style=${sx("max-width:1000px;margin:0 auto;padding:36px 36px 80px;display:flex;flex-direction:column;gap:22px")}
   >
     <div style=${sx("display:flex;align-items:center;gap:16px")}>

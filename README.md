@@ -22,7 +22,8 @@ with an optional Firebase seam for cloud sync.
 ## Quick start
 
 ```bash
-npm install       # dev tooling only (eslint, prettier, serve)
+npm install       # dev tooling only — eslint, prettier, serve, wrangler, plus
+                   # react/react-dom/htm for the render smoke tests (see test/)
 npm run dev       # serve at http://localhost:8080
 ```
 
@@ -37,29 +38,52 @@ HTTP; opening `index.html` from the filesystem will not work.
 ├── index.html            # entry document: loads CDN libs, config.js, src/main.js
 ├── config.example.js     # deploy-time config template (copy to config.js)
 ├── src/                   # application source (ES modules)
-│   ├── main.js            #   entry point — mounts <App/>, activates optional sync
-│   ├── App.js             #   root React component + all views
+│   ├── main.js            #   entry point — mounts <App/>
+│   ├── App.js             #   stateful shell: state, actions, view dispatch
 │   ├── dom.js             #   React/htm globals, sx() style parser, corners()
 │   ├── config.js          #   app config + defaults (reads deploy overrides)
 │   ├── storage.js         #   localStorage persistence + cloud-sync seam
-│   ├── firebase.js        #   optional Firebase cloud-sync seam
+│   ├── firebase.js        #   optional Firebase auth + cloud sync
+│   ├── profile.js         #   member profile domain (options, validation, merge)
 │   ├── srs.js             #   spaced-repetition / forgetting-curve math (pure)
 │   ├── blanks.js          #   blank selection + phrase chunking (pure)
+│   ├── grading.js         #   grading a typed / first-letter attempt (pure)
+│   ├── progress.js        #   reading a progress map: status, due order, streaks (pure)
+│   ├── review.js          #   review modes, session shape, seeded shuffle (pure)
 │   ├── text.js            #   small text/date helpers (pure)
-│   └── styles.css         #   design system + component styles
+│   ├── styles.css         #   design system + component styles
+│   ├── ui/
+│   │   └── tokens.js      #   shared style strings (only ones used more than once)
+│   ├── viewmodel/         #   state + actions -> one flat object, per view
+│   │   ├── index.js, totals.js, chrome.js, board.js, list.js,
+│   │   └── review.js, leaderboard.js, gate.js
+│   └── views/             #   view-model -> markup; pure functions of `v`
+│       ├── header.js, board.js, list.js, review.js, done.js,
+│       └── leaderboard.js, auth-gate.js, profile-form.js
 ├── data/                  # generated/authored content
 │   ├── passages.js        #   the passage set (ESV)
 │   └── keywords.js        #   per-passage keyword indices (generated)
 ├── tools/
 │   └── gen_keywords.py    # spaCy keyword generator -> data/keywords.js
+├── scripts/
+│   └── build.mjs          # assembles ./dist for the Cloudflare Workers deploy
+├── test/                  # node:test suite — pure modules + view render tests
+│   └── helpers/            #  dom-env.mjs (render harness), scenarios.mjs (fixtures)
 ├── deploy/
 │   ├── nginx.conf         # static-serving config for the container
 │   └── firestore.rules    # Firestore security rules (cloud sync)
 ├── design/                # provenance: source docs + original design export
+│                           #  (design/claude-design/ is gitignored — absent on a fresh clone)
 ├── docs/                  # standards & reference (A2N dev best practices)
+├── wrangler.jsonc         # Cloudflare Workers static-assets config
 ├── Dockerfile             # nginx image (container-based deploy, per A2N)
 └── .drone.yml             # CI/CD pipeline (Drone)
 ```
+
+The rule for where a change belongs: **how something looks** goes in `views/`,
+**what is shown** goes in `viewmodel/`, **how memory/grading/scheduling work**
+goes in `srs.js` / `grading.js` / `progress.js` / `review.js`. `App.js` holds
+state and an `actions` table and dispatches to views — nothing else.
 
 ## Configuration
 
@@ -96,8 +120,9 @@ progress then syncs across devices via Firebase (project `verse-memory`):
   domains** (`deploy/firestore.rules`). Never trust the client alone; the rules
   are the real enforcement. The allowed set is `ALLOWED_DOMAINS` in
   `src/firebase.js`.
-- **Firestore** stores one doc per user at `users/{uid}` = `{ progress, log }`.
-  On sign-in the remote doc is pulled and reconciled with local state
+- **Firestore** stores one doc per user at
+  `users/{uid}` = `{ name, email, progress, log, profile, updatedAt }`. On
+  sign-in the remote doc is pulled and reconciled with local state
   (`mergeProgress` keeps the most recently reviewed record per verse); each local
   save is debounced and pushed back up.
 
@@ -126,12 +151,13 @@ Firestore rules instead.
 
 Implementation: `src/firebase.js` (SDK load, Google auth + domain gate, Firestore
 read/write) and `src/storage.js` (`registerRemoteSync`, `mergeProgress`,
-`mergeLog`). The allowed domain is `ALLOWED_DOMAIN` in `src/firebase.js`.
+`mergeLog`).
 
 ## Deployment
 
-Per the [A2N dev standards](docs/a2n-dev-best-practices.md), this deploys as a
-stateless container to Amazon ECS via Drone CI:
+Two independent deploy paths exist.
+
+**Container → Amazon ECS via Drone CI** — the [A2N dev standard](docs/a2n-dev-best-practices.md):
 
 ```bash
 docker build -t memory-board .
@@ -142,12 +168,26 @@ docker run --rm -p 8080:80 memory-board   # http://localhost:8080
 to Amazon ECR (us-east-1). Set the `aws_access_key_id` / `aws_secret_access_key`
 secrets and the ECR registry in the Drone repo settings.
 
+**Cloudflare Workers static assets** — an alternative host with no container:
+
+```bash
+npm run build    # scripts/build.mjs assembles ./dist: index.html, src/, data/, config.js
+npm run deploy    # build + `wrangler deploy`
+npm run cf:dev     # build + `wrangler dev`, for a local preview of the Worker
+```
+
+`wrangler.jsonc` points the Worker's static-assets binding at `./dist`.
+`scripts/build.mjs` copies only the files the app actually serves — never point
+a host at the repo root, since that would also serve `node_modules/`, `design/`,
+`test/`, and everything else not meant to ship.
+
 ## Development
 
 ```bash
-npm run lint          # ESLint
-npm run format        # Prettier (write)
-npm run format:check  # Prettier (check, as CI runs it)
+npm test               # node:test — pure modules + view render smoke tests
+npm run lint           # ESLint
+npm run format         # Prettier (write)
+npm run format:check   # Prettier (check, as CI runs it)
 ```
 
 ## Scripture text

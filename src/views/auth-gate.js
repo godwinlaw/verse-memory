@@ -6,7 +6,7 @@ import { html, sx, corners } from "../dom.js";
 import { CALLOUT_ERROR, SCREEN_BODY, SCREEN_CENTERED, SCREEN_SUBTITLE, SCREEN_TITLE } from "../ui/tokens.js";
 
 export function authGateView(v) {
-  return html` <div style=${sx(SCREEN_CENTERED)}>
+  return html`<div style=${sx(SCREEN_CENTERED)}>
     <div
       className="blueprint"
       style=${sx("max-width:460px;width:100%;padding:40px 40px 36px;display:flex;flex-direction:column;gap:18px")}
