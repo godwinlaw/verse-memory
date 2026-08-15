@@ -33,24 +33,34 @@ Because the app uses ES modules, **it must be served over HTTP** — opening `in
 
 ### State shell + view-model + views
 
-`src/App.js` is a single class `App extends React.Component` (class component, not hooks), but it is a thin **stateful shell**: it owns `state`, builds one `actions` table of callbacks in `buildActions()` (every `setState`, `localStorage` write, or `document.getElementById` for blank focus lives behind it), and dispatches to a view per top-level screen (board / list / review / done / leaderboard / auth-gate / profile-form). It does not render markup itself beyond that dispatch.
+`src/App.js` is a single class `App extends React.Component` (class component, not hooks), but it is a thin **stateful shell**: it owns `state`, builds one `actions` table of callbacks in `buildActions()` (every `setState`, `localStorage` write, or `document.getElementById` for blank focus lives behind it), and dispatches to a view per top-level screen (board / list / review / done / leaderboard / test-setup / test / test-done / auth-gate / profile-form). It does not render markup itself beyond that dispatch.
 
 Between state and markup sit two directories, and the rule for where a change belongs is which of these it changes:
 
-- **`src/viewmodel/*.js`** — `state + actions` → one flat object of strings and callbacks, no markup, no DOM. `index.js` assembles the object a view consumes from `totals.js`, `chrome.js` (nav + identity), and one file per screen (`board.js`, `list.js`, `review.js`, `leaderboard.js`, `gate.js`). Change **what is shown** here.
+- **`src/viewmodel/*.js`** — `state + actions` → one flat object of strings and callbacks, no markup, no DOM. `index.js` assembles the object a view consumes from `totals.js`, `chrome.js` (nav + identity), and one file per screen (`board.js`, `list.js`, `review.js`, `exam.js`, `leaderboard.js`, `gate.js`). Change **what is shown** here.
 - **`src/views/*.js`** — view-model → markup. Pure functions of `v` with no imports from `App.js` and no state. One file per screen, mirroring `viewmodel/`. Change **how something looks** here.
 - **`src/ui/tokens.js`** — style strings used in more than one place (`muted()`, `segButton()`, `LABEL_SECTION`, `SCREEN_*`, `statusTag()`, …). A style string that appears once stays inline in its view; hoisting it would trade the design's readability for indirection.
 
 Real logic — the part worth unit-testing — lives below `viewmodel/`, in pure modules of `(state, now)` or `(input)`:
 
-- `src/srs.js` — the spaced-repetition model. A progress record is `{ hits, status, last, stability }`. Freshness = retrievability `R = e^(−t/S)` (Ebbinghaus). `migrate()` back-fills `stability` for legacy records; `nextStability()` rewards free recall > cued recall > recognition.
+- `src/srs.js` — the spaced-repetition model. A progress record is `{ hits, status, last, stability }` (a tested one also carries `updatedAt` — see Test mode). Freshness = retrievability `R = e^(−t/S)` (Ebbinghaus). `migrate()` back-fills `stability` for legacy records; `nextStability()` rewards free recall > cued recall > recognition; `testStability()`/`testedLast()` are the graded path, and the only one that can send a verse backwards.
 - `src/progress.js` — reading a progress map: `progressReader()` binds per-passage questions (status, freshness, due), plus `dueOrder()`, `committedCount()`, `streakOf()`.
-- `src/grading.js` — grading a typed attempt against a passage (`gradeWritten`) and the first-letter live-reveal drill (`revealFirstLetters`). This is the app's trickiest logic and previously lived inline in a render method with no tests.
-- `src/review.js` — review `MODES`, session sizing constants, and `seededShuffle` (Fisher–Yates over a mulberry32 PRNG, seeded by passage id).
+- `src/grading.js` — grading a typed attempt against a passage (`gradeWritten`), the first-letter live-reveal drill (`revealFirstLetters`), and a typed scripture reference (`parseReference`, `gradeReference`). This is the app's trickiest logic and previously lived inline in a render method with no tests.
+- `src/review.js` — review `MODES`, session sizing constants, `seededShuffle` (Fisher–Yates over a mulberry32 PRNG, seeded by passage id), and `mulberry32` itself.
+- `src/exam.js` — Test mode: setup options, which verses a setup admits, seeded question generation for the four activities, marking, and folding a marked paper back into the progress map.
 - `src/blanks.js` — "Fill the blanks" word selection and "Order the phrases" chunking.
-- `src/text.js` — `norm`, `firstLetters`, `dayKey` (local-day, not UTC — see `progress.streakOf`, which depends on that).
+- `src/text.js` — `norm`, `firstLetters`, `sentences`, `dayKey` (local-day, not UTC — see `progress.streakOf`, which depends on that).
 
-`test/views.test.mjs` renders every screen (via `test/helpers/scenarios.mjs` fixtures, `new App(props)` + assign `state` + `.render()`, no mount) to static markup and asserts zero React console warnings — this is what keeps a view template honest without a browser.
+`test/views.test.mjs` renders every screen (via `test/helpers/scenarios.mjs` fixtures, `new App(props)` + assign `state` + `.render()`, no mount) to static markup and asserts zero React console warnings — this is what keeps a view template honest without a browser. `test/app.test.mjs` covers the one flow a single render cannot: it drives a whole test session through the `actions` table, giving the unmounted instance a synchronous stand-in for React's update queue.
+
+### Self study vs. Test mode
+
+The app has two ways through the same verse set, and the difference is what each one does to the schedule:
+
+- **Self study** (`review.js`, `viewmodel/review.js`, `views/review.js`) — the four untimed, unmarked modes. Finishing a card is the whole signal: `record()` sets `last` to now and grows stability. Freshness can only go up.
+- **Test mode** (`exam.js`, `viewmodel/exam.js`, `views/exam-setup.js` + `exam.js` + `exam-done.js`) — a marked paper. The member picks a size, whether only committed verses count, a freshness ceiling, and which of four activities to face (`name-ref`, `pick-ref`, `finish`, `match`); `buildExam()` deals activities round-robin over the chosen verses and returns a paper that is a pure function of its seed. Nothing is revealed until the summary.
+
+A test result is the only write that can send a verse **backwards**. `srs.testStability()` shrinks stability below `TEST_PASS` and grows it above; `srs.testedLast()` then **backdates `last`** so the verse reads at the freshness the member actually demonstrated (score 55% → 55% fresh) rather than the 100% every self-study card leaves behind. Because `last` is then not the moment of writing, a tested record also carries **`updatedAt`**, and `storage.mergeProgress` reconciles on `max(updatedAt, last)` — changing either half without the other will silently lose test results across devices.
 
 ### Data + the keyword generator
 
@@ -58,7 +68,7 @@ Real logic — the part worth unit-testing — lives below `viewmodel/`, in pure
 
 ### Persistence, then optional cloud overlay
 
-`src/storage.js` is the single source of truth via `localStorage`; the component never touches storage APIs directly. Firebase is an **optional overlay, not a dependency**: `storage.registerRemoteSync()` is a seam that `firebase.js` fills in, and `mergeProgress`/`mergeLog` reconcile local vs. remote on startup (per-verse last-write-wins by `last` timestamp; per-day max for the log). If Firebase is unreachable/misconfigured the app runs local-only.
+`src/storage.js` is the single source of truth via `localStorage`; the component never touches storage APIs directly. Firebase is an **optional overlay, not a dependency**: `storage.registerRemoteSync()` is a seam that `firebase.js` fills in, and `mergeProgress`/`mergeLog` reconcile local vs. remote on startup (per-verse last-write-wins by `max(updatedAt, last)` — see Test mode for why a record needs both; per-day max for the log). If Firebase is unreachable/misconfigured the app runs local-only. Exercise preferences and the Test mode setup (`mv.examSetup`) are device-local and never synced.
 
 ### Auth gating (two enforcement layers)
 

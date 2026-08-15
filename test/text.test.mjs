@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { norm, firstLetters, dayKey } from "../src/text.js";
+import { norm, firstLetters, sentences, dayKey } from "../src/text.js";
 
 test("norm lowercases and strips punctuation", () => {
   assert.equal(norm("Self-Control;"), "selfcontrol");
@@ -13,6 +13,20 @@ test("firstLetters keeps punctuation, spacing, and hyphens", () => {
   assert.equal(firstLetters("self-control; abide"), "s-c; a");
   assert.equal(firstLetters(""), "");
   assert.equal(firstLetters(null), "");
+});
+
+test("sentences splits on terminal punctuation, keeping a closing quote", () => {
+  assert.deepEqual(sentences("Hear, O Israel: the Lord is one. You shall love the Lord."), [
+    "Hear, O Israel: the Lord is one.",
+    "You shall love the Lord.",
+  ]);
+  assert.deepEqual(sentences("“The Lord is one.” You shall love him."), ["“The Lord is one.”", "You shall love him."]);
+});
+
+test("sentences returns text with no full stop whole, and empty text as nothing", () => {
+  assert.deepEqual(sentences("be strong and courageous"), ["be strong and courageous"]);
+  assert.deepEqual(sentences(""), []);
+  assert.deepEqual(sentences(null), []);
 });
 
 test("dayKey formats an ISO-ish local key", () => {

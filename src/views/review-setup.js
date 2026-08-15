@@ -1,0 +1,72 @@
+/* Review mode, before the session begins: what verses to review. */
+
+import { html, sx, corners } from "../dom.js";
+import { LABEL_SECTION, muted } from "../ui/tokens.js";
+
+const FIELD = "display:flex;flex-direction:column;gap:9px";
+
+const RANGE_PROPS = { type: "range", min: 0, max: 100 };
+
+export function reviewSetupView(v) {
+  return html`<div
+    style=${sx("max-width:900px;margin:0 auto;padding:40px 36px 80px;display:flex;flex-direction:column;gap:22px")}
+  >
+    <div style=${sx("display:flex;flex-direction:column;gap:6px")}>
+      <div style=${sx("font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent-700)")}>
+        Review
+      </div>
+      <h1 style=${sx("margin:0")}>Configure your review</h1>
+    </div>
+
+    <div className="blueprint" style=${sx("padding:30px 32px;display:flex;flex-direction:column;gap:26px")}>
+      ${corners()}
+
+      <div style=${sx(FIELD)}>
+        <span style=${sx(LABEL_SECTION)}>Target verses</span>
+        <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
+          <button onClick=${v.setReviewTargetDue} style=${sx(v.reviewSetupDueStyle)}>Due Now</button>
+          <button onClick=${v.setReviewTargetManual} style=${sx(v.reviewSetupManualStyle)}>Manual Selection</button>
+        </div>
+      </div>
+
+      ${v.reviewSetupTarget === "manual" && html`<div style=${sx("display:flex;flex-direction:column;gap:26px;border-top:1px solid var(--color-divider);padding-top:20px")}>
+        <div style=${sx(FIELD)}>
+          <span style=${sx(LABEL_SECTION)}>How many uncommitted verses</span>
+          <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
+            ${v.reviewSetupSizes.map((s) => html`<button key=${s.key} onClick=${s.onClick} style=${sx(s.style)}>${s.label}</button>`)}
+          </div>
+        </div>
+
+        <div style=${sx(FIELD)}>
+          <span style=${sx(LABEL_SECTION)}>Freshness ceiling</span>
+          <div style=${sx("display:flex;align-items:center;gap:14px;max-width:520px")}>
+            <input
+              value=${v.reviewSetupFreshness}
+              step="5"
+              onChange=${v.onReviewSetupFreshness}
+              style=${sx("flex:1;accent-color:var(--color-accent)")}
+              ...${RANGE_PROPS}
+            />
+            <span
+              style=${sx("font-family:var(--font-heading);font-weight:600;font-size:19px;width:52px;text-align:right")}
+              >${v.reviewSetupFreshness}%</span
+            >
+          </div>
+          <span style=${sx(`font-size:12px;color:${muted(55)}`)}>
+            ${v.reviewSetupFreshness >= 100 ? "Any uncommitted verse." : "Only uncommitted verses faded to " + v.reviewSetupFreshness + "% or below."}
+          </span>
+        </div>
+      </div>`}
+
+      <div
+        style=${sx("display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:20px")}
+      >
+        <button className="btn btn-primary" onClick=${v.startReviewSession} disabled=${!v.reviewSetupCanStart}>Start Review</button>
+        <button className="btn btn-secondary" onClick=${v.cancelReviewSession}>Back to the board</button>
+        <div style=${sx(`margin-left:auto;font-size:13px;text-align:right;color:${muted(60)};max-width:44ch`)}>
+          ${v.reviewSetupNote}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}

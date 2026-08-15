@@ -14,7 +14,8 @@ export function headerView(v) {
       <div style=${sx(LABEL_META)}>${v.groupName}</div>
     </div>
     ${v.nav.map((n) => html`<button key=${n.key} onClick=${n.onClick} style=${sx(n.style)}>${n.label}</button>`)}
-    <button className="btn btn-primary" onClick=${v.startDue} style=${sx("letter-spacing:.06em")}>REVIEW NOW</button>
+    <button className="btn btn-primary-inverse" onClick=${v.goReviewSetup} style=${sx("letter-spacing:.06em")}>REVIEW</button>
+    <button className="btn btn-primary" onClick=${v.goTest} style=${sx("letter-spacing:.06em")}>TAKE A TEST</button>
     <button
       className="btn btn-secondary"
       onClick=${v.editProfile}

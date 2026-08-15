@@ -11,7 +11,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { render, freezeClock } from "./helpers/dom-env.mjs";
-import { scenarios } from "./helpers/scenarios.mjs";
+import { scenarios, EXAM, questionAt } from "./helpers/scenarios.mjs";
+import { ACTIVITY_KEYS } from "../src/exam.js";
 
 const restore = freezeClock();
 const { App } = await import("../src/App.js");
@@ -29,6 +30,12 @@ function renderScenario(state, props) {
     console.error = origError;
   }
   return { markup, warnings };
+}
+
+/* The markup of one named scenario. */
+function shown(name) {
+  const s = scenarios.find((x) => x.name === name);
+  return renderScenario(s.state, s.props).markup;
 }
 
 test.after(() => restore());
@@ -68,4 +75,66 @@ test("review/type-graded shows a percentage", () => {
   const s = scenarios.find((x) => x.name === "review/type-graded");
   const { markup } = renderScenario(s.state, s.props);
   assert.match(markup, /\d+%/);
+});
+
+/* The test-mode scenarios are indexed into a generated paper, so a paper that
+ * stopped covering an activity would silently render nothing at all. */
+test("the fixture paper asks every activity", () => {
+  for (const kind of ACTIVITY_KEYS) assert.ok(questionAt(kind) >= 0, `no ${kind} question in the fixture paper`);
+  assert.equal(EXAM.ids.length, 20);
+});
+
+test("test/setup-empty-pool says so instead of offering a start", () => {
+  const s = scenarios.find((x) => x.name === "test/setup-empty-pool");
+  const { markup } = renderScenario(s.state, s.props);
+  assert.match(markup, /No verses match these settings yet/);
+  assert.match(markup, /disabled=""/);
+});
+
+test("each activity renders its own panel", () => {
+  assert.match(shown("test/name-ref"), /Where is it from\?/);
+  assert.match(shown("test/pick-ref"), /None of the above/);
+  assert.match(shown("test/finish"), /Finish the sentence from memory/);
+  assert.match(shown("test/finish"), /worth a quarter of the mark/, "and asks for the reference too");
+  assert.match(shown("test/match"), /Click a verse, then its reference/);
+  assert.match(shown("test/last-question"), /Finish and mark/);
+});
+
+test("questions can be walked back, except the first", () => {
+  assert.match(shown("test/first-question"), /Back<\/button>/);
+  assert.match(shown("test/first-question"), /disabled="">Back/, "nothing to go back to");
+  assert.doesNotMatch(shown("test/last-question"), /disabled="">Back/);
+});
+
+test("a matched pair is tinted the same on both sides of the grid", () => {
+  // test/match pairs the first verse with its own reference, so exactly two
+  // tiles — one in each column — carry that pair's colour.
+  const markup = shown("test/match");
+  const tint = markup.match(/hsl\(\d+,42%,92%\)/g) || [];
+  assert.equal(tint.length, 2, "the verse and the reference filed under it, and nothing else");
+  assert.equal(tint[0], tint[1]);
+});
+
+test("leaving a test asks before it throws the paper away", () => {
+  const markup = shown("test/leaving");
+  assert.match(markup, /Leave the test\?/);
+  assert.match(markup, /will\s+not be saved/);
+  assert.match(markup, /Keep going/);
+});
+
+test("the summary shows a mark, the freshness each verse landed on, and the paper", () => {
+  const s = scenarios.find((x) => x.name === "test/summary");
+  const { markup } = renderScenario(s.state, s.props);
+  assert.match(markup, /Test complete/);
+  assert.match(markup, /\d+%/);
+  assert.match(markup, /Where each verse landed/);
+  assert.match(markup, /The paper/);
+  // Answered right and wrong both appear.
+  assert.match(markup, /✓/);
+  assert.match(markup, /✗/);
+});
+
+test("a verse that came out of a test weaker is marked faded", () => {
+  assert.match(shown("test/summary-faded"), /faded/);
+  assert.doesNotMatch(shown("test/summary"), /faded/, "verses that only gained are not flagged");
 });

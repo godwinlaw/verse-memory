@@ -7,7 +7,8 @@
  *   viewmodel/  turns (state, actions) into one plain object of strings and
  *               callbacks — all the derivation lives there
  *   views/      turn that object into markup — no state, no imports from here
- *   srs, blanks, grading, progress, text — the pure domain, unit-tested in Node
+ *   srs, blanks, grading, progress, exam, text — the pure domain, unit-tested
+ *               in Node
  *
  * So a change to how something looks belongs in views/, a change to what is
  * shown in viewmodel/, and a change to how memory is modelled in srs.js. */
@@ -19,6 +20,7 @@ import { BLANK_LEVELS, SCRAMBLE_LEVELS } from "./blanks.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
 import { committedCount, dueOrder, streakOf, REVIEWS_TO_COMMIT } from "./progress.js";
 import { DEFAULT_MODE, SESSION_SIZE } from "./review.js";
+import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "./exam.js";
 import { isProfileComplete, mergeProfile } from "./profile.js";
 import { appConfig } from "./config.js";
 import { initAuth, signIn, signOutUser, fetchRoster } from "./firebase.js";
@@ -29,7 +31,11 @@ import { headerView } from "./views/header.js";
 import { boardView } from "./views/board.js";
 import { listView } from "./views/list.js";
 import { reviewView } from "./views/review.js";
+import { reviewSetupView } from "./views/review-setup.js";
 import { doneView } from "./views/done.js";
+import { examSetupView } from "./views/exam-setup.js";
+import { examView } from "./views/exam.js";
+import { examDoneView } from "./views/exam-done.js";
 import { leaderboardView } from "./views/leaderboard.js";
 import { authGateView } from "./views/auth-gate.js";
 import { profileFormView } from "./views/profile-form.js";
@@ -50,7 +56,8 @@ function initialState() {
   return {
     loaded: false,
     passages: [],
-    view: "board", // board | list | review | done | leaderboard
+    // board | list | review | done | leaderboard | test-setup | test | test-done
+    view: "board",
     progress: {}, // { [passageId]: { hits, status, last, stability } }
     log: {}, // { [YYYY-MM-DD]: reviews that day }
 
@@ -74,18 +81,30 @@ function initialState() {
     scrambleWrong: -1,
     scrambleLevel: 1,
 
+    // running test (Test mode — see exam.js)
+    examSetup: DEFAULT_SETUP,
+    exam: null, // { questions, ids }, built once when the test starts
+    examIndex: 0,
+    examAnswers: {}, // { [questionIndex]: answer }
+    examPick: null, // verse awaiting a reference in a matching question
+    examLeaveAsk: false, // "leave the test?" confirmation is open
+    examResult: null, // the marked paper, kept for the summary screen
+
     // passage list
     search: "",
     filter: "All",
 
     // account, profile, leaderboard
     auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
-    profile: {}, // { name, ministryGroup, gender, gradClass, updatedAt }
+    profile: {}, // { name, ministryGroup, gender, gradClass, dueTopX, dueFreshness, updatedAt }
     profileDraft: null, // in-progress edits for the profile form
     editingProfile: false, // reopen the form for an already-complete profile
     ministryOpen: false, // ministry-group combobox dropdown visibility
     peers: null, // leaderboard roster, minus self
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
+
+    // running review flow (Review mode)
+    reviewSetup: { target: "due", manualSize: 10, manualFreshness: 50 },
   };
 }
 
@@ -107,6 +126,8 @@ export class App extends React.Component {
       blankHint: storage.loadBlankHint(this.state.blankHint),
       typeFirstLetter: storage.loadTypeFirstLetter(this.state.typeFirstLetter),
       scrambleLevel: storage.loadScrambleLevel(this.state.scrambleLevel, SCRAMBLE_LEVELS.length),
+      examSetup: normalizeSetup(storage.loadExamSetup()),
+      reviewSetup: storage.loadReviewSetup(this.state.reviewSetup),
       loaded: true,
     });
     // Auth + cloud sync. Access is gated to Acts 2 Network Google accounts; on a
@@ -187,6 +208,8 @@ export class App extends React.Component {
       ministryGroup: String(draft.ministryGroup || "").trim(),
       gender: draft.gender,
       gradClass: /^\d+$/.test(gradClass) ? Number(gradClass) : gradClass,
+      dueTopX: draft.dueTopX !== undefined ? Number(draft.dueTopX) : 10,
+      dueFreshness: draft.dueFreshness !== undefined ? Number(draft.dueFreshness) : 50,
       updatedAt: Date.now(),
     };
     if (!isProfileComplete(next)) return;
@@ -329,6 +352,118 @@ export class App extends React.Component {
     else this.setState({ scrambleWrong: index });
   }
 
+  /* ── test mode ──────────────────────────────────────────────────────────── */
+
+  /* The setup survives the session, so a member who tests the same way each week
+   * finds the form as they left it. Device-local, like the exercise levels. */
+  setExamSetup(patch) {
+    const examSetup = normalizeSetup({ ...this.state.examSetup, ...patch });
+    storage.saveExamSetup(examSetup);
+    this.setState({ examSetup });
+  }
+
+  toggleExamActivity(key) {
+    const on = this.state.examSetup.activities.includes(key);
+    const activities = on
+      ? this.state.examSetup.activities.filter((k) => k !== key)
+      : [...this.state.examSetup.activities, key];
+    // Turning the last activity off would leave nothing to ask, so it stays on.
+    if (!activities.length) return;
+    this.setExamSetup({ activities });
+  }
+
+  /* ── review mode setup ──────────────────────────────────────────────────── */
+
+  setReviewSetup(patch) {
+    const reviewSetup = { ...this.state.reviewSetup, ...patch };
+    storage.saveReviewSetup(reviewSetup);
+    this.setState({ reviewSetup });
+  }
+
+  /* Build the paper once, here, and keep it in state: the generator is seeded,
+   * so re-running it every render would be stable but pointless, and re-seeding
+   * it would rewrite the question under the member. */
+  startExam() {
+    const exam = buildExam({
+      passages: this.state.passages,
+      progress: this.state.progress,
+      setup: this.state.examSetup,
+      seed: Date.now() >>> 0,
+    });
+    if (!exam.questions.length) return;
+    this.setState({
+      view: "test",
+      exam,
+      examIndex: 0,
+      examAnswers: {},
+      examPick: null,
+      examLeaveAsk: false,
+      examResult: null,
+    });
+  }
+
+  answerExam(value) {
+    this.setState((s) => ({ examAnswers: { ...s.examAnswers, [s.examIndex]: value } }));
+  }
+
+  /* Matching takes two clicks: a verse, then the reference to file it under.
+   * Clicking a verse that is already filed takes the pairing back. */
+  pickMatchVerse(verseKey) {
+    const answer = this.state.examAnswers[this.state.examIndex] || {};
+    if (answer[verseKey]) {
+      const next = { ...answer };
+      delete next[verseKey];
+      this.answerExam(next);
+      this.setState({ examPick: verseKey });
+      return;
+    }
+    this.setState((s) => ({ examPick: s.examPick === verseKey ? null : verseKey }));
+  }
+
+  pickMatchRef(refKey) {
+    const verseKey = this.state.examPick;
+    if (!verseKey) return;
+    const answer = { ...(this.state.examAnswers[this.state.examIndex] || {}) };
+    // A reference belongs to one verse at a time, so filing it again moves it.
+    for (const k of Object.keys(answer)) if (answer[k] === refKey) delete answer[k];
+    answer[verseKey] = refKey;
+    this.answerExam(answer);
+    this.setState({ examPick: null });
+  }
+
+  /* Questions can be walked in both directions until the paper is handed in —
+   * answers are held by question index, so going back shows what was left
+   * there and lets it be changed. */
+  nextQuestion() {
+    const last = this.state.examIndex >= this.state.exam.questions.length - 1;
+    if (last) return this.finishExam();
+    this.setState((s) => ({ examIndex: s.examIndex + 1, examPick: null }));
+  }
+
+  prevQuestion() {
+    this.setState((s) => ({ examIndex: Math.max(0, s.examIndex - 1), examPick: null }));
+  }
+
+  /* Mark the paper, fold the results into progress, and show the summary. This
+   * is the only place a verse's freshness can go down: a poor score shortens
+   * the interval and backdates the verse (see srs.testedLast). */
+  finishExam() {
+    const scored = scoreExam(this.state.exam.questions, this.state.examAnswers);
+    const { progress, rows } = applyExam({ progress: this.state.progress, results: scored.results });
+    const log = { ...this.state.log };
+    const today = dayKey(new Date());
+    log[today] = (log[today] || 0) + rows.length;
+    this.save(progress, log);
+    this.setState({ view: "test-done", examResult: { ...scored, rows } });
+  }
+
+  /* Leaving part-way through is a walk-out, not a fail: nothing is marked and
+   * no verse moves — which is worth confirming, since a half-finished paper is
+   * thrown away rather than kept. */
+  leaveExam() {
+    this.setState({ view: "board", exam: null, examPick: null, examLeaveAsk: false });
+  }
+
   /* ── the action table handed to the view-model ──────────────────────────── */
 
   buildActions() {
@@ -413,6 +548,23 @@ export class App extends React.Component {
         set({ scrambleLevel: level, scrambleOrder: [], scrambleWrong: -1 });
       },
 
+      // test mode
+      setExamSetup: (patch) => this.setExamSetup(patch),
+      toggleExamActivity: (key) => this.toggleExamActivity(key),
+      startExam: () => this.startExam(),
+      answerExam: (value) => this.answerExam(value),
+      pickMatchVerse: (key) => this.pickMatchVerse(key),
+      pickMatchRef: (key) => this.pickMatchRef(key),
+      nextQuestion: () => this.nextQuestion(),
+      prevQuestion: () => this.prevQuestion(),
+      askLeaveExam: () => set({ examLeaveAsk: true }),
+      cancelLeaveExam: () => set({ examLeaveAsk: false }),
+      leaveExam: () => this.leaveExam(),
+
+      // review mode
+      setReviewSetup: (patch) => this.setReviewSetup(patch),
+      startReviewSession: (ids) => this.startSession(null, ids),
+
       // leaderboard
       setLeaderFilter: (key, value) => this.setState((s) => ({ leaderFilter: { ...s.leaderFilter, [key]: value } })),
     };
@@ -455,8 +607,9 @@ export class App extends React.Component {
     return html`<div
       style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)")}
     >
-      ${headerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)} ${v.isReview && reviewView(v)}
-      ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)}
+      ${headerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)} ${v.isReviewSetup && reviewSetupView(v)} ${v.isReview && reviewView(v)}
+      ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)}
+      ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)}
     </div>`;
   }
 }

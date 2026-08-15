@@ -12,7 +12,8 @@ import { deriveTotals } from "./totals.js";
 import { chromeVals } from "./chrome.js";
 import { boardVals } from "./board.js";
 import { listVals } from "./list.js";
-import { reviewVals } from "./review.js";
+import { reviewVals, reviewSetupVals } from "./review.js";
+import { examVals } from "./exam.js";
 import { leaderboardVals } from "./leaderboard.js";
 
 export function buildViewModel({ state, groupName, deadline, actions, now = new Date() }) {
@@ -36,7 +37,9 @@ export function buildViewModel({ state, groupName, deadline, actions, now = new 
     ...chromeVals({ state, groupName, actions }),
     ...boardVals({ state, totals, prog, actions, today: now }),
     ...listVals({ state, prog, actions }),
+    ...reviewSetupVals({ state, prog, actions }),
     ...reviewVals({ state, prog, totals, actions }),
+    ...examVals({ state, actions, now: now.getTime() }),
     ...leaderboardVals({ state, totals, myStreak, actions }),
   };
 }

@@ -21,3 +21,16 @@ test("merge helpers tolerate null/undefined inputs", () => {
   assert.deepEqual(mergeProgress(null, undefined), {});
   assert.deepEqual(mergeLog(undefined, null), {});
 });
+
+test("mergeProgress reconciles a backdated test result on when it was written", () => {
+  // A test dates a verse back to the freshness it measured, so `last` alone
+  // would make the newer record look like the older one (see srs.testedLast).
+  const tested = { 1: { hits: 3, status: "memorized", last: 500, stability: 2, updatedAt: 2000 } };
+  const reviewed = { 1: { hits: 2, status: "learning", last: 1000, stability: 4 } };
+  assert.equal(mergeProgress(reviewed, tested)[1], tested[1]);
+  assert.equal(mergeProgress(tested, reviewed)[1], tested[1]);
+
+  // …and a review after that test wins again, stale stamp carried along or not.
+  const after = { 1: { ...tested[1], hits: 4, last: 3000 } };
+  assert.equal(mergeProgress(tested, after)[1], after[1]);
+});

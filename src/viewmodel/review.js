@@ -112,7 +112,7 @@ export function reviewVals({ state, prog, totals, actions }) {
     curRef: cur ? cur.ref : "",
     curText,
     curMeta: cur ? (cur.testament === "OT" ? "Old Testament" : "New Testament") + " · " + words.length + " words" : "",
-    curProgressNote: cur ? (prog.record(cur.id).hits || 0) + " of " + REVIEWS_TO_COMMIT + " clean reviews" : "",
+    curProgressNote: "",
 
     // Peeking at the text is available in every mode except the flashcard,
     // which is already a reveal.
@@ -198,5 +198,47 @@ export function reviewVals({ state, prog, totals, actions }) {
       " are committed, with " +
       totals.daysLeft +
       " days to go.",
+  };
+}
+
+export function reviewSetupVals({ state, prog, actions }) {
+  const setup = state.reviewSetup || { target: "due", manualSize: 10, manualFreshness: 50 };
+  const isDue = setup.target === "due";
+  
+  const dueTopX = state.profile && state.profile.dueTopX !== undefined ? state.profile.dueTopX : 10;
+  const dueFreshness = state.profile && state.profile.dueFreshness !== undefined ? state.profile.dueFreshness : 50;
+  const dueRanked = state.passages.sort((a, b) => prog.retrievability(a.id) - prog.retrievability(b.id));
+  const dueNow = dueRanked.filter((p) => prog.isDue(p.id) && prog.freshness(p.id) < dueFreshness).slice(0, dueTopX);
+
+  const manualRanked = dueRanked.filter(p => prog.statusOf(p.id) !== "memorized" && prog.freshness(p.id) <= setup.manualFreshness);
+  const manualVerses = manualRanked.slice(0, setup.manualSize);
+
+  const poolSize = isDue ? dueNow.length : manualVerses.length;
+  const versesToReview = isDue ? dueNow : manualVerses;
+
+  return {
+    reviewSetupTarget: setup.target,
+    reviewSetupSizes: [5, 10, 20, 0].map(n => ({
+      key: String(n),
+      label: n === 0 ? "All" : String(n),
+      onClick: () => actions.setReviewSetup({ manualSize: n }),
+      style: segButton(setup.manualSize === n)
+    })),
+    reviewSetupFreshness: setup.manualFreshness,
+    onReviewSetupFreshness: (e) => actions.setReviewSetup({ manualFreshness: Number(e.target.value) }),
+    
+    setReviewTargetDue: () => actions.setReviewSetup({ target: "due" }),
+    setReviewTargetManual: () => actions.setReviewSetup({ target: "manual" }),
+    
+    reviewSetupDueStyle: segButton(isDue),
+    reviewSetupManualStyle: segButton(!isDue),
+    
+    reviewSetupCanStart: poolSize > 0,
+    reviewSetupNote: isDue 
+      ? (poolSize ? poolSize + " verses are due right now." : "No verses are currently due.")
+      : (poolSize ? poolSize + " uncommitted verses match these settings." : "No uncommitted verses match these settings."),
+      
+    startReviewSession: () => actions.startReviewSession(versesToReview.map(v => v.id)),
+    cancelReviewSession: () => actions.goto("board"),
   };
 }

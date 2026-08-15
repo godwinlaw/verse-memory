@@ -4,9 +4,12 @@
 import { isProfileComplete } from "../profile.js";
 import { muted } from "../ui/tokens.js";
 
+/* `also` lists the views that belong to a nav item without being it — the
+ * screens either side of a session, which should keep their entry underlined. */
 const NAV = [
-  { key: "board", label: "Board" },
+  { key: "board", label: "Board", also: ["done"] },
   { key: "list", label: "Passages" },
+  { key: "test-setup", label: "Test", also: ["test", "test-done"] },
   { key: "leaderboard", label: "Leaderboard" },
 ];
 
@@ -34,9 +37,7 @@ export function chromeVals({ state, groupName, actions }) {
       key: n.key,
       label: n.label,
       onClick: () => actions.goto(n.key),
-      // The session-complete screen still belongs to the board, so keep Board
-      // underlined there even though it isn't the active view.
-      style: navStyle(state.view === n.key, state.view === n.key || (n.key === "board" && state.view === "done")),
+      style: navStyle(state.view === n.key, state.view === n.key || (n.also || []).includes(state.view)),
     })),
 
     isBoard: state.view === "board",
@@ -44,9 +45,14 @@ export function chromeVals({ state, groupName, actions }) {
     isReview: state.view === "review",
     isLeader: state.view === "leaderboard",
     isDone: state.view === "done",
+    isReviewSetup: state.view === "review-setup",
+    isExamSetup: state.view === "test-setup",
+    isExam: state.view === "test",
+    isExamDone: state.view === "test-done",
 
     goBoard: () => actions.goto("board"),
     goList: () => actions.goto("list"),
+    goReviewSetup: () => actions.goto("review-setup"),
     startDue: () => actions.startSession(),
   };
 }

@@ -7,6 +7,7 @@
  */
 
 import { passages } from "../../data/passages.js";
+import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "../../src/exam.js";
 
 /* 2026-08-15T12:00:00Z — matches freezeClock()'s default so freshness values are
  * stable. Offsets are expressed in days before that instant. */
@@ -48,7 +49,7 @@ const PEERS = [
   { name: "Katherine Johnson", count: 12, streak: 0, ministryGroup: "ECM", gender: "Female", gradClass: 2024 },
 ];
 
-export const PROPS = { groupName: "Acts 2 Network - Berkeley", deadline: "2026-09-30" };
+export const PROPS = { groupName: "Acts 2 Network - Berkeley", deadline: "2026-10-31" };
 
 /* The state an App carries once local data has loaded and a member is signed in.
  * Individual scenarios override just the keys they care about. */
@@ -80,6 +81,13 @@ export function baseState(overrides = {}) {
     search: "",
     filter: "All",
     sessionCount: 0,
+    examSetup: DEFAULT_SETUP,
+    exam: null,
+    examIndex: 0,
+    examAnswers: {},
+    examPick: null,
+    examLeaveAsk: false,
+    examResult: null,
     peers: PEERS,
     auth: {
       status: "signed-in",
@@ -95,6 +103,59 @@ export function baseState(overrides = {}) {
 }
 
 const reviewing = (overrides) => baseState({ view: "review", queue: [1, 2, 3], qi: 1, sessionCount: 1, ...overrides });
+
+/* One fixed paper, covering all four activities (ten verses dealt round-robin
+ * over four activities reaches every one). The seed is fixed, so the questions —
+ * and therefore the markup — are the same on every run. */
+export const EXAM = buildExam({
+  passages,
+  progress: progressFixture(),
+  setup: normalizeSetup({ ...DEFAULT_SETUP, size: 20 }),
+  now: NOW,
+  seed: 20260815,
+});
+
+export const questionAt = (kind) => EXAM.questions.findIndex((q) => q.kind === kind);
+
+/* A part-finished paper: references named right, multiple choice guessed wrong,
+ * sentences half written, one pair matched. Enough for the summary to show both
+ * a tick and a cross, and both a verse that held and one that faded. */
+const EXAM_ANSWERS = Object.fromEntries(
+  EXAM.questions.map((q, i) => {
+    if (q.kind === "name-ref") return [i, q.ref];
+    if (q.kind === "pick-ref") return [i, q.options[0].key];
+    if (q.kind === "finish") return [i, { text: q.answer.split(" ").slice(0, 3).join(" "), ref: q.ref }];
+    if (q.kind === "match") return [i, { [q.verses[0].key]: q.verses[0].key }];
+    if (q.kind === "scramble") return [i, [0, 1]];
+    if (q.kind === "blanks") return [i, { [q.blanks[0]]: q.words[q.blanks[0]] }];
+    return [i, q.text.split(" ").slice(0, 3).join(" ")]; // type
+  }),
+);
+
+const scored = scoreExam(EXAM.questions, EXAM_ANSWERS);
+const EXAM_RESULT = {
+  ...scored,
+  rows: applyExam({ progress: progressFixture(), results: scored.results, now: NOW }).rows,
+};
+
+/* A paper over committed verses only — the three with real history — sat badly.
+ * Verse 1 goes into it nearly fully fresh, so this is the fixture where the
+ * summary has a verse that came out faded. */
+const COMMITTED_EXAM = buildExam({
+  passages,
+  progress: progressFixture(),
+  setup: normalizeSetup({ ...DEFAULT_SETUP, committedOnly: true, activities: ["name-ref"] }),
+  now: NOW,
+  seed: 7,
+});
+const badly = scoreExam(COMMITTED_EXAM.questions, {});
+const FADED_RESULT = {
+  ...badly,
+  rows: applyExam({ progress: progressFixture(), results: badly.results, now: NOW }).rows,
+};
+
+const testing = (kind, overrides) =>
+  baseState({ view: "test", exam: EXAM, examIndex: questionAt(kind), examAnswers: EXAM_ANSWERS, ...overrides });
 
 export const scenarios = [
   // ── auth gate ──────────────────────────────────────────────────────────────
@@ -149,6 +210,44 @@ export const scenarios = [
     state: reviewing({ mode: "scramble", scrambleOrder: [0, 1], scrambleWrong: 3, scrambleLevel: 0 }),
   },
   { name: "review/peeking", state: reviewing({ mode: "blanks", showHelp: true }) },
+
+  // ── test mode: setup, one screen per activity, summary ─────────────────────
+  { name: "test/setup-default", state: baseState({ view: "test-setup" }) },
+  {
+    name: "test/setup-narrowed",
+    state: baseState({
+      view: "test-setup",
+      examSetup: normalizeSetup({ size: 30, committedOnly: true, maxFreshness: 40, activities: ["match"] }),
+    }),
+  },
+  {
+    name: "test/setup-empty-pool",
+    state: baseState({
+      view: "test-setup",
+      progress: {},
+      examSetup: normalizeSetup({ ...DEFAULT_SETUP, committedOnly: true }),
+    }),
+  },
+  { name: "test/name-ref", state: testing("name-ref") },
+  { name: "test/name-ref-blank", state: testing("name-ref", { examAnswers: {} }) },
+  { name: "test/pick-ref", state: testing("pick-ref") },
+  { name: "test/finish", state: testing("finish") },
+  { name: "test/match", state: testing("match") },
+  {
+    name: "test/match-picking",
+    state: testing("match", { examPick: EXAM.questions[questionAt("match")].verses[1].key }),
+  },
+  { name: "test/scramble", state: testing("scramble") },
+  { name: "test/blanks", state: testing("blanks") },
+  { name: "test/type", state: testing("type") },
+  { name: "test/first-question", state: testing("name-ref", { examIndex: 0 }) },
+  { name: "test/last-question", state: testing("name-ref", { examIndex: EXAM.questions.length - 1 }) },
+  { name: "test/leaving", state: testing("finish", { examLeaveAsk: true }) },
+  { name: "test/summary", state: baseState({ view: "test-done", exam: EXAM, examResult: EXAM_RESULT }) },
+  {
+    name: "test/summary-faded",
+    state: baseState({ view: "test-done", exam: COMMITTED_EXAM, examResult: FADED_RESULT }),
+  },
 
   // ── session end + leaderboard ──────────────────────────────────────────────
   { name: "done/session", state: baseState({ view: "done", sessionCount: 8 }) },

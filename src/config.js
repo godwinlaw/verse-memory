@@ -9,7 +9,7 @@ const appOverrides = (typeof window !== "undefined" && window.__APP_CONFIG__) ||
 
 export const appConfig = {
   groupName: "Acts 2 Network - Berkeley",
-  deadline: "2026-09-30",
+  deadline: "2026-10-31",
   ...appOverrides,
 };
 

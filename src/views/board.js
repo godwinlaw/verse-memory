@@ -91,7 +91,10 @@ export function boardView(v) {
       </div>
 
       <div style=${sx("display:flex;flex-direction:column;gap:14px")}>
-        <h4 style=${sx("margin:0;letter-spacing:.02em")}>Ways to review</h4>
+        <div style=${sx("display:flex;align-items:baseline;gap:12px")}>
+          <h4 style=${sx("margin:0;letter-spacing:.02em")}>Self study</h4>
+          <div style=${sx(LABEL_META)}>four ways to review, untimed and unmarked</div>
+        </div>
         <div style=${sx("display:grid;grid-template-columns:1fr 1fr;gap:14px")}>
           ${v.modes.map(
             (m) =>
@@ -169,8 +172,9 @@ export function boardView(v) {
             ${v.paceHeadline}
           </div>
           <p style=${sx(`margin:0;font-size:13px;line-height:1.6;color:${muted(65)}`)}>${v.paceBody}</p>
-          <div style=${sx("display:flex;gap:10px;margin-top:2px")}>
+          <div style=${sx("display:flex;gap:10px;margin-top:2px;flex-wrap:wrap")}>
             <button className="btn btn-primary" onClick=${v.startDue}>Start a session</button>
+            <button className="btn btn-secondary" onClick=${v.goTest}>Take a test</button>
             <button className="btn btn-secondary" onClick=${v.goList}>Browse all ${v.goal}</button>
           </div>
         </div>

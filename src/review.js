@@ -51,8 +51,11 @@ export const modeByKey = (key) => MODES.find((m) => m.key === key) || MODES[0];
 
 /* mulberry32 — a small, well-distributed 32-bit PRNG. Math.imul and `>>> 0` keep
  * every step inside 32 bits, so it stays exact in doubles (a plain `s * bigConst`
- * LCG silently loses precision past 2^53 and degenerates). */
-function mulberry32(seed) {
+ * LCG silently loses precision past 2^53 and degenerates).
+ *
+ * Exported because Test mode builds a whole paper from one seed (see exam.js)
+ * and needs the generator itself, not a single shuffle. */
+export function mulberry32(seed) {
   let s = seed >>> 0;
   return () => {
     s = (s + 0x6d2b79f5) >>> 0;

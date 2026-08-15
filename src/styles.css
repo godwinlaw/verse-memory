@@ -294,6 +294,17 @@ figcaption {
 .btn-primary:active {
   background: var(--color-accent-700);
 }
+.btn-primary-inverse {
+  background: transparent;
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.btn-primary-inverse:hover {
+  background: var(--color-accent-100);
+}
+.btn-primary-inverse:active {
+  background: var(--color-accent-200);
+}
 .btn-secondary {
   border-color: var(--color-divider);
 }

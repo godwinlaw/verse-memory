@@ -81,6 +81,33 @@ export function profileFormView(v) {
         />
       </label>
 
+      <div style=${sx("margin-top:10px;padding-top:20px;border-top:1px solid var(--color-divider);display:flex;flex-direction:column;gap:20px")}>
+        <div style=${sx(SCREEN_SUBTITLE)}>DUE NOW SETTINGS</div>
+        <label style=${sx(FIELD)}>
+          <span style=${sx(LABEL_SECTION)}>Top X verses to show in "Due Now"</span>
+          <input
+            className="input"
+            type="number"
+            min="1"
+            value=${v.dueTopX}
+            onChange=${v.onDueTopX}
+            ...${NUMERIC_KEYBOARD}
+          />
+        </label>
+        <label style=${sx(FIELD)}>
+          <span style=${sx(LABEL_SECTION)}>Freshness threshold (%) for "Due Now"</span>
+          <input
+            className="input"
+            type="number"
+            min="0"
+            max="100"
+            value=${v.dueFreshness}
+            onChange=${v.onDueFreshness}
+            ...${NUMERIC_KEYBOARD}
+          />
+        </label>
+      </div>
+
       <div style=${sx("display:flex;gap:10px;margin-top:4px")}>
         <button
           className="btn btn-primary"

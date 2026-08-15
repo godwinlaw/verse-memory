@@ -75,6 +75,11 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
     gradClass: draft.gradClass == null ? "" : draft.gradClass,
     onGradClass: (e) => actions.setProfileField("gradClass", e.target.value),
 
+    dueTopX: draft.dueTopX !== undefined ? draft.dueTopX : 10,
+    onDueTopX: (e) => actions.setProfileField("dueTopX", e.target.value),
+    dueFreshness: draft.dueFreshness !== undefined ? draft.dueFreshness : 50,
+    onDueFreshness: (e) => actions.setProfileField("dueFreshness", e.target.value),
+
     onSubmit: actions.submitProfile,
     onCancel: actions.cancelEditProfile,
   };

@@ -34,11 +34,14 @@ function activityDays(log, today) {
 export function boardVals({ state, totals, prog, actions, today = new Date() }) {
   const { goal, memorized, pct, daysLeft, perWeek, deadline } = totals;
 
+  const dueTopX = state.profile && state.profile.dueTopX !== undefined ? state.profile.dueTopX : 10;
+  const dueFreshness = state.profile && state.profile.dueFreshness !== undefined ? state.profile.dueFreshness : 50;
+
   // Prefer passages that are actually due; if none are, fall back to the
   // stalest few so the board is never empty.
   const ranked = dueOrder(state.passages, state.progress);
-  const dueNow = ranked.filter((p) => prog.isDue(p.id));
-  const due = (dueNow.length ? dueNow : ranked).slice(0, DUE_PREVIEW_ROWS);
+  const dueNow = ranked.filter((p) => prog.isDue(p.id) && prog.freshness(p.id) < dueFreshness);
+  const due = (dueNow.length ? dueNow : ranked).slice(0, dueTopX);
 
   const days = activityDays(state.log, today);
   const peak = Math.max(MIN_CHART_PEAK, ...days.map((x) => x.n));
@@ -137,8 +140,6 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
           daysLeft +
           " days. That is about " +
           perWeek +
-          " newly committed each week, plus review of what you already hold. A passage counts as committed after " +
-          NUMBER_WORD[REVIEWS_TO_COMMIT] +
-          " clean reviews.",
+          " newly committed each week, plus review of what you already hold.",
   };
 }
