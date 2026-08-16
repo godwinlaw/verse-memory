@@ -11,7 +11,7 @@
 
 window.__APP_CONFIG__ = {
   groupName: "Acts 2 Network - Berkeley",
-  deadline: "2026-09-30", // YYYY-MM-DD, the memorization goal date
+  deadline: "2026-10-31", // YYYY-MM-DD, the memorization goal date
 };
 
 // Cloud sync uses the default Firebase project baked into src/config.js. Leave

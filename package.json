@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "serve -l 8080 .",
     "start": "serve -l 8080 .",
-    "test": "node --test",
+    "test": "node --test 'test/**/*.test.mjs'",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -20,7 +20,10 @@
     "@eslint/js": "^9.13.0",
     "eslint": "^9.13.0",
     "globals": "^15.11.0",
+    "htm": "^3.1.1",
     "prettier": "^3.3.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "serve": "^14.2.4",
     "wrangler": "^4.42.0"
   }

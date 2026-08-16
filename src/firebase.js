@@ -1,13 +1,14 @@
 /* Firebase authentication + cloud sync.
  *
- * Access is restricted to Google accounts in the Acts 2 Network Workspace domain
- * (gpmail.org). Sign-in uses Google with the `hd` hint, but the real enforcement
- * is twofold: (1) we reject and sign out any non-gpmail.org account on the
- * client, and (2) Firestore security rules (deploy/firestore.rules) allow access
- * only to verified @gpmail.org identities. Never rely on the client alone.
+ * Access is restricted to Google accounts in the Acts 2 Network Workspace
+ * domains (see ALLOWED_DOMAINS below). Enforcement is twofold: (1) the client
+ * rejects and signs out any account outside those domains, and (2) Firestore
+ * security rules (deploy/firestore.rules) allow access only to verified
+ * identities in them. Only the second is security — never rely on the client.
  *
  * Once a member is signed in, their progress syncs across devices:
- *   • Firestore stores one document per user at users/{uid} = { progress, log }.
+ *   • Firestore stores one document per user at
+ *     users/{uid} = { name, email, progress, log, profile }.
  *   • On sign-in we pull the remote doc and hand it back for merging.
  *   • Every local save is debounced and pushed to the user's doc.
  *
@@ -18,19 +19,32 @@
  * Setup checklist (Firebase console):
  *   1. Authentication → Sign-in method → enable "Google".
  *   2. Firestore Database → create, then deploy deploy/firestore.rules.
- *   3. (Recommended) In Google Cloud → OAuth consent screen, set User type to
- *      Internal so only gpmail.org Workspace users can consent.
+ *   3. Add the app's domain under Authentication → Settings → Authorized
+ *      domains.
+ *
+ * Note: because sign-in spans two Workspace domains, Google's single-domain `hd`
+ * hint is not used and the OAuth consent screen cannot be locked to one
+ * Workspace. Domain membership is enforced by emailAllowed() and the rules.
  */
 
 import { firebaseConfig, isFirebaseConfigured } from "./config.js";
 import { registerRemoteSync } from "./storage.js";
+import { cleanDisplayName } from "./profile.js";
 
 const SDK_VERSION = "11.6.1";
 const SDK = `https://www.gstatic.com/firebasejs/${SDK_VERSION}`;
 const PUSH_DEBOUNCE_MS = 800;
 
-// Google Workspace domains permitted to sign in (Acts 2 Network).
+/* Google Workspace domains permitted to sign in (Acts 2 Network).
+ *
+ * This list is only half the gate. The authoritative check is in
+ * deploy/firestore.rules — adding or removing a domain means editing BOTH and
+ * redeploying the rules; changing this file alone is insecure and ineffective. */
 export const ALLOWED_DOMAINS = ["gpmail.org", "acts2.network"];
+
+/* The domain named on the sign-in screen. Accounts in any ALLOWED_DOMAINS entry
+ * can sign in; naming one keeps the prompt short. */
+export const PRIMARY_DOMAIN = "acts2.network";
 
 let services = null; // memoized { app, auth, db, authMod, dbMod }
 
@@ -80,18 +94,18 @@ export async function initAuth({ onChange = () => {}, onRemoteData } = {}) {
       onChange({ status: "denied", reason: user.email || "" });
       try {
         await signOut(s.auth);
-      } catch (e) {}
+      } catch {}
       return;
     }
 
     try {
-      await setupSync(s, user.uid, onRemoteData);
+      await setupSync(s, user, onRemoteData);
     } catch (e) {
       console.warn("sync setup failed:", e);
     }
     onChange({
       status: "signed-in",
-      user: { uid: user.uid, email: user.email, name: user.displayName, photo: user.photoURL },
+      user: { uid: user.uid, email: user.email, name: cleanDisplayName(user.displayName), photo: user.photoURL },
     });
   });
 }
@@ -109,7 +123,7 @@ export async function signIn() {
   if (!emailAllowed(cred.user && cred.user.email)) {
     try {
       await signOut(s.auth);
-    } catch (e) {}
+    } catch {}
     const err = new Error("not-allowed-domain");
     err.code = "not-allowed-domain";
     throw err;
@@ -122,12 +136,17 @@ export async function signOutUser() {
   await s.authMod.signOut(s.auth);
 }
 
-async function setupSync(s, uid, onRemoteData) {
+async function setupSync(s, user, onRemoteData) {
   const { doc, getDoc, setDoc } = s.dbMod;
-  const userDoc = doc(s.db, "users", uid);
+  const userDoc = doc(s.db, "users", user.uid);
 
-  const push = debounce(({ progress, log }) => {
-    setDoc(userDoc, { progress, log, updatedAt: Date.now() }, { merge: true }).catch((e) =>
+  // Record the member's identity so the leaderboard can show a name for them.
+  setDoc(userDoc, { name: cleanDisplayName(user.displayName), email: user.email || "" }, { merge: true }).catch((e) =>
+    console.warn("Firebase identity write failed:", e),
+  );
+
+  const push = debounce(({ progress, log, profile }) => {
+    setDoc(userDoc, { progress, log, profile: profile || {}, updatedAt: Date.now() }, { merge: true }).catch((e) =>
       console.warn("Firebase push failed:", e),
     );
   }, PUSH_DEBOUNCE_MS);
@@ -137,8 +156,44 @@ async function setupSync(s, uid, onRemoteData) {
     const snap = await getDoc(userDoc);
     if (snap.exists()) {
       const data = snap.data() || {};
-      onRemoteData({ progress: data.progress || {}, log: data.log || {} });
+      onRemoteData({ progress: data.progress || {}, log: data.log || {}, profile: data.profile || {} });
     }
+  }
+}
+
+/* Read every registered member for the leaderboard. Returns one row per user
+ * ({ uid, name, email, profile, progress, log }); the caller derives committed
+ * counts and streaks. Firestore rules permit any signed-in Acts member to read
+ * the users collection for exactly this. Resolves to [] when Firebase is
+ * unconfigured or the read is refused (e.g. before sign-in), so the UI degrades
+ * to a solo board rather than erroring. */
+export async function fetchRoster() {
+  if (!isFirebaseConfigured()) return [];
+  let s;
+  try {
+    s = await loadServices();
+  } catch {
+    return [];
+  }
+  const { collection, getDocs } = s.dbMod;
+  try {
+    const snap = await getDocs(collection(s.db, "users"));
+    const rows = [];
+    snap.forEach((d) => {
+      const data = d.data() || {};
+      rows.push({
+        uid: d.id,
+        name: data.name || "",
+        email: data.email || "",
+        profile: data.profile || {},
+        progress: data.progress || {},
+        log: data.log || {},
+      });
+    });
+    return rows;
+  } catch (e) {
+    console.warn("Roster fetch failed:", e);
+    return [];
   }
 }
 

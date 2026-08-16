@@ -1,26 +1,20 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>The Memory Board · Acts 2 Network - Berkeley</title>
-  <link rel="stylesheet" href="./src/styles.css">
-  <style>
-    html, body { margin: 0; background: #f2f2f3; }
-    a { color: var(--color-accent); }
-    a:hover { color: var(--color-accent-700); }
-    @keyframes nudge { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
-  </style>
-  <!-- React + htm, loaded as classic scripts so their globals are ready before the module runs -->
-  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js" crossorigin></script>
-  <!-- Optional deploy-time config (church name, deadline, Firebase). Absent by
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Memory Board · Acts 2 Network - Berkeley</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+    <!-- React + htm, loaded as classic scripts so their globals are ready before the module runs -->
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js" crossorigin></script>
+    <!-- Optional deploy-time config (church name, deadline, Firebase). Absent by
        default — copy config.example.js to config.js to override. -->
-  <script src="./config.js"></script>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="./src/main.js"></script>
-</body>
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
 </html>

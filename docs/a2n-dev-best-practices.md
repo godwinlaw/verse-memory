@@ -16,8 +16,6 @@ Application architecture should be [container](https://www.docker.com/resources/
 - Disposability / scalability of containers
 - Configuration from environment
 
-
-
 ### CI / CD
 
 ![](https://static.slab.com/prod/uploads/qist5ogo/posts/images/FvplOW60geZeIuebJFaa8won.png?jwt=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL3NsYWJzdGF0aWMuY29tIiwiZXhwIjoxNzg3OTYxNTA1LCJpYXQiOjE3ODY3NTE5MDUsImlzcyI6Imh0dHBzOi8vYXBwLnNsYWIuY29tIiwianRpIjoiMzM1dDJwMWg4OTk4bms1ZDExOTMzOG0xIiwibmJmIjoxNzg2NzUxOTA1LCJwYXRoIjoicHJvZC9hc3NldHMvcWlzdDVvZ28vcG9zdC8wdW50Z3NhYSJ9.JKhP9BN-EdwMYLN5ALtXC1ywhBmLOTdS56Lx8UpTP74q-cRxPYRitMZ3uW-avf-1-K171KgjDmg1eFT2W2D-waUfSZflHdkvsbLm39Rvmwf09harr2tULWfSVw13k30ataswtvAm1fF551IJZPkIqkpc8t5Jt2_dMmFoxHBdVWucAoHwKpz8sunC9WJA7d636YxP58ETnBOIJ9Fl1CUE9hWy9FrC7BSHf2kYPlgmVOYv7wiOkqUa80XN0_3pfszRFD_JPCJbKlIi4wmaBZ_u4wu8Ky4CVXnmjm7ddSoXq8swtSjPwvcrH7GlDDskelO3s722L6vWS0jSlYaakSkF1g)
@@ -25,10 +23,6 @@ Application architecture should be [container](https://www.docker.com/resources/
 Build, test, release, deploy should all be handled by automated [continuous integration](https://aws.amazon.com/devops/continuous-integration) and continuous deployment.
 
 No one should be manually building / uploading artifacts / running commands over SSH for purposes of deployment.
-
-
-
-
 
 ### Infrastructure / Configuration as Code
 
@@ -44,23 +38,13 @@ All infrastructure and configuration should be codified declaratively in [GitHub
 
 ![](https://static.slab.com/prod/uploads/qist5ogo/posts/images/kgi5dtY3Hiaw65I64M3xC0af.svg?jwt=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL3NsYWJzdGF0aWMuY29tIiwiZXhwIjoxNzg3OTYxNTA1LCJpYXQiOjE3ODY3NTE5MDUsImlzcyI6Imh0dHBzOi8vYXBwLnNsYWIuY29tIiwianRpIjoiMzM1dDJwMWg4OTk4bms1ZDExOTMzOG0xIiwibmJmIjoxNzg2NzUxOTA1LCJwYXRoIjoicHJvZC9hc3NldHMvcWlzdDVvZ28vcG9zdC8wdW50Z3NhYSJ9.JKhP9BN-EdwMYLN5ALtXC1ywhBmLOTdS56Lx8UpTP74q-cRxPYRitMZ3uW-avf-1-K171KgjDmg1eFT2W2D-waUfSZflHdkvsbLm39Rvmwf09harr2tULWfSVw13k30ataswtvAm1fF551IJZPkIqkpc8t5Jt2_dMmFoxHBdVWucAoHwKpz8sunC9WJA7d636YxP58ETnBOIJ9Fl1CUE9hWy9FrC7BSHf2kYPlgmVOYv7wiOkqUa80XN0_3pfszRFD_JPCJbKlIi4wmaBZ_u4wu8Ky4CVXnmjm7ddSoXq8swtSjPwvcrH7GlDDskelO3s722L6vWS0jSlYaakSkF1g)
 
-
-
-
-
 (Not strictly required, but highly recommended)
 
-
-
-
-
-
-
 - [Microservice](https://aws.amazon.com/microservices)-based architecture: avoid monolithic architectures (looking at you, [Rails](https://rubyonrails.org)) in favor of microservices
-    - E.g., replace a monolithic MVC framework (e.g., [Django](https://www.djangoproject.com), [Rails](https://rubyonrails.org))-based app with a [three-tier](https://en.wikipedia.org/wiki/Multitier_architecture#Three-tier_architecture) architecture:
-        - (1) persistence tier (e.g., [Amazon DynamoDB](https://aws.amazon.com/dynamodb) / [RDS](https://aws.amazon.com/rds))
-        - (2) application tier (e.g., REST API service in [Go](https://golang.org) / [Node.js](https://nodejs.org) / [Java](https://openjdk.java.net))
-        - (3) client tier (e.g., [React](https://reactjs.org) app)
+  - E.g., replace a monolithic MVC framework (e.g., [Django](https://www.djangoproject.com), [Rails](https://rubyonrails.org))-based app with a [three-tier](https://en.wikipedia.org/wiki/Multitier_architecture#Three-tier_architecture) architecture:
+    - (1) persistence tier (e.g., [Amazon DynamoDB](https://aws.amazon.com/dynamodb) / [RDS](https://aws.amazon.com/rds))
+    - (2) application tier (e.g., REST API service in [Go](https://golang.org) / [Node.js](https://nodejs.org) / [Java](https://openjdk.java.net))
+    - (3) client tier (e.g., [React](https://reactjs.org) app)
 
 ## Standardization, Discoverability, Documentation (be others-centered)
 
@@ -71,7 +55,7 @@ For consistency and discoverability, we want one standard way of doing things, o
 Unless adequate warrant exists for deviating, everything should be stored / hosted in our:
 
 - [GracepointMinistries](https://github.com/GracepointMinistries) GitHub organization
-- Gracepoint [AWS](https://aws.amazon.com), [GCP](https://cloud.google.com), [Azure](https://azure.microsoft.com)  accounts
+- Gracepoint [AWS](https://aws.amazon.com), [GCP](https://cloud.google.com), [Azure](https://azure.microsoft.com) accounts
 
 and accompanied by adequate documentation.
 
@@ -93,10 +77,6 @@ We don't have the budget of a tech company, so need to optimize costs where poss
 
 All our source code is stored in GitHub, in the [GracepointMinistries](https://github.com/GracepointMinistries) organization.
 
-
-
-
-
 ## CI / CD: Drone
 
 ![](https://static.slab.com/prod/uploads/qist5ogo/posts/images/IZITiHOnfx4qns31ycxDH5Yg.png?jwt=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL3NsYWJzdGF0aWMuY29tIiwiZXhwIjoxNzg3OTYxNTA1LCJpYXQiOjE3ODY3NTE5MDUsImlzcyI6Imh0dHBzOi8vYXBwLnNsYWIuY29tIiwianRpIjoiMzM1dDJwMWg4OTk4bms1ZDExOTMzOG0xIiwibmJmIjoxNzg2NzUxOTA1LCJwYXRoIjoicHJvZC9hc3NldHMvcWlzdDVvZ28vcG9zdC8wdW50Z3NhYSJ9.JKhP9BN-EdwMYLN5ALtXC1ywhBmLOTdS56Lx8UpTP74q-cRxPYRitMZ3uW-avf-1-K171KgjDmg1eFT2W2D-waUfSZflHdkvsbLm39Rvmwf09harr2tULWfSVw13k30ataswtvAm1fF551IJZPkIqkpc8t5Jt2_dMmFoxHBdVWucAoHwKpz8sunC9WJA7d636YxP58ETnBOIJ9Fl1CUE9hWy9FrC7BSHf2kYPlgmVOYv7wiOkqUa80XN0_3pfszRFD_JPCJbKlIi4wmaBZ_u4wu8Ky4CVXnmjm7ddSoXq8swtSjPwvcrH7GlDDskelO3s722L6vWS0jSlYaakSkF1g)
@@ -104,10 +84,6 @@ All our source code is stored in GitHub, in the [GracepointMinistries](https://g
 Our GitHub organization is follows a legacy billing plan (because of cost 🙃), so private repositories do not have access to [GitHub Actions](https://github.com/features/actions).
 
 For CI / CD, we self-host [Drone](https://drone.io), a free, lightweight, container-native CI platform with declarative, YAML syntax for pipeline specification.
-
-
-
-
 
 Drone is available at [https://build.gracepointonline.org](https://build.gracepointonline.org/), and access is federated by GitHub RBAC.
 
@@ -129,8 +105,6 @@ We use [Docker](https://www.docker.com) as our image format and container runtim
 
 Though [Amazon ECS](https://aws.amazon.com/ecs), [EKS](https://aws.amazon.com/eks), and [ECR](https://aws.amazon.com/ecr) support any [OCI](https://opencontainers.org)-compatible image format and container runtime, we've gone with Docker.
 
-
-
 ## Container Orchestration: Amazon ECS
 
 ![](https://static.slab.com/prod/uploads/qist5ogo/posts/images/mrmnox7KrRMCTb62iy6t0Uzo.png?jwt=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL3NsYWJzdGF0aWMuY29tIiwiZXhwIjoxNzg3OTYxNTA1LCJpYXQiOjE3ODY3NTE5MDUsImlzcyI6Imh0dHBzOi8vYXBwLnNsYWIuY29tIiwianRpIjoiMzM1dDJwMWg4OTk4bms1ZDExOTMzOG0xIiwibmJmIjoxNzg2NzUxOTA1LCJwYXRoIjoicHJvZC9hc3NldHMvcWlzdDVvZ28vcG9zdC8wdW50Z3NhYSJ9.JKhP9BN-EdwMYLN5ALtXC1ywhBmLOTdS56Lx8UpTP74q-cRxPYRitMZ3uW-avf-1-K171KgjDmg1eFT2W2D-waUfSZflHdkvsbLm39Rvmwf09harr2tULWfSVw13k30ataswtvAm1fF551IJZPkIqkpc8t5Jt2_dMmFoxHBdVWucAoHwKpz8sunC9WJA7d636YxP58ETnBOIJ9Fl1CUE9hWy9FrC7BSHf2kYPlgmVOYv7wiOkqUa80XN0_3pfszRFD_JPCJbKlIi4wmaBZ_u4wu8Ky4CVXnmjm7ddSoXq8swtSjPwvcrH7GlDDskelO3s722L6vWS0jSlYaakSkF1g)
@@ -143,8 +117,6 @@ With the introduction of [AWS EFS](https://aws.amazon.com/efs)-integration for [
 
 At this time we're not using[ EKS](https://aws.amazon.com/eks) for cost reasons ($144/month for a managed control plane before considering compute costs).
 
-
-
 ## IaC: Terraform
 
 ![](https://static.slab.com/prod/uploads/qist5ogo/posts/images/XUae37QvfiP87vWhiS9ehGzK.png?jwt=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL3NsYWJzdGF0aWMuY29tIiwiZXhwIjoxNzg3OTYxNTA1LCJpYXQiOjE3ODY3NTE5MDUsImlzcyI6Imh0dHBzOi8vYXBwLnNsYWIuY29tIiwianRpIjoiMzM1dDJwMWg4OTk4bms1ZDExOTMzOG0xIiwibmJmIjoxNzg2NzUxOTA1LCJwYXRoIjoicHJvZC9hc3NldHMvcWlzdDVvZ28vcG9zdC8wdW50Z3NhYSJ9.JKhP9BN-EdwMYLN5ALtXC1ywhBmLOTdS56Lx8UpTP74q-cRxPYRitMZ3uW-avf-1-K171KgjDmg1eFT2W2D-waUfSZflHdkvsbLm39Rvmwf09harr2tULWfSVw13k30ataswtvAm1fF551IJZPkIqkpc8t5Jt2_dMmFoxHBdVWucAoHwKpz8sunC9WJA7d636YxP58ETnBOIJ9Fl1CUE9hWy9FrC7BSHf2kYPlgmVOYv7wiOkqUa80XN0_3pfszRFD_JPCJbKlIi4wmaBZ_u4wu8Ky4CVXnmjm7ddSoXq8swtSjPwvcrH7GlDDskelO3s722L6vWS0jSlYaakSkF1g)
@@ -152,14 +124,6 @@ At this time we're not using[ EKS](https://aws.amazon.com/eks) for cost reasons 
 We run [Terraform](https://www.terraform.io) from directly within Drone for provisioning cloud infrastructure.
 
 State files are stored in [Amazon S3](https://aws.amazon.com/s3).
-
-
-
-
-
-
-
-
 
 ## Secrets: SOPS
 
@@ -193,7 +157,7 @@ The architecture of this base layer is described herein.
 
 Most of our resources are located in one [region](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html) for cost / standardization reasons, and [us-east-1](https://console.aws.amazon.com/console/home?region=us-east-1) is most feature complete in AWS' offerings, so everything lives there.
 
-## VPC  / Network
+## VPC / Network
 
 ![](https://static.slab.com/prod/uploads/qist5ogo/posts/images/0bjrVhqK4D1QcJLUeWthwFfi.png?jwt=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJodHRwczovL3NsYWJzdGF0aWMuY29tIiwiZXhwIjoxNzg3OTYxNTA1LCJpYXQiOjE3ODY3NTE5MDUsImlzcyI6Imh0dHBzOi8vYXBwLnNsYWIuY29tIiwianRpIjoiMzM1dDJwMWg4OTk4bms1ZDExOTMzOG0xIiwibmJmIjoxNzg2NzUxOTA1LCJwYXRoIjoicHJvZC9hc3NldHMvcWlzdDVvZ28vcG9zdC8wdW50Z3NhYSJ9.JKhP9BN-EdwMYLN5ALtXC1ywhBmLOTdS56Lx8UpTP74q-cRxPYRitMZ3uW-avf-1-K171KgjDmg1eFT2W2D-waUfSZflHdkvsbLm39Rvmwf09harr2tULWfSVw13k30ataswtvAm1fF551IJZPkIqkpc8t5Jt2_dMmFoxHBdVWucAoHwKpz8sunC9WJA7d636YxP58ETnBOIJ9Fl1CUE9hWy9FrC7BSHf2kYPlgmVOYv7wiOkqUa80XN0_3pfszRFD_JPCJbKlIi4wmaBZ_u4wu8Ky4CVXnmjm7ddSoXq8swtSjPwvcrH7GlDDskelO3s722L6vWS0jSlYaakSkF1g)
 
@@ -207,11 +171,11 @@ All of our networked resources (e.g., [Amazon EC2](https://aws.amazon.com/ec2), 
 
 We utilize a relatively simple security group model, with two main security groups:
 
-| Security Group | For | Ingress / Egress |
-| --- | --- | --- |
-| [`apps`](https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#SecurityGroup:groupId=sg-048bedcd626a5730a) | application hosts | Permits SSH access on port 22 to the entire internet (see below for security explanation) |
-| [`apps-internal`](https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#SecurityGroup:groupId=sg-09656f13e2f885361) | internal communication between hosts, RDS, ElastiCache, etc., and connecting internet-facing load balancers to internal resources | Permits TCP traffic on all ports to other members of apps-internal |
-| [`apps-ingress`](https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#SecurityGroup:groupId=sg-0fa2cc3d55c2dc991) | internet-facing resources | Permits all traffic on HTTP/S ports |
+| Security Group                                                                                                            | For                                                                                                                               | Ingress / Egress                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [`apps`](https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#SecurityGroup:groupId=sg-048bedcd626a5730a)          | application hosts                                                                                                                 | Permits SSH access on port 22 to the entire internet (see below for security explanation) |
+| [`apps-internal`](https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#SecurityGroup:groupId=sg-09656f13e2f885361) | internal communication between hosts, RDS, ElastiCache, etc., and connecting internet-facing load balancers to internal resources | Permits TCP traffic on all ports to other members of apps-internal                        |
+| [`apps-ingress`](https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#SecurityGroup:groupId=sg-0fa2cc3d55c2dc991)  | internet-facing resources                                                                                                         | Permits all traffic on HTTP/S ports                                                       |
 
 Obviously, this could be improved and further secured, which is something we may do in the future.
 
@@ -231,7 +195,7 @@ A single [application load balancer](https://docs.aws.amazon.com/elasticloadbala
 
 Each service gets a target group and [ALB listener rule](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-listeners.html).
 
-The base ALB also redirects HTTP traffic to HTTPS, and uses a `*.gracepointonline` TLS certificate provided by [Amazon Certificate Manager](https://aws.amazon.com/certificate-manager) for TLS. TLS is not typically  end-to-end, but terminates at the load balancer. This is for cost / simplicity reasons:  developers may write services that interact over HTTP, and trust the load balancer to handle TLS.
+The base ALB also redirects HTTP traffic to HTTPS, and uses a `*.gracepointonline` TLS certificate provided by [Amazon Certificate Manager](https://aws.amazon.com/certificate-manager) for TLS. TLS is not typically end-to-end, but terminates at the load balancer. This is for cost / simplicity reasons: developers may write services that interact over HTTP, and trust the load balancer to handle TLS.
 
 The base ALB also comes with [Amazon Cognito](https://aws.amazon.com/cognito)-based authentication capabilities for gpmail authentication.
 
@@ -241,7 +205,7 @@ The base ALB also comes with [Amazon Cognito](https://aws.amazon.com/cognito)-ba
 
 ### ECS
 
-A single [Amazon ECS](https://aws.amazon.com/ecs) cluster named  `apps` hosts all our apps (including Drone).
+A single [Amazon ECS](https://aws.amazon.com/ecs) cluster named `apps` hosts all our apps (including Drone).
 
 Deployments create / update an ECS task for each service / app with a desired replica count of `1` and a max count of 200% for simple blue-green deployments.
 

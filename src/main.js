@@ -9,5 +9,5 @@ import { App } from "./App.js";
 import { appConfig } from "./config.js";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  html`<${App} groupName=${appConfig.groupName} deadline=${appConfig.deadline} />`
+  html`<${App} groupName=${appConfig.groupName} motto=${appConfig.motto} deadline=${appConfig.deadline} />`,
 );
