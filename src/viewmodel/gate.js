@@ -1,7 +1,7 @@
 /* View-models for the two full-screen gates that stand in front of the app:
  * the Google sign-in prompt and the member profile form. */
 
-import { GENDERS, MINISTRY_GROUPS, isProfileComplete } from "../profile.js";
+import { DEFAULT_DUE_FRESHNESS, DEFAULT_DUE_TOP_X, GENDERS, MINISTRY_GROUPS, isProfileComplete } from "../profile.js";
 import { PRIMARY_DOMAIN } from "../firebase.js";
 
 export function authGateVals({ auth, groupName, motto, actions }) {
@@ -76,9 +76,9 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
     gradClass: draft.gradClass == null ? "" : draft.gradClass,
     onGradClass: (e) => actions.setProfileField("gradClass", e.target.value),
 
-    dueTopX: draft.dueTopX !== undefined ? draft.dueTopX : 10,
+    dueTopX: draft.dueTopX !== undefined ? draft.dueTopX : DEFAULT_DUE_TOP_X,
     onDueTopX: (e) => actions.setProfileField("dueTopX", e.target.value),
-    dueFreshness: draft.dueFreshness !== undefined ? draft.dueFreshness : 50,
+    dueFreshness: draft.dueFreshness !== undefined ? draft.dueFreshness : DEFAULT_DUE_FRESHNESS,
     onDueFreshness: (e) => actions.setProfileField("dueFreshness", e.target.value),
 
     onSubmit: actions.submitProfile,

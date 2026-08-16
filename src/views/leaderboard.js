@@ -11,9 +11,12 @@ export function leaderboardView(v) {
     <div style=${sx("display:flex;align-items:flex-end;gap:20px")}>
       <div>
         <h2 style=${sx("margin:0")}>Leaderboard</h2>
-        <div style=${sx(`font-size:13px;color:${muted(55)}`)}>Ranked by passages committed · ${v.groupName}</div>
+        <div style=${sx(`font-size:13px;color:${muted(55)}`)}>${v.groupName}</div>
       </div>
       <div style=${sx("margin-left:auto;" + LABEL_META)}>${v.daysLeftLabel}</div>
+    </div>
+    <div style=${sx(`font-size:13px;color:${muted(55)}`)}>
+      Ranked by freshness score — committed verses weighted by how well they are retained right now.
     </div>
 
     <div
@@ -70,6 +73,7 @@ export function leaderboardView(v) {
                 of ${v.goal}
               </div>
             </div>
+            <div style=${sx("font-size:12px;opacity:.6")}>${p.avgFresh} avg freshness</div>
           </div>`,
       )}
     </div>
@@ -82,7 +86,8 @@ export function leaderboardView(v) {
             <th style=${sx("width:60px")}>#</th>
             <th>Name</th>
             <th style=${sx("width:120px")}>Committed</th>
-            <th style=${sx("width:300px")}>Progress</th>
+            <th style=${sx("width:100px")}>Avg fresh</th>
+            <th style=${sx("width:260px")}>Freshness</th>
             <th style=${sx("width:110px")}>Streak</th>
           </tr>
         </thead>
@@ -93,6 +98,7 @@ export function leaderboardView(v) {
                 <td style=${sx(`font-family:var(--font-heading);color:${muted(45)}`)}>${b.rank}</td>
                 <td style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px")}>${b.name}</td>
                 <td style=${sx("font-family:var(--font-heading);font-size:17px")}>${b.count}</td>
+                <td style=${sx(`font-size:13px;color:${muted(60)}`)}>${b.avgFresh}</td>
                 <td>
                   <div style=${sx("height:8px;background:var(--color-neutral-200)")}>
                     <div style=${sx(b.barStyle)}></div>

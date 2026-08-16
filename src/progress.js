@@ -18,8 +18,10 @@ import { dayKey } from "./text.js";
 /* Member-facing wording for the three statuses a passage can be in. */
 export const STATUS_LABEL = { memorized: "Committed", learning: "In progress", new: "Not started" };
 
-/* Clean reviews before a passage counts as committed. */
-export const REVIEWS_TO_COMMIT = 3;
+/* A passage is committed by writing it out in full from memory, and by nothing
+ * else — see srs.commitsVerse(), which is the only thing that sets this status.
+ * `hits` still counts clean reviews, but it no longer promotes anything. */
+export const isCommitted = (rec) => migrate(rec).status === "memorized";
 
 /* Bind a progress map to the per-passage questions the views ask, so callers
  * pass a passage id instead of threading the map (and the migrate call) through
@@ -48,7 +50,16 @@ export function countByStatus(passages, progress, status) {
 /* Committed passages in any progress map — including a peer's, which is why it
  * takes the raw map rather than a passage list. */
 export function committedCount(progress) {
-  return Object.values(progress || {}).filter((r) => migrate(r).status === "memorized").length;
+  return Object.values(progress || {}).filter(isCommitted).length;
+}
+
+/* Sum of retrievability across committed verses — how much committed scripture
+ * is actually fresh right now. Ranges from 0 to committedCount(progress). */
+export function freshnessSum(progress, now = Date.now()) {
+  return Object.values(progress || {})
+    .map(migrate)
+    .filter((r) => r.status === "memorized")
+    .reduce((sum, r) => sum + retrievability(r, now), 0);
 }
 
 /* Passages in spaced-repetition order: stalest first. Never-reviewed passages
@@ -56,6 +67,57 @@ export function committedCount(progress) {
 export function dueOrder(passages, progress, now = Date.now()) {
   const read = progressReader(progress, now);
   return [...passages].sort((a, b) => read.retrievability(a.id) - read.retrievability(b.id));
+}
+
+/* ── what each session draws from ─────────────────────────────────────────── */
+
+/* The app has two ways through the set, and they take disjoint halves of it:
+ * review keeps committed verses from fading, learning commits the rest. Both
+ * pools are defined here, once, so the board's two sections and the two setup
+ * screens can never disagree about what is on offer.
+ *
+ * Both return a new array — neither disturbs the passage list it was given. */
+
+/* Review: committed verses that have faded to `maxFreshness` or below, stalest
+ * first. A verse still above the threshold is holding fine and is left alone. */
+export function reviewPool(passages, progress, maxFreshness, now = Date.now()) {
+  const read = progressReader(progress, now);
+  return dueOrder(passages, progress, now).filter(
+    (p) => read.statusOf(p.id) === "memorized" && read.freshness(p.id) <= maxFreshness,
+  );
+}
+
+/* Learn: everything not yet committed. Verses already in progress come ahead of
+ * untouched ones — finish what you started before opening something new — and
+ * within those, the most faded first. Untouched verses have no history to sort
+ * on, so they keep canonical order. */
+export function learnPool(passages, progress, now = Date.now()) {
+  const read = progressReader(progress, now);
+  const started = passages.filter((p) => read.statusOf(p.id) === "learning");
+  started.sort((a, b) => read.retrievability(a.id) - read.retrievability(b.id));
+  return [...started, ...passages.filter((p) => read.statusOf(p.id) === "new")];
+}
+
+/* A hand-picked selection, divided by the same rule.
+ *
+ * The passage list lets a member tick whatever rows they like, and a tick says
+ * nothing about which half of the set the verse is in — so the split happens
+ * here rather than at the button: committed verses are reviewed, the rest are
+ * learned. That keeps the one rule intact (a review session can never reach an
+ * uncommitted verse) without making the member sort their own picks.
+ *
+ * Freshness is deliberately not consulted, unlike reviewPool(): a verse the
+ * member has picked out by hand is one they have asked for, however fresh it
+ * still reads. Both halves keep the order of the passage list, so a queue runs
+ * the way the list did. */
+export function selectionPools(passages, progress, ids) {
+  const picked = new Set(ids || []);
+  const read = progressReader(progress);
+  const chosen = passages.filter((p) => picked.has(p.id));
+  return {
+    review: chosen.filter((p) => read.statusOf(p.id) === "memorized"),
+    learn: chosen.filter((p) => read.statusOf(p.id) !== "memorized"),
+  };
 }
 
 /* Length of the current run of consecutive days with at least one review.

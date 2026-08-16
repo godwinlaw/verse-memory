@@ -27,7 +27,7 @@ import { sentences } from "./text.js";
 import { chunksFor, keyBlankSet } from "./blanks.js";
 import { gradeReference, gradeWritten, matchesWord } from "./grading.js";
 import { freshness, migrate, testStability, testedLast, TEST_PASS } from "./srs.js";
-import { dueOrder, progressReader, REVIEWS_TO_COMMIT } from "./progress.js";
+import { dueOrder, progressReader } from "./progress.js";
 import { mulberry32 } from "./review.js";
 
 /* ── setup ────────────────────────────────────────────────────────────────── */
@@ -255,7 +255,10 @@ function matchQuestion(block, pool, rnd) {
 function scrambleQuestion(p, rnd) {
   // Use medium granularity (1) by default
   const chunks = chunksFor(p.text, 1);
-  const shuffled = shuffle(rnd, chunks.map((v, i) => ({ v, i })));
+  const shuffled = shuffle(
+    rnd,
+    chunks.map((v, i) => ({ v, i })),
+  );
   return { kind: "scramble", ids: [p.id], ref: p.ref, chunks, shuffled };
 }
 
@@ -357,7 +360,7 @@ export function gradeQuestion(q, answer) {
   if (q.kind === "blanks") {
     const given = answer || {};
     let hits = 0;
-    let total = q.blanks.length;
+    const total = q.blanks.length;
     for (const i of q.blanks) {
       if (matchesWord(q.words[i], given[i])) hits++;
     }
@@ -421,10 +424,13 @@ export function scoreExam(questions, answers = {}) {
  *
  * Unlike a review, this can send a verse backwards: testStability() shrinks the
  * interval on a poor score and testedLast() backdates the verse to the freshness
- * the member actually demonstrated. A pass counts as a clean review (so a test
- * can be what commits a verse); a failure costs a verse no history it already
- * had — hits never fall, so nothing is ever demoted out of "Committed" by one
- * bad morning. Pure: returns the next map rather than mutating. */
+ * the member actually demonstrated.
+ *
+ * A test moves freshness, never status. Committing is reserved for writing the
+ * passage out in full in a learn session (srs.commitsVerse) — a paper of
+ * multiple choice and matching, however well it goes, is not that. Nor is a
+ * failure a demotion: a verse already committed keeps the status it earned, so
+ * nothing is lost to one bad morning. Pure: returns the next map. */
 export function applyExam({ progress, results, now = Date.now() }) {
   const next = { ...(progress || {}) };
   const rows = results.map(({ id, score }) => {
@@ -439,7 +445,7 @@ export function applyExam({ progress, results, now = Date.now() }) {
       // A test is the one write whose `last` is deliberately in the past, so it
       // stamps when it happened separately for the cross-device merge.
       updatedAt: now,
-      status: hits >= REVIEWS_TO_COMMIT ? "memorized" : "learning",
+      status: prev.status === "memorized" ? "memorized" : "learning",
     };
     next[id] = rec;
     return { id, score, passed: score >= TEST_PASS, before: freshness(prev, now), after: freshness(rec, now) };

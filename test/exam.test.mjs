@@ -18,7 +18,6 @@ import {
 } from "../src/exam.js";
 import { freshness, migrate, TEST_PASS } from "../src/srs.js";
 import { mergeProgress } from "../src/storage.js";
-import { REVIEWS_TO_COMMIT } from "../src/progress.js";
 import { passages } from "../data/passages.js";
 
 const NOW = new Date("2026-08-15T12:00:00.000Z").getTime();
@@ -268,13 +267,24 @@ test("the pass mark is the hinge: at it a verse holds its stability", () => {
 test("one bad test never demotes a committed verse", () => {
   const { progress: next } = applyExam({ progress, results: [{ id: 3, score: 0 }], now: NOW });
   assert.equal(next[3].status, "memorized");
-  assert.ok(next[3].hits >= REVIEWS_TO_COMMIT);
+  assert.equal(next[3].hits, progress[3].hits, "and it keeps the clean reviews it had");
 });
 
-test("a test can be what commits a verse", () => {
-  const almost = { 9: { hits: REVIEWS_TO_COMMIT - 1, status: "learning", last: daysAgo(5), stability: 3 } };
-  const { progress: next } = applyExam({ progress: almost, results: [{ id: 9, score: 1 }], now: NOW });
-  assert.equal(next[9].status, "memorized");
+test("a test never commits a verse, however well it goes", () => {
+  // Only writing the passage out in full does that (srs.commitsVerse), and a
+  // paper of multiple choice and matching is not that — however many perfect
+  // papers are sat.
+  let uncommitted = { 9: { hits: 2, status: "learning", last: daysAgo(5), stability: 3 } };
+  for (let i = 0; i < 5; i++) {
+    uncommitted = applyExam({ progress: uncommitted, results: [{ id: 9, score: 1 }], now: NOW }).progress;
+  }
+  assert.equal(uncommitted[9].status, "learning");
+  assert.equal(uncommitted[9].hits, 7, "the clean reviews are still counted");
+});
+
+test("a test still opens an untouched verse's account", () => {
+  const { progress: next } = applyExam({ progress: {}, results: [{ id: 9, score: 1 }], now: NOW });
+  assert.equal(next[9].status, "learning", "it is in progress, not committed and not untouched");
 });
 
 test("a backdated test result still wins the cross-device merge", () => {

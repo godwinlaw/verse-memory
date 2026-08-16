@@ -12,8 +12,9 @@ export function doneView(v) {
     </div>
     <h1 style=${sx("margin:0")}>${v.doneHeadline}</h1>
     <p style=${sx(`margin:0;font-size:15px;line-height:1.7;color:${muted(65)};max-width:52ch`)}>${v.doneBody}</p>
-    <div style=${sx("display:flex;gap:10px;margin-top:8px")}>
-      <button className="btn btn-primary" onClick=${v.startDue}>Another session</button>
+    <div style=${sx("display:flex;gap:10px;margin-top:8px;flex-wrap:wrap")}>
+      <button className="btn btn-primary" onClick=${v.doneAgain}>${v.doneAgainLabel}</button>
+      <button className="btn btn-secondary" onClick=${v.doneOther}>${v.doneOtherLabel}</button>
       <button className="btn btn-secondary" onClick=${v.goBoard}>Back to the board</button>
     </div>
   </div>`;

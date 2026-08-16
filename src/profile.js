@@ -42,6 +42,24 @@ export const MINISTRY_GROUPS = [
 
 export const GENDERS = ["Male", "Female"];
 
+/* The two review settings a member can tune on their profile: how many verses a
+ * review session takes, and how far a committed verse may fade before it comes
+ * back round. The threshold sits well above the point where a verse is properly
+ * at risk — a passage is easiest to hold when it is topped up before it slips,
+ * and reviewing at 75% costs a fraction of what relearning at 20% does. */
+export const DEFAULT_DUE_TOP_X = 10;
+export const DEFAULT_DUE_FRESHNESS = 75;
+
+/* Those settings as the app reads them, filled in from the defaults for a member
+ * who has never touched them. */
+export function reviewSettings(profile) {
+  const p = profile || {};
+  return {
+    dueTopX: p.dueTopX !== undefined ? Number(p.dueTopX) : DEFAULT_DUE_TOP_X,
+    dueFreshness: p.dueFreshness !== undefined ? Number(p.dueFreshness) : DEFAULT_DUE_FRESHNESS,
+  };
+}
+
 /* Google Workspace appends a campus tag like "(Berk)" to some members' display
  * names. Strip a trailing "(Berk)" (any spacing/case) so names read cleanly on
  * the leaderboard and in the pre-filled profile form. Safe on null/empty. */

@@ -3,8 +3,9 @@
 
 import { dayKey } from "../text.js";
 import { freshColor } from "../srs.js";
-import { dueOrder, streakOf, REVIEWS_TO_COMMIT, STATUS_LABEL } from "../progress.js";
-import { ACTIVITY_DAYS, DUE_PREVIEW_ROWS, MODES } from "../review.js";
+import { learnPool, reviewPool, streakOf, STATUS_LABEL } from "../progress.js";
+import { reviewSettings } from "../profile.js";
+import { ACTIVITY_DAYS, LEARN, LEARN_SIZE, REVIEW } from "../review.js";
 import { muted, statusTag } from "../ui/tokens.js";
 
 /* One cell of the 2×2 hero stat grid; the outer edges drop their rules. */
@@ -15,10 +16,6 @@ const HERO_CELL =
 /* Floor for the activity chart's y-axis, so a couple of reviews on a quiet week
  * don't render as a full-height bar. */
 const MIN_CHART_PEAK = 4;
-
-/* The pace copy spells its number out; keep the prose in step with the constant
- * rather than hard-coding "three" next to a 3 that can change. */
-const NUMBER_WORD = ["zero", "one", "two", "three", "four", "five"];
 
 /* The trailing ACTIVITY_DAYS days ending today, with each day's review count. */
 function activityDays(log, today) {
@@ -31,17 +28,44 @@ function activityDays(log, today) {
   return out;
 }
 
+/* One row of either queue: number, reference, opening words, status — the same
+ * passages seen at two stages of the same journey.
+ *
+ * The freshness readout is the exception, and it is review's alone. A verse in
+ * the learn queue is not committed, so how much of it has decayed says nothing
+ * a member can act on; what it needs is to be written out, and that is the same
+ * job whether it reads 4% or 40%. */
+function queueRow(p, i, { prog, kind, actions, showFreshness }) {
+  const status = prog.statusOf(p.id);
+  const reviewed = prog.isReviewed(p.id);
+  const fresh = prog.freshness(p.id);
+  return {
+    id: p.id,
+    num: String(p.id).padStart(3, "0"),
+    ref: p.ref,
+    snippet: p.text.slice(0, 90),
+    statusLabel: STATUS_LABEL[status],
+    tagStyle: statusTag(status),
+    freshLabel: !showFreshness ? "" : reviewed ? fresh + "%" : "new",
+    freshStyle:
+      "font-family:var(--font-heading);font-size:12px;font-weight:600;width:44px;flex:none;text-align:right;color:" +
+      (reviewed ? freshColor(fresh) : muted(45)),
+    style:
+      "display:flex;align-items:center;gap:14px;padding:13px 18px;background:transparent;border:none;cursor:pointer;font-family:var(--font-body);color:var(--color-text)" +
+      (i ? ";border-top:1px solid var(--color-divider)" : ""),
+    onClick: () => actions.startSession(undefined, [p.id], kind),
+  };
+}
+
 export function boardVals({ state, totals, prog, actions, today = new Date() }) {
   const { goal, memorized, pct, daysLeft, perWeek, deadline } = totals;
+  const { dueTopX, dueFreshness } = reviewSettings(state.profile);
 
-  const dueTopX = state.profile && state.profile.dueTopX !== undefined ? state.profile.dueTopX : 10;
-  const dueFreshness = state.profile && state.profile.dueFreshness !== undefined ? state.profile.dueFreshness : 50;
-
-  // Prefer passages that are actually due; if none are, fall back to the
-  // stalest few so the board is never empty.
-  const ranked = dueOrder(state.passages, state.progress);
-  const dueNow = ranked.filter((p) => prog.isDue(p.id) && prog.freshness(p.id) < dueFreshness);
-  const due = (dueNow.length ? dueNow : ranked).slice(0, dueTopX);
+  // The set, split the way the two sittings split it: committed verses that have
+  // faded enough to be worth topping up, and verses not yet committed at all.
+  const toReview = reviewPool(state.passages, state.progress, dueFreshness).slice(0, dueTopX);
+  const learnSize = (state.learnSetup && state.learnSetup.size) || LEARN_SIZE;
+  const toLearn = learnPool(state.passages, state.progress).slice(0, learnSize);
 
   const days = activityDays(state.log, today);
   const peak = Math.max(MIN_CHART_PEAK, ...days.map((x) => x.n));
@@ -69,29 +93,19 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
       },
     ],
 
-    dueCount: due.length,
-    queue: due.map((p, i) => {
-      const status = prog.statusOf(p.id);
-      const reviewed = prog.isReviewed(p.id);
-      return {
-        id: p.id,
-        num: String(p.id).padStart(3, "0"),
-        ref: p.ref,
-        snippet: p.text.slice(0, 90),
-        statusLabel: STATUS_LABEL[status],
-        tagStyle: statusTag(status),
-        freshLabel: reviewed ? prog.freshness(p.id) + "%" : "new",
-        freshStyle:
-          "font-family:var(--font-heading);font-size:12px;font-weight:600;width:44px;flex:none;text-align:right;color:" +
-          (reviewed ? freshColor(prog.freshness(p.id)) : muted(45)),
-        style:
-          "display:flex;align-items:center;gap:14px;padding:13px 18px;background:transparent;border:none;cursor:pointer;font-family:var(--font-body);color:var(--color-text)" +
-          (i ? ";border-top:1px solid var(--color-divider)" : ""),
-        onClick: () => actions.startSession(undefined, [p.id]),
-      };
-    }),
+    // ── review today: committed verses that have started to fade ────────────
+    reviewCount: toReview.length,
+    reviewQueue: toReview.map((p, i) => queueRow(p, i, { prog, kind: REVIEW, actions, showFreshness: true })),
+    reviewQueueNote: "committed · faded to " + dueFreshness + "% or below",
+    reviewQueueEmpty: memorized
+      ? "Nothing to review. Every verse you have committed is still fresh."
+      : "Nothing to review yet — a verse arrives here once you have committed it.",
 
-    modes: MODES.map((m, i) => ({ ...m, index: "0" + (i + 1), onClick: () => actions.startSession(m.key) })),
+    // ── learn today: what is not committed yet ──────────────────────────────
+    learnCount: toLearn.length,
+    learnQueue: toLearn.map((p, i) => queueRow(p, i, { prog, kind: LEARN, actions, showFreshness: false })),
+    learnQueueNote: "not committed · write one out in full to commit it",
+    learnQueueEmpty: "Every passage in the set is committed. Nothing left to learn.",
 
     mapCells: state.passages.map((p) => {
       const status = prog.statusOf(p.id);

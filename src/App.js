@@ -15,13 +15,13 @@
 
 import { React, html, sx } from "./dom.js";
 import { dayKey } from "./text.js";
-import { migrate, nextStability, SEED_STABILITY } from "./srs.js";
+import { commitsVerse, freshness, migrate, nextStability, reviewAward, reviewedLast } from "./srs.js";
 import { BLANK_LEVELS, SCRAMBLE_LEVELS } from "./blanks.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
-import { committedCount, dueOrder, streakOf, REVIEWS_TO_COMMIT } from "./progress.js";
-import { DEFAULT_MODE, SESSION_SIZE } from "./review.js";
+import { committedCount, dueOrder, freshnessSum, streakOf } from "./progress.js";
+import { DEFAULT_MODE, LEARN, LEARN_SIZE, REVIEW, SESSION_SIZE } from "./review.js";
 import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "./exam.js";
-import { isProfileComplete, mergeProfile } from "./profile.js";
+import { DEFAULT_DUE_FRESHNESS, DEFAULT_DUE_TOP_X, isProfileComplete, mergeProfile } from "./profile.js";
 import { appConfig } from "./config.js";
 import { initAuth, signIn, signOutUser, fetchRoster } from "./firebase.js";
 import { passages } from "../data/passages.js";
@@ -32,6 +32,7 @@ import { boardView } from "./views/board.js";
 import { listView } from "./views/list.js";
 import { reviewView } from "./views/review.js";
 import { reviewSetupView } from "./views/review-setup.js";
+import { learnSetupView } from "./views/learn-setup.js";
 import { doneView } from "./views/done.js";
 import { examSetupView } from "./views/exam-setup.js";
 import { examView } from "./views/exam.js";
@@ -57,17 +58,24 @@ function initialState() {
   return {
     loaded: false,
     passages: [],
-    // board | list | review | done | leaderboard | test-setup | test | test-done
+    // board | list | review-setup | learn-setup | review | done | leaderboard
+    // | test-setup | test | test-done
     view: "board",
     progress: {}, // { [passageId]: { hits, status, last, stability } }
     log: {}, // { [YYYY-MM-DD]: reviews that day }
 
-    // running review session
+    // running session — review keeps committed verses fresh, learn commits new
+    // ones. Same cards, same activities; see review.js for what separates them.
+    sessionKind: REVIEW,
     mode: null,
     queue: [],
     qi: 0,
     sessionCount: 0,
+    results: {}, // { [passageId]: what submitting that card was worth }
+    reviewLeaveAsk: false, // "leave the session?" confirmation is open
+    reviewMoveAsk: null, // walking off an unsubmitted card: null | "prev" | "next"
     showHelp: false,
+    peeks: 0, // presses of "Peek" on the card in front of us
     revealed: false,
     flipLetters: false,
     answers: {},
@@ -77,9 +85,9 @@ function initialState() {
     typed: "",
     typeGraded: false,
     typeFirstLetter: false,
-    lastTypeScore: undefined,
     scrambleOrder: [],
     scrambleWrong: -1,
+    scrambleMisses: 0, // chunks tried in the wrong place on this card
     scrambleLevel: 1,
 
     // running test (Test mode — see exam.js)
@@ -94,6 +102,10 @@ function initialState() {
     // passage list
     search: "",
     filter: "All",
+    // Passage ids ticked on the list, so a sitting can be hand-picked rather
+    // than drawn from a pool. Kept as an array, in the order they were ticked;
+    // the view-model is what asks whether a given row is in it.
+    selection: [],
 
     // account, profile, leaderboard
     auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
@@ -104,8 +116,10 @@ function initialState() {
     peers: null, // leaderboard roster, minus self
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
 
-    // running review flow (Review mode)
-    reviewSetup: { manualSize: 10, manualFreshness: 50 },
+    // the two setup screens, as last left (device-local, like the exercise
+    // levels): extra review once caught up, and how much to take on learning
+    reviewSetup: { manualSize: 10, manualFreshness: 90 },
+    learnSetup: { size: LEARN_SIZE },
   };
 }
 
@@ -129,6 +143,7 @@ export class App extends React.Component {
       scrambleLevel: storage.loadScrambleLevel(this.state.scrambleLevel, SCRAMBLE_LEVELS.length),
       examSetup: normalizeSetup(storage.loadExamSetup()),
       reviewSetup: storage.loadReviewSetup(this.state.reviewSetup),
+      learnSetup: storage.loadLearnSetup(this.state.learnSetup),
       loaded: true,
     });
     // Auth + cloud sync. Access is gated to Acts 2 Network Google accounts; on a
@@ -212,8 +227,8 @@ export class App extends React.Component {
       ministryGroup: String(draft.ministryGroup || "").trim(),
       gender: draft.gender,
       gradClass: /^\d+$/.test(gradClass) ? Number(gradClass) : gradClass,
-      dueTopX: draft.dueTopX !== undefined ? Number(draft.dueTopX) : 10,
-      dueFreshness: draft.dueFreshness !== undefined ? Number(draft.dueFreshness) : 50,
+      dueTopX: draft.dueTopX !== undefined ? Number(draft.dueTopX) : DEFAULT_DUE_TOP_X,
+      dueFreshness: draft.dueFreshness !== undefined ? Number(draft.dueFreshness) : DEFAULT_DUE_FRESHNESS,
       updatedAt: Date.now(),
     };
     if (!isProfileComplete(next)) return;
@@ -240,6 +255,7 @@ export class App extends React.Component {
         .map((r) => ({
           name: r.profile.name || r.name || r.email || "Member",
           count: committedCount(r.progress),
+          freshnessScore: freshnessSum(r.progress),
           streak: streakOf(r.log),
           ministryGroup: r.profile.ministryGroup,
           gender: r.profile.gender,
@@ -250,44 +266,70 @@ export class App extends React.Component {
 
   /* ── progress ───────────────────────────────────────────────────────────── */
 
-  /* Toggle a passage's committed flag by hand, outside the review flow. */
-  setStatus(id, status) {
-    const progress = { ...this.state.progress };
-    const cur = progress[id] || { hits: 0 };
-    // A passage committed by hand has no review history, so seed it rather than
-    // let it read as 0% fresh straight away.
-    const seed = status === "memorized" && !cur.last ? { last: Date.now(), stability: SEED_STABILITY } : {};
-    progress[id] = {
-      ...cur,
-      ...seed,
-      status,
-      hits: status === "memorized" ? Math.max(REVIEWS_TO_COMMIT, cur.hits || 0) : cur.hits || 0,
+  /* What the card in front of us is being marked on: the activity, how it is
+   * set up, and how the member has treated it. `score` comes from the
+   * view-model, which is where the attempt is graded for display. */
+  reviewContext(score) {
+    return {
+      mode: this.state.mode,
+      blankLevel: this.state.blankLevel,
+      scrambleLevel: this.state.scrambleLevel,
+      firstLetters: this.state.typeFirstLetter,
+      score,
+      peeks: this.state.peeks,
     };
-    this.save(progress, this.state.log);
   }
 
-  /* Record a completed review. Freshness is driven by the act of reviewing
-   * alone — there is no self-report. The activity and its measured performance
-   * decide how much stability the passage gains (see srs.nextStability). */
-  record(id) {
+  /* Record a completed card. There is still no self-report: the activity, the
+   * mark the attempt earned, and the peeks it took decide both the stability
+   * gained (srs.nextStability) and the freshness the verse is left at
+   * (srs.reviewAward). The result is kept for the session so the card can show
+   * what it was worth, and so a verse walked back to is not marked twice.
+   *
+   * This is also the one place a verse becomes committed, and only by the one
+   * thing that commits it: writing the passage out in full from memory
+   * (srs.commitsVerse). Nothing demotes a verse — a bad morning costs freshness,
+   * never the status the member has already earned. */
+  record(id, score) {
+    const now = Date.now();
+    const prev = migrate(this.state.progress[id]);
+    const ctx = this.reviewContext(score);
+    const stability = nextStability(prev, ctx, now);
+    const award = reviewAward(ctx);
     const progress = { ...this.state.progress };
     const cur = progress[id] || { hits: 0, status: "new" };
-    const hits = (cur.hits || 0) + 1;
+    const committed = prev.status === "memorized" || commitsVerse(ctx);
     progress[id] = {
       ...cur,
-      hits,
-      last: Date.now(),
-      stability: nextStability(migrate(this.state.progress[id]), {
-        mode: this.state.mode,
-        blankLevel: this.state.blankLevel,
-        score: this.state.lastTypeScore,
-      }),
-      status: hits >= REVIEWS_TO_COMMIT ? "memorized" : "learning",
+      hits: (cur.hits || 0) + 1,
+      // `last` is the point on the new curve the attempt earned, so it is not
+      // the moment of writing — hence updatedAt (see storage.mergeProgress).
+      last: reviewedLast(stability, award, now),
+      updatedAt: now,
+      stability,
+      status: committed ? "memorized" : "learning",
     };
     const log = { ...this.state.log };
     const today = dayKey(new Date());
     log[today] = (log[today] || 0) + 1;
     this.save(progress, log);
+    this.setState((s) => ({
+      sessionCount: s.sessionCount + 1,
+      results: {
+        ...s.results,
+        [id]: {
+          id,
+          mode: s.mode,
+          score,
+          peeks: s.peeks,
+          before: freshness(prev, now),
+          after: freshness(progress[id], now),
+          // Whether this card is what committed the verse — the moment a learn
+          // session is working towards, so the summary can mark it.
+          committed: prev.status !== "memorized" && committed,
+        },
+      },
+    }));
   }
 
   /* ── review session ─────────────────────────────────────────────────────── */
@@ -297,8 +339,12 @@ export class App extends React.Component {
     if (view === "leaderboard") this.loadRoster();
   }
 
-  /* Start a session over `ids`, or over the stalest SESSION_SIZE passages. */
-  startSession(mode, ids) {
+  /* Start a session over `ids`, or over the stalest SESSION_SIZE passages.
+   *
+   * `kind` says which sitting this is (review or learn). It only changes how the
+   * session frames itself and what finishing a card can earn — the cards, the
+   * activities, and the walk through the queue are identical. */
+  startSession(mode, ids, kind = REVIEW) {
     const queue =
       ids && ids.length
         ? ids
@@ -307,53 +353,90 @@ export class App extends React.Component {
             .map((p) => p.id);
     this.setState({
       view: "review",
+      sessionKind: kind,
       mode: mode || this.state.mode || DEFAULT_MODE,
       queue,
       qi: 0,
       sessionCount: 0,
+      results: {},
+      reviewLeaveAsk: false,
     });
     this.resetCard();
   }
 
-  /* Clear everything that belongs to the card being left. */
+  /* Clear everything that belongs to the card being left — including what it
+   * cost, since peeks and wrong tries are per attempt. What a submitted card
+   * was worth lives in `results`, keyed by passage, and survives. */
   resetCard() {
     this.setState({
       revealed: false,
       flipLetters: false,
       showHelp: false,
+      peeks: 0,
       answers: {},
       blanksChecked: false,
       typed: "",
       typeGraded: false,
       scrambleOrder: [],
       scrambleWrong: -1,
+      scrambleMisses: 0,
+      reviewMoveAsk: null,
     });
   }
 
-  /* Record the current card and move on, ending the session at the queue's end. */
-  next() {
+  /* Hand the card in. The view-model grades the attempt for display, so it is
+   * what hands the mark in here. A verse is only marked once a session. */
+  submitCard(score) {
     const id = this.state.queue[this.state.qi];
-    if (id != null) this.record(id);
-    const qi = this.state.qi + 1;
-    this.setState((s) => ({
-      qi,
-      sessionCount: s.sessionCount + 1,
-      view: qi >= s.queue.length ? "done" : "review",
-    }));
+    if (id == null || this.state.results[id]) return;
+    this.record(id, score);
+    // Both panels show their marked state once the paper is in.
+    this.setState({ blanksChecked: true, typeGraded: true });
+  }
+
+  /* Whether the card in front of us has already been handed in — after which
+   * the mark is final, so the exercise stops taking answers. */
+  cardSubmitted() {
+    const id = this.state.queue[this.state.qi];
+    return id != null && !!this.state.results[id];
+  }
+
+  /* Walk one card forward or back, ending the session past the queue's end.
+   *
+   * A card that was never submitted records nothing and its answers are not
+   * kept, so the member is asked first — in either direction, since leaving a
+   * card unmarked costs the same whichever way they walk off it. The flashcard
+   * is the exception: nothing marks it, so it is recorded on the way out (an
+   * unmarked activity earns the plain "I reviewed it" award). */
+  moveCard(step, { confirmed = false } = {}) {
+    const qi = this.state.qi + step;
+    if (qi < 0) return; // the first card is as far back as a session goes
+    const id = this.state.queue[this.state.qi];
+    const unmarked = id != null && !this.state.results[id];
+    if (unmarked && this.state.mode === "flip") this.record(id);
+    else if (unmarked && !confirmed) return this.setState({ reviewMoveAsk: step < 0 ? "prev" : "next" });
+    this.goCard(qi);
+  }
+
+  /* Walk to a card in the queue, ending the session past its end. */
+  goCard(qi) {
+    this.setState((s) => ({ qi, view: qi >= s.queue.length ? "done" : "review" }));
     this.resetCard();
   }
 
-  /* The first-letter drill has no "Grade it" step, so it hands its live score in
-   * here — it has to land in state before next() reads it. */
-  advance(liveScore) {
-    if (liveScore == null) return this.next();
-    this.setState({ lastTypeScore: liveScore }, () => this.next());
+  /* Leaving part-way through keeps every card already submitted — only the rest
+   * of the queue is dropped — which is still worth confirming. */
+  leaveReview() {
+    this.setState({ view: "board", reviewLeaveAsk: false, reviewMoveAsk: null });
   }
 
   placeChunk(index) {
+    if (this.cardSubmitted()) return;
     const placed = this.state.scrambleOrder;
     if (index === placed.length) this.setState({ scrambleOrder: [...placed, index], scrambleWrong: -1 });
-    else this.setState({ scrambleWrong: index });
+    // A wrong chunk is refused rather than accepted, and counted: it is what
+    // separates a recalled ordering from a guessed one (review.scrambleScore).
+    else this.setState((s) => ({ scrambleWrong: index, scrambleMisses: s.scrambleMisses + 1 }));
   }
 
   /* ── test mode ──────────────────────────────────────────────────────────── */
@@ -376,12 +459,18 @@ export class App extends React.Component {
     this.setExamSetup({ activities });
   }
 
-  /* ── review mode setup ──────────────────────────────────────────────────── */
+  /* ── review + learn setup ───────────────────────────────────────────────── */
 
   setReviewSetup(patch) {
     const reviewSetup = { ...this.state.reviewSetup, ...patch };
     storage.saveReviewSetup(reviewSetup);
     this.setState({ reviewSetup });
+  }
+
+  setLearnSetup(patch) {
+    const learnSetup = { ...this.state.learnSetup, ...patch };
+    storage.saveLearnSetup(learnSetup);
+    this.setState({ learnSetup });
   }
 
   /* Build the paper once, here, and keep it in state: the generator is seeded,
@@ -475,7 +564,7 @@ export class App extends React.Component {
     return {
       // navigation
       goto: (view) => this.goto(view),
-      startSession: (mode, ids) => this.startSession(mode, ids),
+      startSession: (mode, ids, kind) => this.startSession(mode, ids, kind),
 
       // account + profile
       signIn: () => this.signIn(),
@@ -496,28 +585,45 @@ export class App extends React.Component {
       // passage list
       setSearch: (search) => set({ search }),
       setFilter: (filter) => set({ filter }),
-      setStatus: (id, status) => this.setStatus(id, status),
+      toggleSelect: (id) =>
+        this.setState((s) => ({
+          selection: s.selection.includes(id) ? s.selection.filter((x) => x !== id) : [...s.selection, id],
+        })),
+      // Ticking every shown row, and clearing, are both a whole new selection —
+      // the view-model works out which ids that is, since it is what knows
+      // which rows the search and filter have left on screen.
+      setSelection: (selection) => set({ selection }),
 
       // review — shared
       setMode: (mode) => {
         set({ mode });
         this.resetCard();
       },
-      setPeek: (showHelp) => set({ showHelp }),
-      advance: (liveScore) => this.advance(liveScore),
+      // Peeking is counted, not prevented: each press costs the card freshness
+      // (see srs.reviewAward), so only the press is worth counting.
+      setPeek: (showHelp) => this.setState((s) => ({ showHelp, peeks: showHelp ? s.peeks + 1 : s.peeks })),
+      submitCard: (score) => this.submitCard(score),
+      nextCard: () => this.moveCard(1),
+      prevCard: () => this.moveCard(-1),
+      cancelMoveCard: () => set({ reviewMoveAsk: null }),
+      confirmMoveCard: () => this.moveCard(this.state.reviewMoveAsk === "prev" ? -1 : 1, { confirmed: true }),
+      askLeaveReview: () => set({ reviewLeaveAsk: true }),
+      cancelLeaveReview: () => set({ reviewLeaveAsk: false }),
+      leaveReview: () => this.leaveReview(),
 
       // review — flashcard
       setRevealed: (revealed) => set({ revealed }),
       toggleFlipLetters: () => this.setState((s) => ({ flipLetters: !s.flipLetters })),
 
       // review — fill the blanks
-      setAnswer: (index, value, focusIndex) =>
+      setAnswer: (index, value, focusIndex) => {
+        if (this.cardSubmitted()) return;
         this.setState(
           (s) => ({ answers: { ...s.answers, [index]: value } }),
           () => focusBlank(focusIndex),
-        ),
+        );
+      },
       focusBlank,
-      checkBlanks: () => set({ blanksChecked: true }),
       setBlankLevel: (level) => {
         storage.saveBlankLevel(level);
         set({ blankLevel: level, answers: {}, blanksChecked: false });
@@ -529,13 +635,9 @@ export class App extends React.Component {
       },
 
       // review — write it out
-      setTyped: (typed) => set({ typed }),
-      gradeTyped: (score) =>
-        this.setState((s) => ({
-          typeGraded: !s.typeGraded,
-          typed: s.typeGraded ? "" : s.typed,
-          lastTypeScore: score,
-        })),
+      setTyped: (typed) => {
+        if (!this.cardSubmitted()) set({ typed });
+      },
       toggleTypeFirstLetter: () => {
         // Switching this changes how the input is graded, so drop any in-progress
         // answer and fall back to the ungraded state.
@@ -546,10 +648,14 @@ export class App extends React.Component {
 
       // review — order the phrases
       placeChunk: (index) => this.placeChunk(index),
-      resetScramble: () => set({ scrambleOrder: [], scrambleWrong: -1 }),
+      // Starting over clears the board but not the wrong tries — they are what
+      // the mark is for, and wiping them would make the penalty opt-out.
+      resetScramble: () => {
+        if (!this.cardSubmitted()) set({ scrambleOrder: [], scrambleWrong: -1 });
+      },
       setScrambleLevel: (level) => {
         storage.saveScrambleLevel(level);
-        set({ scrambleLevel: level, scrambleOrder: [], scrambleWrong: -1 });
+        set({ scrambleLevel: level, scrambleOrder: [], scrambleWrong: -1, scrambleMisses: 0 });
       },
 
       // test mode
@@ -565,9 +671,11 @@ export class App extends React.Component {
       cancelLeaveExam: () => set({ examLeaveAsk: false }),
       leaveExam: () => this.leaveExam(),
 
-      // review mode
+      // review + learn setup
       setReviewSetup: (patch) => this.setReviewSetup(patch),
-      startReviewSession: (ids) => this.startSession(null, ids),
+      startReviewSession: (ids) => this.startSession(null, ids, REVIEW),
+      setLearnSetup: (patch) => this.setLearnSetup(patch),
+      startLearnSession: (ids) => this.startSession(null, ids, LEARN),
 
       // leaderboard
       setLeaderFilter: (key, value) => this.setState((s) => ({ leaderFilter: { ...s.leaderFilter, [key]: value } })),
@@ -585,7 +693,9 @@ export class App extends React.Component {
     // Sign-in is required before the app. "disabled" means Firebase is
     // unreachable — fall through to local-only rather than lock members out.
     if (auth.status !== "signed-in" && auth.status !== "disabled") {
-      return authGateView(authGateVals({ auth, groupName: this.groupName(), motto: this.motto(), actions: this.actions }));
+      return authGateView(
+        authGateVals({ auth, groupName: this.groupName(), motto: this.motto(), actions: this.actions }),
+      );
     }
 
     // Members give a name, ministry group, gender, and class before the app, so
@@ -612,10 +722,10 @@ export class App extends React.Component {
     return html`<div
       style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)")}
     >
-      ${headerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)} ${v.isReviewSetup && reviewSetupView(v)} ${v.isReview && reviewView(v)}
-      ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)}
-      ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)}
-      ${footerView(v)}
+      ${headerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)} ${v.isReviewSetup && reviewSetupView(v)}
+      ${v.isLearnSetup && learnSetupView(v)} ${v.isReview && reviewView(v)} ${v.isDone && doneView(v)}
+      ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)} ${v.isExam && examView(v)}
+      ${v.isExamDone && examDoneView(v)} ${footerView(v)}
     </div>`;
   }
 }

@@ -1,10 +1,39 @@
-/* All passages — searchable, filterable table of the whole set. */
+/* All passages — searchable, filterable table of the whole set, and the one
+ * screen where a sitting can be hand-picked: tick the rows you want and take
+ * them as a review or a learn session. */
 
 import { html, sx, corners } from "../dom.js";
 import { muted } from "../ui/tokens.js";
 
 /* One column track shared by the header and every row, so they stay aligned. */
-const COLUMNS = "grid-template-columns:56px 190px 1fr 110px 130px 210px;gap:0";
+const COLUMNS = "grid-template-columns:34px 56px 190px 1fr 110px 130px 110px;gap:0";
+
+/* What the ticked rows can be taken as. Only shown once something is ticked —
+ * an empty selection has nothing to say, and the row buttons already cover the
+ * one-verse case. */
+function selectionBar(v) {
+  return html`<div
+    style=${sx(
+      "display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px;" +
+        "border-bottom:1px solid var(--color-divider);background:var(--color-accent-100)",
+    )}
+  >
+    <span style=${sx("font-family:var(--font-heading);font-weight:600;font-size:15px;color:var(--color-accent-800)")}>
+      ${v.selectionLabel}
+    </span>
+    ${v.selectionActions.map(
+      (a) =>
+        html`<button key=${a.key} className="btn btn-primary" onClick=${a.onClick} style=${sx("font-size:13px")}>
+          ${a.label}
+        </button>`,
+    )}
+    <button className="btn btn-secondary" onClick=${v.onClearSelection} style=${sx("font-size:13px")}>Clear</button>
+    ${
+      v.selectionNote &&
+      html`<span style=${sx(`font-size:12px;color:${muted(60)};max-width:46ch`)}>${v.selectionNote}</span>`
+    }
+  </div>`;
+}
 
 export function listView(v) {
   return html`<div
@@ -32,10 +61,21 @@ export function listView(v) {
     </div>
 
     <div className="blueprint" style=${sx("padding:0")}>
-      ${corners()}
+      ${corners()} ${v.selectionCount > 0 && selectionBar(v)}
       <div
         style=${sx(`display:grid;${COLUMNS};padding:10px 18px;border-bottom:1px solid var(--color-divider);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${muted(55)}`)}
       >
+        <div>
+          <button
+            onClick=${v.onSelectAll}
+            title=${v.selectAllTitle}
+            aria-label=${v.selectAllTitle}
+            aria-pressed=${v.selectAllOn}
+            style=${sx(v.selectAllStyle)}
+          >
+            ${v.selectAllMark}
+          </button>
+        </div>
         <div>No.</div>
         <div>Reference</div>
         <div>Opening words</div>
@@ -52,6 +92,17 @@ export function listView(v) {
                 (i ? `;border-top:1px solid ${muted(8)}` : ""),
             )}
           >
+            <div>
+              <button
+                onClick=${r.onSelect}
+                title=${r.selectTitle}
+                aria-label=${r.selectTitle}
+                aria-pressed=${r.selected}
+                style=${sx(r.selectStyle)}
+              >
+                ${r.selectMark}
+              </button>
+            </div>
             <div style=${sx(`font-family:var(--font-heading);font-size:12px;letter-spacing:.08em;color:${muted(45)}`)}>
               ${r.num}
             </div>
@@ -74,17 +125,10 @@ export function listView(v) {
             <div style=${sx("display:flex;gap:8px;justify-content:flex-end")}>
               <button
                 className="btn btn-secondary"
-                onClick=${r.onReview}
+                onClick=${r.onAction}
                 style=${sx("font-size:12px;padding:4px 10px")}
               >
-                Review
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick=${r.onToggle}
-                style=${sx("font-size:12px;padding:4px 10px")}
-              >
-                ${r.toggleLabel}
+                ${r.actionLabel}
               </button>
             </div>
           </div>`,

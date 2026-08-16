@@ -58,6 +58,17 @@ export const filterTab = (active) =>
   ";color:" +
   (active ? "var(--color-bg)" : "var(--color-text)");
 
+/* Tick box for selecting rows on the passage list. A button rather than a real
+ * checkbox, so it inherits the design's square, borderless-radius language
+ * instead of the platform control — the tick itself is the only fill. */
+export const checkBox = (on) =>
+  "width:17px;height:17px;padding:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;" +
+  "font-size:11px;line-height:1;border:1px solid " +
+  (on ? "var(--color-accent)" : "var(--color-divider)") +
+  ";background:" +
+  (on ? "var(--color-accent)" : "transparent") +
+  ";color:var(--color-bg)";
+
 /* Status pill shown against a passage: filled for committed, tinted for in
  * progress, outlined for untouched. */
 const TAG_BASE = "display:inline-flex;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;";
