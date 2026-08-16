@@ -102,6 +102,10 @@ function initialState() {
     // passage list
     search: "",
     filter: "All",
+    // Passage ids ticked on the list, so a sitting can be hand-picked rather
+    // than drawn from a pool. Kept as an array, in the order they were ticked;
+    // the view-model is what asks whether a given row is in it.
+    selection: [],
 
     // account, profile, leaderboard
     auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
@@ -581,6 +585,14 @@ export class App extends React.Component {
       // passage list
       setSearch: (search) => set({ search }),
       setFilter: (filter) => set({ filter }),
+      toggleSelect: (id) =>
+        this.setState((s) => ({
+          selection: s.selection.includes(id) ? s.selection.filter((x) => x !== id) : [...s.selection, id],
+        })),
+      // Ticking every shown row, and clearing, are both a whole new selection —
+      // the view-model works out which ids that is, since it is what knows
+      // which rows the search and filter have left on screen.
+      setSelection: (selection) => set({ selection }),
 
       // review — shared
       setMode: (mode) => {

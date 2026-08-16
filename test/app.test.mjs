@@ -479,3 +479,26 @@ test("a setup that matches no verses cannot start a test", () => {
   assert.equal(a.state.view, "test-setup");
   assert.equal(a.state.exam, null);
 });
+
+/* ── hand-picking a sitting from the passage list ─────────────────────────── */
+
+test("ticking a row adds it, ticking it again takes it back", () => {
+  const a = app(baseState({ view: "list" }));
+
+  a.actions.toggleSelect(4);
+  a.actions.toggleSelect(1);
+  assert.deepEqual(a.state.selection, [4, 1], "kept in the order they were ticked");
+
+  a.actions.toggleSelect(4);
+  assert.deepEqual(a.state.selection, [1]);
+});
+
+test("a hand-picked session survives, so the other half can be taken next", () => {
+  const a = app(baseState({ view: "list", selection: [1, 4] }));
+  // What the list's Review button hands the shell: the committed half only.
+  a.actions.startSession(undefined, [1], "review");
+
+  assert.equal(a.state.view, "review");
+  assert.deepEqual(a.state.queue, [1]);
+  assert.deepEqual(a.state.selection, [1, 4], "the ticks are the member's to clear");
+});

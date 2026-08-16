@@ -98,6 +98,28 @@ export function learnPool(passages, progress, now = Date.now()) {
   return [...started, ...passages.filter((p) => read.statusOf(p.id) === "new")];
 }
 
+/* A hand-picked selection, divided by the same rule.
+ *
+ * The passage list lets a member tick whatever rows they like, and a tick says
+ * nothing about which half of the set the verse is in — so the split happens
+ * here rather than at the button: committed verses are reviewed, the rest are
+ * learned. That keeps the one rule intact (a review session can never reach an
+ * uncommitted verse) without making the member sort their own picks.
+ *
+ * Freshness is deliberately not consulted, unlike reviewPool(): a verse the
+ * member has picked out by hand is one they have asked for, however fresh it
+ * still reads. Both halves keep the order of the passage list, so a queue runs
+ * the way the list did. */
+export function selectionPools(passages, progress, ids) {
+  const picked = new Set(ids || []);
+  const read = progressReader(progress);
+  const chosen = passages.filter((p) => picked.has(p.id));
+  return {
+    review: chosen.filter((p) => read.statusOf(p.id) === "memorized"),
+    learn: chosen.filter((p) => read.statusOf(p.id) !== "memorized"),
+  };
+}
+
 /* Length of the current run of consecutive days with at least one review.
  * Today not being reviewed yet does not break the streak — the count simply
  * starts at yesterday. */

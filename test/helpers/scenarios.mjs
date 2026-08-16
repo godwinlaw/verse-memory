@@ -89,6 +89,7 @@ export function baseState(overrides = {}) {
     scrambleLevel: 1,
     search: "",
     filter: "All",
+    selection: [],
     sessionCount: 0,
     examSetup: DEFAULT_SETUP,
     exam: null,
@@ -231,6 +232,15 @@ export const scenarios = [
   { name: "list/filtered-committed", state: baseState({ view: "list", filter: "Committed" }) },
   { name: "list/searched", state: baseState({ view: "list", search: "psalm" }) },
   { name: "list/no-matches", state: baseState({ view: "list", search: "zzzzz" }) },
+  // Hand-picked sittings. The fixture commits 1–3 and leaves 4–6 in progress,
+  // so these three cover a selection in one half, one straddling both, and one
+  // holding a verse the current filter has hidden.
+  { name: "list/selected-committed", state: baseState({ view: "list", selection: [1, 3] }) },
+  { name: "list/selected-mixed", state: baseState({ view: "list", selection: [1, 4, 9] }) },
+  {
+    name: "list/selected-hidden",
+    state: baseState({ view: "list", filter: "Committed", selection: [1, 9] }),
+  },
 
   // ── review, one per mode ───────────────────────────────────────────────────
   { name: "review/flip-hidden", state: reviewing({ mode: "flip" }) },

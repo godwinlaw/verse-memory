@@ -213,7 +213,11 @@ test("a learn session says what this card would take to commit the verse", () =>
   const practising = shown("learn/practising");
   assert.match(practising, /Write the passage in full to commit/);
 
-  assert.match(shown("learn/scaffolded"), /Write the passage in full to commit/, "first letters is a hint, not a write-out");
+  assert.match(
+    shown("learn/scaffolded"),
+    /Write the passage in full to commit/,
+    "first letters is a hint, not a write-out",
+  );
 });
 
 test("a review session says none of that", () => {
@@ -309,6 +313,32 @@ test("the passage list offers the sitting that suits the row, and no commit butt
   assert.doesNotMatch(markup, /Un-commit/);
   assert.match(markup, />Learn<\/button>/, "an uncommitted passage is learned");
   assert.match(markup, />Review<\/button>/, "a committed one is reviewed");
+});
+
+/* ── hand-picking a sitting from the list ─────────────────────────────────── */
+
+test("the list has nothing to say until a row is ticked", () => {
+  const markup = shown("list/all");
+  assert.doesNotMatch(markup, /verses selected/);
+  assert.doesNotMatch(markup, />Clear</);
+  assert.match(markup, /aria-label="Select the rows shown"/, "but the header box is there to tick them with");
+});
+
+test("ticked rows offer the sitting their half of the set belongs to", () => {
+  const committed = shown("list/selected-committed");
+  assert.match(committed, /2 verses selected/);
+  assert.match(committed, />Review 2</);
+  assert.doesNotMatch(committed, />Learn \d</, "nothing uncommitted was picked");
+
+  const mixed = shown("list/selected-mixed");
+  assert.match(mixed, /3 verses selected/);
+  assert.match(mixed, />Review 1</);
+  assert.match(mixed, />Learn 2</);
+  assert.match(mixed, /so this is two sittings/, "and says why it is two buttons");
+});
+
+test("a tick the current filter hides is still counted, and flagged", () => {
+  assert.match(shown("list/selected-hidden"), /2 verses selected · 1 not shown/);
 });
 
 /* The test-mode scenarios are indexed into a generated paper, so a paper that
