@@ -1,26 +1,71 @@
 /* The board — the app's home view.
  *
- * Top to bottom: the progress hero, today's queue beside the four review modes,
- * a cell-per-passage map of the whole set, and the last fortnight's activity
- * next to a pace check. */
+ * Top to bottom: the progress hero, the two queues (what to review, what to
+ * learn), a cell-per-passage map of the whole set, and the last fortnight's
+ * activity next to a pace check. */
 
 import { html, sx, corners } from "../dom.js";
 import { LABEL_META, muted } from "../ui/tokens.js";
 
+/* One of the board's two queues. Review and Learn are the same table of the
+ * same passages at two stages, so they are one component read twice rather than
+ * two that have to be kept looking alike. */
+function queueCard({ title, count, note, rows, empty }) {
+  return html`<div style=${sx("display:flex;flex-direction:column;gap:14px")}>
+    <div style=${sx("display:flex;align-items:baseline;gap:12px;flex-wrap:wrap")}>
+      <h4 style=${sx("margin:0;letter-spacing:.02em")}>${title}</h4>
+      <div style=${sx(LABEL_META)}>${count} ${count === 1 ? "passage" : "passages"}</div>
+      <div style=${sx(`font-size:12px;color:${muted(50)}`)}>${note}</div>
+    </div>
+    <div className="blueprint" style=${sx("display:flex;flex-direction:column")}>
+      ${corners()}
+      ${
+        rows.length
+          ? rows.map(
+              (q) =>
+                html` <button key=${q.id} onClick=${q.onClick} style=${sx(q.style)}>
+                  <span
+                    style=${sx("font-family:var(--font-heading);font-size:11px;letter-spacing:.1em;width:34px;flex:none;opacity:.5;text-align:left")}
+                    >${q.num}</span
+                  >
+                  <span
+                    style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px;width:170px;flex:none;text-align:left")}
+                    >${q.ref}</span
+                  >
+                  <span
+                    style=${sx(`font-size:13px;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${muted(60)}`)}
+                    >${q.snippet}</span
+                  >
+                  ${q.freshLabel && html`<span style=${sx(q.freshStyle)}>${q.freshLabel}</span>`}
+                  <span style=${sx(q.tagStyle)}>${q.statusLabel}</span>
+                </button>`,
+            )
+          : html`<div style=${sx(`padding:22px 18px;font-size:13px;color:${muted(55)}`)}>${empty}</div>`
+      }
+    </div>
+  </div>`;
+}
+
 export function boardView(v) {
-  return html`<div
-    style=${sx("max-width:1280px;margin:0 auto;padding:40px 36px 80px;display:flex;flex-direction:column;gap:40px")}
-  >
+  return html`<div className="board-page">
     <div
-      className="blueprint"
-      style=${sx("display:grid;grid-template-columns:1.3fr 1fr;background:var(--color-accent-900);color:#f2f2f3;border-color:var(--color-accent-900)")}
+      className="blueprint board-hero"
+      style=${sx("background:var(--color-accent-900);color:#f2f2f3;border-color:var(--color-accent-900)")}
     >
       ${corners()}
       <div style=${sx("padding:36px 40px 32px;display:flex;flex-direction:column;gap:22px")}>
-        ${v.motto &&
-        html`<div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:15px;letter-spacing:.03em;opacity:.9")}>
-          ${v.motto}
-        </div>`}
+        ${
+          v.motto &&
+          html`<div
+            style=${sx("font-family:var(--font-heading);font-weight:600;font-size:15px;letter-spacing:.03em;opacity:.9")}
+          >
+            ${v.motto}
+          </div>`
+        }
+        <div style=${sx("font-size:12px;line-height:1.6;opacity:.75;font-style:italic;max-width:60ch")}>
+          "Do your best to present yourself to God as one approved, a worker who has no need to be ashamed, rightly
+          handling the word of truth." — 2 Tim 2:15
+        </div>
         <div style=${sx("font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.72")}>
           Progress to ${v.deadlineLabel}
         </div>
@@ -48,7 +93,7 @@ export function boardView(v) {
           <div>${v.pctLabel} of the goal</div>
         </div>
       </div>
-      <div style=${sx("display:grid;grid-template-columns:1fr 1fr;border-left:1px solid rgba(242,242,243,.25)")}>
+      <div className="board-hero-stats">
         ${v.heroStats.map(
           (st) =>
             html` <div key=${st.label} style=${sx(st.style)}>
@@ -64,65 +109,20 @@ export function boardView(v) {
       </div>
     </div>
 
-    <div style=${sx("display:grid;grid-template-columns:1.15fr 1fr;gap:32px;align-items:start")}>
-      <div style=${sx("display:flex;flex-direction:column;gap:14px")}>
-        <div style=${sx("display:flex;align-items:baseline;gap:12px")}>
-          <h4 style=${sx("margin:0;letter-spacing:.02em")}>Due today</h4>
-          <div style=${sx(LABEL_META)}>${v.dueCount} passages</div>
-        </div>
-        <div className="blueprint" style=${sx("display:flex;flex-direction:column")}>
-          ${corners()}
-          ${v.queue.map(
-            (q) =>
-              html` <button key=${q.id} onClick=${q.onClick} style=${sx(q.style)}>
-                <span
-                  style=${sx("font-family:var(--font-heading);font-size:11px;letter-spacing:.1em;width:34px;flex:none;opacity:.5;text-align:left")}
-                  >${q.num}</span
-                >
-                <span
-                  style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px;width:170px;flex:none;text-align:left")}
-                  >${q.ref}</span
-                >
-                <span
-                  style=${sx(`font-size:13px;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${muted(60)}`)}
-                  >${q.snippet}</span
-                >
-                <span style=${sx(q.freshStyle)}>${q.freshLabel}</span>
-                <span style=${sx(q.tagStyle)}>${q.statusLabel}</span>
-              </button>`,
-          )}
-        </div>
-      </div>
-
-      <div style=${sx("display:flex;flex-direction:column;gap:14px")}>
-        <div style=${sx("display:flex;align-items:baseline;gap:12px")}>
-          <h4 style=${sx("margin:0;letter-spacing:.02em")}>Self study</h4>
-          <div style=${sx(LABEL_META)}>four ways to review, untimed and unmarked</div>
-        </div>
-        <div style=${sx("display:grid;grid-template-columns:1fr 1fr;gap:14px")}>
-          ${v.modes.map(
-            (m) =>
-              html` <button
-                key=${m.key}
-                className="blueprint"
-                onClick=${m.onClick}
-                style=${sx("background:transparent;cursor:pointer;padding:18px 16px;display:flex;flex-direction:column;gap:6px;text-align:left;font-family:var(--font-body);color:var(--color-text)")}
-              >
-                ${corners()}
-                <div
-                  style=${sx("font-family:var(--font-heading);font-size:11px;letter-spacing:.14em;color:var(--color-accent-700)")}
-                >
-                  ${m.index}
-                </div>
-                <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:19px;line-height:1.1")}>
-                  ${m.name}
-                </div>
-                <div style=${sx(`font-size:12px;line-height:1.45;color:${muted(58)}`)}>${m.desc}</div>
-              </button>`,
-          )}
-        </div>
-      </div>
-    </div>
+    ${queueCard({
+      title: "Review today",
+      count: v.reviewCount,
+      note: v.reviewQueueNote,
+      rows: v.reviewQueue,
+      empty: v.reviewQueueEmpty,
+    })}
+    ${queueCard({
+      title: "Learn today",
+      count: v.learnCount,
+      note: v.learnQueueNote,
+      rows: v.learnQueue,
+      empty: v.learnQueueEmpty,
+    })}
 
     <div style=${sx("display:flex;flex-direction:column;gap:16px")}>
       <div style=${sx("display:flex;align-items:baseline;gap:12px")}>
@@ -147,13 +147,13 @@ export function boardView(v) {
       </div>
       <div className="blueprint" style=${sx("padding:22px")}>
         ${corners()}
-        <div style=${sx("display:grid;grid-template-columns:repeat(28,1fr);gap:5px")}>
+        <div className="board-map-grid">
           ${v.mapCells.map((c) => html`<button key=${c.id} title=${c.title} onClick=${c.onClick} style=${sx(c.style)}></button>`)}
         </div>
       </div>
     </div>
 
-    <div style=${sx("display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start")}>
+    <div className="board-bottom">
       <div style=${sx("display:flex;flex-direction:column;gap:14px")}>
         <h4 style=${sx("margin:0;letter-spacing:.02em")}>Last ${v.activityDays} days</h4>
         <div className="blueprint" style=${sx("padding:20px 22px 16px;display:flex;flex-direction:column;gap:10px")}>
@@ -177,7 +177,8 @@ export function boardView(v) {
           </div>
           <p style=${sx(`margin:0;font-size:13px;line-height:1.6;color:${muted(65)}`)}>${v.paceBody}</p>
           <div style=${sx("display:flex;gap:10px;margin-top:2px;flex-wrap:wrap")}>
-            <button className="btn btn-primary" onClick=${v.startDue}>Start a session</button>
+            <button className="btn btn-primary" onClick=${v.goLearnSetup}>Learn a passage</button>
+            <button className="btn btn-secondary" onClick=${v.goReviewSetup}>Review</button>
             <button className="btn btn-secondary" onClick=${v.goTest}>Take a test</button>
             <button className="btn btn-secondary" onClick=${v.goList}>Browse all ${v.goal}</button>
           </div>

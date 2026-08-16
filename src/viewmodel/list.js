@@ -3,6 +3,7 @@
 
 import { FADING_R, freshBar, freshColor } from "../srs.js";
 import { STATUS_LABEL } from "../progress.js";
+import { LEARN, REVIEW } from "../review.js";
 import { filterTab, muted, statusTag } from "../ui/tokens.js";
 
 /* Filter tabs, in display order. `status` null means "no status filter"; the
@@ -66,9 +67,11 @@ export function listVals({ state, prog, actions }) {
         freshLabel: reviewed ? fresh + "%" : "—",
         freshColor: reviewed ? freshColor(fresh) : muted(45),
         freshBarStyle: reviewed ? freshBar(fresh) : EMPTY_METER,
-        toggleLabel: p.status === "memorized" ? "Un-commit" : "Mark committed",
-        onToggle: () => actions.setStatus(p.id, p.status === "memorized" ? "learning" : "memorized"),
-        onReview: () => actions.startSession(undefined, [p.id]),
+        // There is no button that commits a passage — only writing it out does
+        // that (srs.commitsVerse). So the row offers the sitting that suits its
+        // half of the set: review what is committed, learn what is not.
+        actionLabel: p.status === "memorized" ? "Review" : "Learn",
+        onAction: () => actions.startSession(undefined, [p.id], p.status === "memorized" ? REVIEW : LEARN),
       };
     }),
   };

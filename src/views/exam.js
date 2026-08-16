@@ -132,12 +132,7 @@ function blanksPanel(v) {
           html` <span key=${i} style=${sx(w.wrapStyle)}
             >${
               w.isBlank
-                ? html`<input
-                    id=${w.id}
-                    value=${w.value}
-                    onChange=${w.onChange}
-                    style=${sx(w.inputStyle)}
-                  />`
+                ? html`<input id=${w.id} value=${w.value} onChange=${w.onChange} style=${sx(w.inputStyle)} />`
                 : w.word
             }</span
           >`,

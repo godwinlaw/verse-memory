@@ -5,8 +5,13 @@
  * (in days). Reviewing raises S (FSRS/DSR model) so the curve decays more slowly
  * afterward. Different activities raise S by different amounts — free recall
  * (writing it all out) builds more durable memory than cued recall (fill the
- * blanks) than recognition (reorder / flashcard). All constants are tunable
- * starting points informed by the spaced-repetition literature, not fitted data.
+ * blanks) than recognition (reorder / flashcard).
+ *
+ * The same hierarchy decides where on the curve a finished card lands: an
+ * activity pays a ceiling of freshness, the attempt's mark and every peek take
+ * from it, and the verse is dated back to what is left (see reviewAward and
+ * backdatedLast). All constants are tunable starting points informed by the
+ * spaced-repetition literature, not fitted data.
  *
  * Everything here is a pure function of a progress record + the current time, so
  * it is trivial to unit-test and reason about independently of React state. */
@@ -22,10 +27,13 @@ export const SPACING_MAX = 1.0; // max extra stability gain from the spacing eff
 // Testing effect: free recall > cued recall > recognition.
 export const ACTIVITY_MULT = { type: 1.3, blanks: 1.0, scramble: 0.8, flip: 0.8 };
 export const BLANK_MULT = { 0: 0.85, 1: 1.0, 2: 1.15 }; // light / medium / full blanks
+export const SCRAMBLE_MULT = { 0: 0.85, 1: 1.0, 2: 1.15 }; // coarse / medium / fine phrases
 
-/* Stability to seed when a verse is marked committed by hand (rather than
- * earned through reviews), so it doesn't immediately read as 0% fresh. */
-export const SEED_STABILITY = S0 * GROWTH_BASE;
+/* Floor on the freshness a graded attempt can leave behind, so a zero score
+ * backdates a verse by a finite amount rather than by ln(1/0) days. */
+export const R_FLOOR = 0.05;
+
+const clampR = (r) => Math.max(R_FLOOR, Math.min(1, r));
 
 /* Normalize a stored progress record, back-filling a stability for legacy
  * records (hits/status/last only) consistent with how many clean reviews the
@@ -52,18 +60,84 @@ export function isDue(rec, now = Date.now()) {
   return !rec.last || retrievability(rec, now) < TARGET_R;
 }
 
-/* Stability after a completed review. Driven by the act of reviewing alone —
- * no self-report. The activity and its measured performance decide how much
- * stability is gained, and a spacing bonus rewards reviewing when nearly
- * forgotten. `ctx` is { mode, blankLevel, score }. */
+/* Stability after a completed review. Driven by what the member did — no
+ * self-report. The activity, its difficulty setting, and the mark the attempt
+ * earned decide how much stability is gained, and a spacing bonus rewards
+ * reviewing when nearly forgotten. `ctx` is a review context (see below). */
 export function nextStability(prev, ctx, now = Date.now()) {
+  const c = ctx || {};
   const R = retrievability(prev, now);
   const spacingBoost = 1 + SPACING_MAX * (1 - R); // bigger gain when nearly forgotten
-  let act = ACTIVITY_MULT[ctx && ctx.mode] || 1.0; // testing-effect hierarchy
-  if (ctx && ctx.mode === "blanks") act *= BLANK_MULT[ctx.blankLevel] != null ? BLANK_MULT[ctx.blankLevel] : 1.0;
-  if (ctx && ctx.mode === "type" && typeof ctx.score === "number") act *= 0.5 + ctx.score; // 100% → ×1.5
+  let act = ACTIVITY_MULT[c.mode] || 1.0; // testing-effect hierarchy
+  if (c.mode === "blanks") act *= BLANK_MULT[c.blankLevel] != null ? BLANK_MULT[c.blankLevel] : 1.0;
+  if (c.mode === "scramble") act *= SCRAMBLE_MULT[c.scrambleLevel] != null ? SCRAMBLE_MULT[c.scrambleLevel] : 1.0;
+  if (typeof c.score === "number") act *= 0.5 + Math.max(0, Math.min(1, c.score)); // 100% → ×1.5
   const base = prev.stability > 0 ? prev.stability : S0;
   return base * (1 + (GROWTH_BASE - 1) * act * spacingBoost);
+}
+
+/* ── what a card is worth ─────────────────────────────────────────────────── */
+
+/* Finishing a card no longer just stamps the clock. Each activity is worth a
+ * ceiling of freshness — writing the passage out from memory can leave it fully
+ * fresh, putting shuffled phrases back cannot — and the attempt's own mark, its
+ * difficulty setting, and every peek move the award below that ceiling. The
+ * award is the freshness the verse is then dated to (see reviewedLast), so what
+ * the member demonstrated is what the board shows.
+ *
+ * A review context is `{ mode, blankLevel, scrambleLevel, firstLetters, score,
+ * peeks }` — the same object nextStability() reads. */
+
+/* Ceiling per mode: free recall > cued recall > recognition. The flashcard is
+ * unmarked — there is nothing to measure — so it stays the plain "I reviewed
+ * it" stamp it has always been. */
+export const MODE_AWARD = { type: 1.0, blanks: 0.95, scramble: 0.9, flip: 1.0 };
+
+/* Difficulty setting, indexed like BLANK_LEVELS / SCRAMBLE_LEVELS: the finer the
+ * cut and the more words blanked, the closer to the mode's ceiling it pays. */
+export const LEVEL_AWARD = [0.92, 0.96, 1.0];
+
+/* Typing first letters only is scaffolded recall, so it is worth less than
+ * writing the passage out in full. */
+export const FIRST_LETTER_AWARD = 0.92;
+
+/* What one press of "Peek" costs, in freshness. Looking at the passage is
+ * allowed, and often the right thing to do — it just isn't free. */
+export const PEEK_COST = 0.05;
+
+/* Freshness a completed card is worth, in [R_FLOOR, 1]. */
+export function reviewAward(ctx = {}) {
+  let award = MODE_AWARD[ctx.mode] != null ? MODE_AWARD[ctx.mode] : 1.0;
+  if (ctx.mode === "blanks") award *= LEVEL_AWARD[ctx.blankLevel] != null ? LEVEL_AWARD[ctx.blankLevel] : 1.0;
+  if (ctx.mode === "scramble") award *= LEVEL_AWARD[ctx.scrambleLevel] != null ? LEVEL_AWARD[ctx.scrambleLevel] : 1.0;
+  if (ctx.mode === "type" && ctx.firstLetters) award *= FIRST_LETTER_AWARD;
+  if (typeof ctx.score === "number") award *= Math.max(0, Math.min(1, ctx.score));
+  return clampR(award - PEEK_COST * (ctx.peeks || 0));
+}
+
+/* The most a card can pay before the attempt is marked — what the member is
+ * playing for, quoted by the session and by the setup screen's explainer. */
+export const awardCeiling = (ctx = {}) => reviewAward({ ...ctx, score: 1, peeks: 0 });
+
+/* ── committing a verse ───────────────────────────────────────────────────── */
+
+/* One thing, and only this, commits a verse: writing the whole passage out from
+ * memory. Not three reviews of any kind, not a hand-set flag — the member has to
+ * produce the text.
+ *
+ * "From memory" is the whole point, so the bar is the unaided write-out: the
+ * first-letter scaffold is a different, easier activity, and a passage that had
+ * to be peeked at was read rather than recalled. Both of those still earn
+ * freshness through reviewAward() — they just aren't what commits.
+ *
+ * The mark is not held at a literal 100% because gradeWritten() matches word by
+ * word: one dropped article would otherwise deny a passage the member plainly
+ * knows. COMMIT_SCORE is the margin that buys. */
+export const COMMIT_SCORE = 0.95;
+
+export function commitsVerse(ctx = {}) {
+  if (ctx.mode !== "type" || ctx.firstLetters || ctx.peeks) return false;
+  return typeof ctx.score === "number" && ctx.score >= COMMIT_SCORE;
 }
 
 /* ── tests ────────────────────────────────────────────────────────────────── */
@@ -80,9 +154,9 @@ export const TEST_PASS = 0.6;
  * most of the interval but not all of it — the verse was learned once. */
 export const TEST_LAPSE_KEEP = 0.35;
 
-/* Floor on the freshness a test result can leave, so a zero score backdates by
- * a finite amount rather than by ln(1/0) days. */
-export const TEST_R_FLOOR = 0.05;
+/* Floor on the freshness a test result can leave. Kept as its own name because
+ * exam.js reasons in test terms; it is the shared R_FLOOR. */
+export const TEST_R_FLOOR = R_FLOOR;
 
 /* Stability after a graded test, continuous through TEST_PASS: exactly at the
  * pass mark the verse keeps the stability it had, a perfect score compounds it
@@ -98,21 +172,25 @@ export function testStability(prev, score, now = Date.now()) {
   return base * (1 + (GROWTH_BASE - 1) * act * spacingBoost);
 }
 
-/* When a tested verse should read as last reviewed.
+/* When a graded verse should read as last reviewed.
  *
- * Finishing any self-study card sets the clock to now, which is to say 100%
- * fresh — fair enough, since nothing measured how it went. A test did measure
- * it, so the verse is instead dated back to the point on its new forgetting
- * curve that matches the score: 55% on the test leaves it reading 55% fresh,
- * and it decays on from there.
+ * A verse is dated back to the point on its new forgetting curve that matches
+ * what the member demonstrated: 55% leaves it reading 55% fresh, and it decays
+ * on from there. Only a mode that pays a full award (the flashcard, and a
+ * flawless unaided write-out) lands on `now` itself.
  *
- * This is the one write in the app where `last` is not the moment of writing,
- * which is why a tested record also carries an `updatedAt` — see the stamp
+ * These are the writes where `last` is not the moment of writing, which is why
+ * such a record also carries an `updatedAt` — see the stamp
  * storage.mergeProgress reconciles on. */
-export function testedLast(stability, score, now = Date.now()) {
-  const r = Math.max(TEST_R_FLOOR, Math.min(1, score));
-  return now - stability * Math.log(1 / r) * DAY_MS;
+export function backdatedLast(stability, r, now = Date.now()) {
+  return now - stability * Math.log(1 / clampR(r)) * DAY_MS;
 }
+
+/* …after a test (exam.js), */
+export const testedLast = backdatedLast;
+
+/* …and after a self-study card, which is dated to the award it earned. */
+export const reviewedLast = backdatedLast;
 
 /* Continuous freshness colour: red (0%) → amber → green (100%), per the design. */
 const freshHue = (pct) => Math.round(pct * 1.3); // 0 → hue 0 (red), 100 → hue 130 (green)

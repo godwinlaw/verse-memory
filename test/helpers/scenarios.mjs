@@ -64,13 +64,18 @@ export function baseState(overrides = {}) {
     view: "board",
     progress: progressFixture(),
     log: LOG,
+    sessionKind: "review",
     mode: null,
     queue: [],
     qi: 0,
+    results: {},
+    reviewLeaveAsk: false,
+    reviewMoveAsk: null,
     phase: "prompt",
     revealed: false,
     flipLetters: false,
     showHelp: false,
+    peeks: 0,
     answers: {},
     blanksChecked: false,
     blankLevel: 1,
@@ -78,9 +83,9 @@ export function baseState(overrides = {}) {
     typed: "",
     typeGraded: false,
     typeFirstLetter: false,
-    lastTypeScore: undefined,
     scrambleOrder: [],
     scrambleWrong: -1,
+    scrambleMisses: 0,
     scrambleLevel: 1,
     search: "",
     filter: "All",
@@ -102,11 +107,24 @@ export function baseState(overrides = {}) {
     editingProfile: false,
     ministryOpen: false,
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
+    reviewSetup: { manualSize: 10, manualFreshness: 90 },
+    learnSetup: { size: 5 },
     ...overrides,
   };
 }
 
 const reviewing = (overrides) => baseState({ view: "review", queue: [1, 2, 3], qi: 1, sessionCount: 1, ...overrides });
+
+/* A learn session. Verses 4, 5 and 6 are the in-progress ones in the fixture,
+ * so they are what a learn session would be handed; qi 1 puts verse 5 in front
+ * of us, which is what `results` keys on. */
+const learning = (overrides) =>
+  baseState({ view: "review", sessionKind: "learn", queue: [4, 5, 6], qi: 1, sessionCount: 1, ...overrides });
+
+/* Every passage committed and fully fresh — nothing to review, nothing to
+ * learn. Both empty states at once. */
+const allCommitted = () =>
+  Object.fromEntries(passages.map((p) => [p.id, { hits: 5, status: "memorized", last: daysAgo(0), stability: 30 }]));
 
 /* One fixed paper, covering all four activities (ten verses dealt round-robin
  * over four activities reaches every one). The seed is fixed, so the questions —
@@ -181,23 +199,32 @@ export const scenarios = [
 
   // ── board ──────────────────────────────────────────────────────────────────
   { name: "board/populated", state: baseState() },
+  // Nothing committed and nothing started: both queues are empty, for opposite
+  // reasons, so both empty states render.
   { name: "board/fresh-account", state: baseState({ progress: {}, log: {}, peers: [] }) },
+  { name: "board/all-committed", state: baseState({ progress: allCommitted() }) },
 
   // ── review setup ───────────────────────────────────────────────────────────
-  // Most verses are never-reviewed → due, so the default queue is shown.
+  // Verses 2 and 3 are committed and faded past the threshold, so they are due.
   { name: "review-setup/due", state: baseState({ view: "review-setup" }) },
   // Every verse committed & fully fresh → nothing due, so the manual controls
-  // (how many uncommitted verses, freshness ceiling) take over.
+  // (how many committed verses, freshness ceiling) take over.
   {
     name: "review-setup/caught-up",
     state: baseState({
       view: "review-setup",
-      progress: Object.fromEntries(
-        passages.map((p) => [p.id, { hits: 5, status: "memorized", last: daysAgo(0), stability: 30 }]),
-      ),
-      reviewSetup: { manualSize: 10, manualFreshness: 90 },
+      progress: allCommitted(),
+      reviewSetup: { manualSize: 10, manualFreshness: 100 },
     }),
   },
+  // Nothing committed at all — there is no review to configure, so the screen
+  // explains what commits a passage and points at a learn session instead.
+  { name: "review-setup/nothing-committed", state: baseState({ view: "review-setup", progress: {} }) },
+
+  // ── learn setup ────────────────────────────────────────────────────────────
+  { name: "learn-setup/default", state: baseState({ view: "learn-setup" }) },
+  { name: "learn-setup/all", state: baseState({ view: "learn-setup", learnSetup: { size: 0 } }) },
+  { name: "learn-setup/nothing-left", state: baseState({ view: "learn-setup", progress: allCommitted() }) },
 
   // ── passage list ───────────────────────────────────────────────────────────
   { name: "list/all", state: baseState({ view: "list" }) },
@@ -227,9 +254,102 @@ export const scenarios = [
   { name: "review/scramble", state: reviewing({ mode: "scramble" }) },
   {
     name: "review/scramble-partial",
-    state: reviewing({ mode: "scramble", scrambleOrder: [0, 1], scrambleWrong: 3, scrambleLevel: 0 }),
+    state: reviewing({
+      mode: "scramble",
+      scrambleOrder: [0, 1],
+      scrambleWrong: 3,
+      scrambleMisses: 2,
+      scrambleLevel: 0,
+    }),
   },
-  { name: "review/peeking", state: reviewing({ mode: "blanks", showHelp: true }) },
+  { name: "review/peeking", state: reviewing({ mode: "blanks", showHelp: true, peeks: 2 }) },
+  // qi 1 → the card in front of us is passage 2, which is what `results` keys on.
+  {
+    name: "review/submitted",
+    state: reviewing({
+      mode: "blanks",
+      blanksChecked: true,
+      answers: { 2: "hear" },
+      results: { 2: { id: 2, mode: "blanks", score: 0.82, peeks: 1, before: 41, after: 73 } },
+    }),
+  },
+  {
+    name: "review/submitted-faded",
+    state: reviewing({
+      mode: "scramble",
+      scrambleOrder: [0],
+      scrambleMisses: 3,
+      results: { 2: { id: 2, mode: "scramble", score: 0.3, peeks: 3, before: 88, after: 12 } },
+    }),
+  },
+  { name: "review/first-card", state: reviewing({ mode: "blanks", qi: 0, sessionCount: 0 }) },
+  { name: "review/last-card", state: reviewing({ mode: "flip", qi: 2 }) },
+  { name: "review/leaving", state: reviewing({ mode: "type", reviewLeaveAsk: true }) },
+  {
+    name: "review/leaving-after-submitting",
+    state: reviewing({
+      mode: "type",
+      reviewLeaveAsk: true,
+      results: { 2: { id: 2, mode: "type", score: 1, peeks: 0, before: 41, after: 100 } },
+    }),
+  },
+  { name: "review/moving-on-unsubmitted", state: reviewing({ mode: "type", reviewMoveAsk: "next" }) },
+  { name: "review/going-back-unsubmitted", state: reviewing({ mode: "type", reviewMoveAsk: "prev" }) },
+
+  // ── learn session: the same cards, told what commits the verse ─────────────
+  // Writing it out is the activity that can commit, so the banner names the bar.
+  { name: "learn/writing", state: learning({ mode: "type" }) },
+  // Any other activity is practice, and the banner says so.
+  { name: "learn/practising", state: learning({ mode: "blanks" }) },
+  // First letters is a hint, so it cannot commit either.
+  { name: "learn/scaffolded", state: learning({ mode: "type", typeFirstLetter: true, typed: "h o i" }) },
+  // The moment the session exists for: a clean write-out, and the verse commits.
+  {
+    name: "learn/committed",
+    state: learning({
+      mode: "type",
+      typed: "hear o israel the lord our god",
+      typeGraded: true,
+      progress: { ...progressFixture(), 5: { hits: 2, status: "memorized", last: NOW, stability: 4 } },
+      results: { 5: { id: 5, mode: "type", score: 1, peeks: 0, before: 37, after: 100, committed: true } },
+    }),
+  },
+  // A verse that has already been committed, met again in a later sitting.
+  {
+    name: "learn/already-committed",
+    state: learning({
+      mode: "type",
+      progress: { ...progressFixture(), 5: { hits: 6, status: "memorized", last: daysAgo(2), stability: 9 } },
+    }),
+  },
+  // The two dialogs, which are where a review session talks about freshness
+  // most plainly — so the learn wording of both needs exercising.
+  { name: "learn/moving-on-unsubmitted", state: learning({ mode: "type", reviewMoveAsk: "next" }) },
+  { name: "learn/leaving", state: learning({ mode: "type", reviewLeaveAsk: true }) },
+  {
+    name: "learn/leaving-after-committing",
+    state: learning({
+      mode: "type",
+      reviewLeaveAsk: true,
+      results: { 4: { id: 4, mode: "type", score: 1, peeks: 0, before: 20, after: 100, committed: true } },
+    }),
+  },
+  {
+    name: "learn/done",
+    state: baseState({
+      view: "done",
+      sessionKind: "learn",
+      sessionCount: 3,
+      results: {
+        4: { id: 4, mode: "type", score: 1, peeks: 0, before: 20, after: 100, committed: true },
+        5: { id: 5, mode: "blanks", score: 0.7, peeks: 0, before: 30, after: 66, committed: false },
+      },
+    }),
+  },
+  {
+    name: "learn/done-nothing-committed",
+    state: baseState({ view: "done", sessionKind: "learn", sessionCount: 2, results: {} }),
+  },
 
   // ── test mode: setup, one screen per activity, summary ─────────────────────
   { name: "test/setup-default", state: baseState({ view: "test-setup" }) },

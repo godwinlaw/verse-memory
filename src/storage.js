@@ -17,6 +17,7 @@ const KEYS = {
   typeFirstLetter: "mv.typeFirstLetter",
   examSetup: "mv.examSetup",
   reviewSetup: "mv.reviewSetup",
+  learnSetup: "mv.learnSetup",
 };
 
 /* ── guarded primitives ───────────────────────────────────────────────────── */
@@ -76,6 +77,7 @@ export const storage = {
    * what decides whether a stored value is still a legal one. */
   loadExamSetup: () => readJSON(KEYS.examSetup, null),
   loadReviewSetup: (fallback) => readJSON(KEYS.reviewSetup, fallback),
+  loadLearnSetup: (fallback) => readJSON(KEYS.learnSetup, fallback),
 
   /* Progress and the daily log are written together: they change together on
    * every completed review, and the cloud push carries both. */
@@ -96,6 +98,7 @@ export const storage = {
   saveTypeFirstLetter: (on) => writeBool(KEYS.typeFirstLetter, on),
   saveExamSetup: (setup) => write(KEYS.examSetup, JSON.stringify(setup)),
   saveReviewSetup: (setup) => write(KEYS.reviewSetup, JSON.stringify(setup)),
+  saveLearnSetup: (setup) => write(KEYS.learnSetup, JSON.stringify(setup)),
 };
 
 /* ── cloud-sync seam ──────────────────────────────────────────────────────── */

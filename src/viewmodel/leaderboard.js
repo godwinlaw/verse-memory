@@ -2,7 +2,13 @@
  *
  * The roster fetched from Firestore has self removed (see App.loadRoster); this
  * module adds "You" back from local state, so your own row always reflects the
- * newest progress even before it has synced. */
+ * newest progress even before it has synced.
+ *
+ * Ranking is by freshness score = Σ retrievability across committed verses,
+ * so a member with fewer but well-maintained verses can rank above one who has
+ * committed many but let them all fade. */
+
+import { freshnessSum } from "../progress.js";
 
 /* The filters offered above the board. `field` is the profile attribute each one
  * narrows by, which is also what makes the option lists self-building: every
@@ -23,12 +29,19 @@ function distinctValues(rows, field) {
   return [...new Set(values)].sort((a, b) => (typeof a === "number" ? b - a : String(a).localeCompare(String(b))));
 }
 
-export function leaderboardVals({ state, totals, myStreak, actions }) {
+/* Average freshness % across committed verses, or 0 if none committed. */
+function avgFreshPct(freshnessScore, count) {
+  return count > 0 ? Math.round((freshnessScore / count) * 100) : 0;
+}
+
+export function leaderboardVals({ state, totals, myStreak, actions, now = Date.now() }) {
   const me = state.profile || {};
+  const myFreshnessScore = freshnessSum(state.progress, now);
   const roster = (state.peers || []).concat([
     {
       name: "You",
       count: totals.memorized,
+      freshnessScore: myFreshnessScore,
       streak: myStreak,
       me: true,
       ministryGroup: me.ministryGroup,
@@ -43,8 +56,8 @@ export function leaderboardVals({ state, totals, myStreak, actions }) {
   const passes = (row) =>
     FILTERS.every((f) => selected[f.key] === ANY || String(row[f.field]) === String(selected[f.key]));
 
-  const ranked = roster.filter(passes).sort((a, b) => b.count - a.count);
-  const top = Math.max(1, ranked[0] ? ranked[0].count : 1);
+  const ranked = roster.filter(passes).sort((a, b) => b.freshnessScore - a.freshnessScore || b.count - a.count);
+  const top = Math.max(1, ranked[0] ? ranked[0].freshnessScore : 1);
 
   return {
     daysLeftLabel: totals.daysLeft + " days remaining",
@@ -65,6 +78,7 @@ export function leaderboardVals({ state, totals, myStreak, actions }) {
       place: PLACES[i],
       name: p.name,
       count: p.count,
+      avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       cardStyle:
         "padding:20px 22px;display:flex;flex-direction:column;gap:8px;" +
         (p.me ? "background:var(--color-accent-900);color:#f2f2f3;border-color:var(--color-accent-900)" : ""),
@@ -74,13 +88,14 @@ export function leaderboardVals({ state, totals, myStreak, actions }) {
       rank: i + 1,
       name: p.name,
       count: p.count,
+      avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       streak: p.streak + " days",
       rowStyle: p.me ? "background:var(--color-accent-100)" : "",
       barStyle:
         "height:100%;background:" +
         (p.me ? "var(--color-accent-900)" : "var(--color-accent)") +
         ";width:" +
-        Math.round((p.count / top) * 100) +
+        Math.round((p.freshnessScore / top) * 100) +
         "%",
     })),
   };

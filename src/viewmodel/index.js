@@ -11,8 +11,10 @@ import { progressReader, streakOf } from "../progress.js";
 import { deriveTotals } from "./totals.js";
 import { chromeVals } from "./chrome.js";
 import { boardVals } from "./board.js";
+import { explainerVals } from "./explainer.js";
 import { listVals } from "./list.js";
 import { reviewVals, reviewSetupVals } from "./review.js";
+import { learnSetupVals } from "./learn.js";
 import { examVals } from "./exam.js";
 import { leaderboardVals } from "./leaderboard.js";
 
@@ -37,10 +39,13 @@ export function buildViewModel({ state, groupName, motto, deadline, actions, now
     ...chromeVals({ state, groupName, motto, actions }),
     ...boardVals({ state, totals, prog, actions, today: now }),
     ...listVals({ state, prog, actions }),
-    ...reviewSetupVals({ state, prog, actions }),
+    // Shared by both setup screens, so it is built once rather than by each.
+    ...explainerVals({ state }),
+    ...reviewSetupVals({ state, actions }),
+    ...learnSetupVals({ state, prog, actions }),
     ...reviewVals({ state, prog, totals, actions }),
     ...examVals({ state, actions, now: now.getTime() }),
-    ...leaderboardVals({ state, totals, myStreak, actions }),
+    ...leaderboardVals({ state, totals, myStreak, actions, now: now.getTime() }),
   };
 }
 

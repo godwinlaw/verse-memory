@@ -1,7 +1,11 @@
-/* Review mode, before the session begins: what verses to review. */
+/* Review mode, before the session begins: which committed verses to keep fresh.
+ *
+ * Uncommitted verses are not on offer here — learning those is a learn session's
+ * job (see views/learn-setup.js). */
 
 import { html, sx, corners } from "../dom.js";
 import { LABEL_SECTION, muted } from "../ui/tokens.js";
+import { commitCard, freshnessCard } from "./explainer.js";
 
 const FIELD = "display:flex;flex-direction:column;gap:9px";
 
@@ -18,51 +22,58 @@ export function reviewSetupView(v) {
       <h1 style=${sx("margin:0")}>Configure your review</h1>
     </div>
 
+    ${freshnessCard(v)} ${v.reviewNothingCommitted && commitCard(v)}
+
     <div className="blueprint" style=${sx("padding:30px 32px;display:flex;flex-direction:column;gap:26px")}>
       ${corners()}
 
       <div style=${sx(FIELD)}>
         <span style=${sx(LABEL_SECTION)}>Target verses</span>
-        <span style=${sx(`font-size:14px;color:${muted(70)}`)}>
-          ${v.reviewHasDue
-            ? "Reviewing the verses that are due right now."
-            : "You're all caught up — no verses are due. Set up some extra review below."}
-        </span>
+        <span style=${sx(`font-size:14px;color:${muted(70)}`)}>${v.reviewSetupTarget}</span>
       </div>
 
-      ${!v.reviewHasDue && html`<div style=${sx("display:flex;flex-direction:column;gap:26px;border-top:1px solid var(--color-divider);padding-top:20px")}>
-        <div style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>How many uncommitted verses</span>
-          <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
-            ${v.reviewSetupSizes.map((s) => html`<button key=${s.key} onClick=${s.onClick} style=${sx(s.style)}>${s.label}</button>`)}
+      ${
+        !v.reviewHasDue &&
+        !v.reviewNothingCommitted &&
+        html`<div
+          style=${sx("display:flex;flex-direction:column;gap:26px;border-top:1px solid var(--color-divider);padding-top:20px")}
+        >
+          <div style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>How many committed verses</span>
+            <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
+              ${v.reviewSetupSizes.map((s) => html`<button key=${s.key} onClick=${s.onClick} style=${sx(s.style)}>${s.label}</button>`)}
+            </div>
           </div>
-        </div>
 
-        <div style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>Freshness ceiling</span>
-          <div style=${sx("display:flex;align-items:center;gap:14px;max-width:520px")}>
-            <input
-              value=${v.reviewSetupFreshness}
-              step="5"
-              onChange=${v.onReviewSetupFreshness}
-              style=${sx("flex:1;accent-color:var(--color-accent)")}
-              ...${RANGE_PROPS}
-            />
-            <span
-              style=${sx("font-family:var(--font-heading);font-weight:600;font-size:19px;width:52px;text-align:right")}
-              >${v.reviewSetupFreshness}%</span
-            >
+          <div style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>Freshness ceiling</span>
+            <div style=${sx("display:flex;align-items:center;gap:14px;max-width:520px")}>
+              <input
+                value=${v.reviewSetupFreshness}
+                step="5"
+                onChange=${v.onReviewSetupFreshness}
+                style=${sx("flex:1;accent-color:var(--color-accent)")}
+                ...${RANGE_PROPS}
+              />
+              <span
+                style=${sx("font-family:var(--font-heading);font-weight:600;font-size:19px;width:52px;text-align:right")}
+                >${v.reviewSetupFreshness}%</span
+              >
+            </div>
+            <span style=${sx(`font-size:12px;color:${muted(55)}`)}>
+              ${v.reviewSetupFreshness >= 100 ? "Any committed verse." : "Only committed verses faded to " + v.reviewSetupFreshness + "% or below."}
+            </span>
           </div>
-          <span style=${sx(`font-size:12px;color:${muted(55)}`)}>
-            ${v.reviewSetupFreshness >= 100 ? "Any uncommitted verse." : "Only uncommitted verses faded to " + v.reviewSetupFreshness + "% or below."}
-          </span>
-        </div>
-      </div>`}
+        </div>`
+      }
 
       <div
-        style=${sx("display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:20px")}
+        style=${sx("display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:20px;flex-wrap:wrap")}
       >
-        <button className="btn btn-primary" onClick=${v.startReviewSession} disabled=${!v.reviewSetupCanStart}>Start Review</button>
+        <button className="btn btn-primary" onClick=${v.startReviewSession} disabled=${!v.reviewSetupCanStart}>
+          Start Review
+        </button>
+        <button className="btn btn-secondary" onClick=${v.reviewSetupGoLearn}>Learn instead</button>
         <button className="btn btn-secondary" onClick=${v.cancelReviewSession}>Back to the board</button>
         <div style=${sx(`margin-left:auto;font-size:13px;text-align:right;color:${muted(60)};max-width:44ch`)}>
           ${v.reviewSetupNote}

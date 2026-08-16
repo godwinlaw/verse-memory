@@ -140,7 +140,16 @@ function questionVals({ state, actions }) {
   const exam = state.exam;
   const questions = exam ? exam.questions : [];
   const q = questions[state.examIndex];
-  if (!q) return { qIsName: false, qIsPick: false, qIsFinish: false, qIsMatch: false, qIsScramble: false, qIsBlanks: false, qIsType: false };
+  if (!q)
+    return {
+      qIsName: false,
+      qIsPick: false,
+      qIsFinish: false,
+      qIsMatch: false,
+      qIsScramble: false,
+      qIsBlanks: false,
+      qIsType: false,
+    };
 
   const answer = state.examAnswers[state.examIndex];
   const last = state.examIndex >= questions.length - 1;
@@ -249,7 +258,8 @@ function questionVals({ state, actions }) {
         key: c.i,
         text: c.v,
         onClick: () => actions.answerExam([...placed, c.i]),
-        style: "cursor:pointer;font-family:var(--font-body);font-size:15px;line-height:1.5;text-align:left;max-width:340px;padding:9px 13px;background:transparent;color:var(--color-text);border:1px solid var(--color-divider)",
+        style:
+          "cursor:pointer;font-family:var(--font-body);font-size:15px;line-height:1.5;text-align:left;max-width:340px;padding:9px 13px;background:transparent;color:var(--color-text);border:1px solid var(--color-divider)",
       }));
     vals.resetScramble = () => actions.answerExam([]);
   }
@@ -266,7 +276,10 @@ function questionVals({ state, actions }) {
         id: "blank-" + i,
         value,
         wrapStyle: "display:inline-flex;align-items:baseline",
-        inputStyle: "width:" + Math.max(64, targetLength * 13) + "px;font:inherit;font-size:19px;padding:0 4px;background:transparent;color:var(--color-text);border:0;border-bottom:1px solid var(--color-neutral-400);outline:none",
+        inputStyle:
+          "width:" +
+          Math.max(64, targetLength * 13) +
+          "px;font:inherit;font-size:19px;padding:0 4px;background:transparent;color:var(--color-text);border:0;border-bottom:1px solid var(--color-neutral-400);outline:none",
         onChange: (e) => actions.answerExam({ ...given, [i]: e.target.value }),
       };
     });

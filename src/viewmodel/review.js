@@ -7,9 +7,11 @@
 import { norm, firstLetters as firstLetterScaffold } from "../text.js";
 import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "../blanks.js";
 import { gradeWritten, matchesWord, revealFirstLetters } from "../grading.js";
-import { dueOrder } from "../progress.js";
-import { MODES, modeByKey, seededShuffle } from "../review.js";
-import { COLOR_ERROR, WORD_RIGHT, WORD_WRONG, segButton } from "../ui/tokens.js";
+import { countByStatus, reviewPool } from "../progress.js";
+import { reviewSettings } from "../profile.js";
+import { LEARN, MODES, modeByKey, seededShuffle, scrambleScore } from "../review.js";
+import { awardCeiling, COMMIT_SCORE, freshColor, PEEK_COST } from "../srs.js";
+import { COLOR_ERROR, muted, WORD_RIGHT, WORD_WRONG, segButton } from "../ui/tokens.js";
 
 /* Spreads consecutive passage ids across the shuffle's seed space, so verse 12
  * and verse 13 don't scramble into near-identical orders. */
@@ -21,6 +23,18 @@ const BLANK_PX_PER_CHAR = 13;
 const BLANK_MIN_WIDTH = 64;
 
 const percent = (score, total) => (total ? Math.round(score * 100) + "%" : "—");
+
+/* Freshness as a whole number of points, the unit the session talks in. */
+const points = (r) => Math.round(r * 100);
+
+/* The freshness bar drawn on the result strip's track. */
+const meterBar = (pct) => "height:100%;width:" + pct + "%;background:" + freshColor(pct);
+
+/* The bar the submitted card animates: same fill, but its width is driven from
+ * the freshness the verse had to the one it just earned, by the CSS keyframes
+ * .fresh-fill runs (see styles.css). */
+const meterGrow = (from, to) =>
+  "height:100%;background:" + freshColor(to) + ";--fresh-from:" + from + "%;--fresh-to:" + to + "%";
 
 /* The passage's words with a blank input in place of each selected key word. */
 function blankWords({ words, blanks, state, actions }) {
@@ -72,7 +86,68 @@ const levelButtons = (levels, current, onPick) =>
     style: segButton(i === current),
   }));
 
+/* A learn session talks about committing; a review session talks about
+ * freshness. They are the same cards, but not the same errand, and mixing the
+ * two vocabularies is what made the old single session hard to explain: a member
+ * trying to commit a verse for the first time has no use for a percentage that
+ * decays, and quoting one invites them to optimise the wrong number.
+ *
+ * So everything the card says about what an attempt is worth comes from here,
+ * in one voice or the other. The scheduling underneath is unchanged — a learn
+ * card still earns stability and still costs freshness for a peek — it is only
+ * never the thing the screen is about. */
+function stakeVals({ state, prog, cur, isLearn, isFlip, result, ceiling }) {
+  const commitDone = cur ? prog.statusOf(cur.id) === "memorized" : false;
+  // The one activity that can commit: the passage written out, unaided.
+  const writing = state.mode === "type" && !state.typeFirstLetter;
+  const bar = points(COMMIT_SCORE);
+
+  if (!isLearn) {
+    return {
+      isLearn: false,
+      commitDone,
+      commitNote: "",
+      // What the member is playing for, so the trade between an easier setting
+      // and the freshness it pays is visible before they submit. Once it is in,
+      // the result strip says what it actually paid.
+      stakeLabel: "",
+      peekNote: result
+        ? ""
+        : state.peeks
+          ? state.peeks + (state.peeks === 1 ? " peek · −" : " peeks · −") + points(PEEK_COST * state.peeks) + "%"
+          : "Each peek costs " + points(PEEK_COST) + "%",
+      moveNote:
+        "This passage has not been handed in, so it earns no freshness, its place in your queue does not change, " +
+        "and what you have filled in here is lost.",
+    };
+  }
+
+  return {
+    isLearn: true,
+    commitDone,
+    commitNote: commitDone
+      ? "Committed. You have written this one out in full from memory."
+      : writing
+        ? "Get " + bar + "% of the words right, without peeking, and this verse is committed."
+        : "Write the passage in full to commit the verse into your memory bank.",
+    // The banner above already states the stake, and it is not a number.
+    stakeLabel: "",
+    // Peeking is what separates reading a passage from recalling one, so in a
+    // learn session the cost worth quoting is the commitment, not the freshness.
+    peekNote:
+      result || commitDone || !writing
+        ? ""
+        : state.peeks
+          ? "Peeked — this attempt can no longer commit the verse."
+          : "A peek means this attempt cannot commit the verse.",
+    moveNote:
+      "This passage has not been handed in, so nothing about it is recorded, its place in your queue does not " +
+      "change, and what you have filled in here is lost.",
+  };
+}
+
 export function reviewVals({ state, prog, totals, actions }) {
+  const isLearn = state.sessionKind === LEARN;
   const cur = state.passages.find((p) => p.id === state.queue[state.qi]);
   const curText = cur ? cur.text : "";
   const words = curText ? curText.split(" ") : [];
@@ -94,8 +169,43 @@ export function reviewVals({ state, prog, totals, actions }) {
   const shuffled = seededShuffle(chunks, (cur ? cur.id : 1) * SEED_SPREAD);
   const placed = state.scrambleOrder;
   const scrambleDone = chunks.length > 0 && placed.length === chunks.length;
+  const scrambleMark = scrambleScore(placed.length, chunks.length, state.scrambleMisses);
+
+  // ── what handing this card in is worth ────────────────────────────────────
+  // The mark the attempt has earned so far, in the terms each mode measures.
+  // The flashcard is the one activity with nothing to measure, so it has none.
+  const isFlip = state.mode === "flip";
+  const score = isFlip
+    ? undefined
+    : state.mode === "blanks"
+      ? blanksTotal
+        ? blanksRight / blanksTotal
+        : 0
+      : state.mode === "type"
+        ? (state.typeFirstLetter ? live : written).score
+        : scrambleMark;
+
+  const ceiling = awardCeiling({
+    mode: state.mode,
+    blankLevel: state.blankLevel,
+    scrambleLevel: state.scrambleLevel,
+    firstLetters: state.typeFirstLetter,
+  });
+  // A card is marked once a session: the result is kept by passage, so walking
+  // back to a verse shows what it was worth rather than marking it again.
+  const result = cur ? state.results[cur.id] : null;
+  const drift = result ? result.after - result.before : 0;
+  // Committed, but not by this card — the member is meeting a verse they had
+  // already written out, so the learn card congratulates rather than instructs.
+  const wasAlreadyCommitted = !!(result && !result.committed && cur && prog.statusOf(cur.id) === "memorized");
+  const lastCard = state.qi >= state.queue.length - 1;
+  const submittedCount = Object.keys(state.results).length;
+  const committedHere = Object.values(state.results).filter((r) => r.committed).length;
 
   return {
+    ...stakeVals({ state, prog, cur, isLearn, isFlip, result, ceiling }),
+
+    sessionLabel: isLearn ? "Learn" : "Review",
     modeName: modeByKey(state.mode).name,
     posLabel: "Passage " + Math.min(state.qi + 1, state.queue.length) + " of " + state.queue.length,
     modeSwitch: MODES.map((m) => ({
@@ -112,27 +222,28 @@ export function reviewVals({ state, prog, totals, actions }) {
     curRef: cur ? cur.ref : "",
     curText,
     curMeta: cur ? (cur.testament === "OT" ? "Old Testament" : "New Testament") + " · " + words.length + " words" : "",
-    curProgressNote: "",
 
     // Peeking at the text is available in every mode except the flashcard,
-    // which is already a reveal.
+    // which is already a reveal. It is allowed and counted either way; what it
+    // is said to cost depends on the errand (see stakeVals).
     helpLabel: "Peek",
     peekOn: () => actions.setPeek(true),
     peekOff: () => actions.setPeek(false),
-    showHelp: state.showHelp && state.mode !== "flip",
+    showHelp: state.showHelp && !isFlip,
+    peekSpent: state.peeks > 0,
 
-    isFlip: state.mode === "flip",
-    flipHidden: state.mode === "flip" && !state.revealed,
-    flipShown: state.mode === "flip" && state.revealed,
-    reveal: () => actions.setRevealed(true),
-    hide: () => actions.setRevealed(false),
+    isFlip,
+    flipShown: isFlip && state.revealed,
+    // One button, one place: it reads Show or Hide and never moves.
+    flipToggleLabel: state.revealed ? "Hide passage" : "Show passage",
+    toggleFlip: () => actions.setRevealed(!state.revealed),
+    flipLettersLabel: state.flipLetters ? "Hide first letters" : "Show first letters",
     flipLettersOn: state.flipLetters,
     flipFirstLetters: firstLetterScaffold(curText),
     toggleFlipLetters: actions.toggleFlipLetters,
 
     isBlanks: state.mode === "blanks",
     blankWords: blankCells,
-    checkBlanks: actions.checkBlanks,
     blanksResult: state.blanksChecked ? blanksRight + " of " + blanksTotal + " right" : blanksTotal + " blanks",
     blankLevels: levelButtons(BLANK_LEVELS, state.blankLevel, actions.setBlankLevel),
     blankLevelDesc: "Blanking " + (BLANK_LEVELS[state.blankLevel] || BLANK_LEVELS[1]).desc,
@@ -145,8 +256,6 @@ export function reviewVals({ state, prog, totals, actions }) {
     onTyped: (e) => actions.setTyped(e.target.value),
     typeUngraded: state.mode === "type" && !state.typeGraded,
     typeGraded: state.mode === "type" && state.typeGraded,
-    typeButtonLabel: state.typeGraded ? "Try again" : "Grade it",
-    checkTyped: () => actions.gradeTyped(written.score),
     typeScore: percent(written.score, words.length),
     typeDiff: written.diff.map((d) => ({ word: d.word, style: d.hit ? WORD_RIGHT : WORD_WRONG })),
     // First-letter mode is a live drill: the reveal updates as you type and
@@ -180,55 +289,145 @@ export function reviewVals({ state, prog, totals, actions }) {
     scrambleBuilt: placed.map((i) => chunks[i]).join(" "),
     scrambleEmpty: placed.length === 0,
     scrambleResult: scrambleDone ? "Complete — in order." : placed.length + " of " + chunks.length + " placed",
+    scrambleMissNote: state.scrambleMisses
+      ? state.scrambleMisses + (state.scrambleMisses === 1 ? " wrong try" : " wrong tries")
+      : "",
     resetScramble: actions.resetScramble,
     scrambleLevels: levelButtons(SCRAMBLE_LEVELS, state.scrambleLevel, actions.setScrambleLevel),
     scrambleLevelDesc: "Cutting into " + (SCRAMBLE_LEVELS[state.scrambleLevel] || SCRAMBLE_LEVELS[1]).desc,
 
-    // The live drill never runs "Grade it", so hand its score to the recorder on
-    // the way out — otherwise the review would be scored as if nothing was typed.
-    advance: () => actions.advance(state.mode === "type" && live ? live.score : undefined),
-    endSession: () => actions.goto("board"),
+    // ── handing the card in, and walking the queue ──────────────────────────
+    // The flashcard has nothing to mark, so it has no Submit: it is recorded on
+    // the way out. Every other mode is submitted, once, by the member.
+    canSubmit: !isFlip,
+    submitDone: !!result,
+    submitLabel: result ? "Submitted" : "Submit",
+    submit: () => actions.submitCard(score),
+    goPrev: actions.prevCard,
+    goNext: actions.nextCard,
+    canGoBack: state.qi > 0,
+    nextLabel: lastCard ? "Finish session" : "Next passage",
 
-    doneHeadline: state.sessionCount + (state.sessionCount === 1 ? " passage refreshed" : " passages refreshed"),
+    // What the submission was worth. A review card reports it as freshness —
+    // the mark, the value before and after, and the two bars the view animates
+    // between them. A learn card reports whether it committed the verse, which
+    // is the only outcome that sitting is playing for.
+    resultShown: !!result,
+    resultKey: result ? result.id + ":" + result.after : "none",
+    resultModeName: result ? modeByKey(result.mode).name : "",
+    resultScoreLabel: result && result.score != null ? points(result.score) + "% right" : "Reviewed",
+    resultBeforeLabel: result ? result.before + "%" : "",
+    resultAfterLabel: result ? result.after + "%" : "",
+    resultBeforeBar: result ? meterBar(result.before) : "",
+    resultAfterBar: result ? meterGrow(result.before, result.after) : "",
+    resultDriftLabel: (drift > 0 ? "+" : drift < 0 ? "−" : "±") + Math.abs(drift) + "%",
+    resultDriftStyle:
+      "font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;color:" +
+      (drift > 0 ? "var(--color-accent-700)" : drift < 0 ? COLOR_ERROR : muted(45)),
+    resultNote: result
+      ? result.peeks
+        ? "After " + result.peeks + (result.peeks === 1 ? " peek." : " peeks.") + " Freshness decays from here."
+        : "Freshness decays from here."
+      : "",
+
+    // The learn card's verdict: did this attempt commit the verse, and if not,
+    // what would have. Never a percentage of anything that decays.
+    learnResultHeadline: !result
+      ? ""
+      : result.committed
+        ? "Committed"
+        : wasAlreadyCommitted
+          ? "Still committed"
+          : "Not committed yet",
+    learnResultNote: !result
+      ? ""
+      : result.committed
+        ? "You wrote the passage out in full from memory. It moves to your review list from here."
+        : wasAlreadyCommitted
+          ? "You already have this one. Keep it in your review list."
+          : result.mode === "type"
+            ? "A full write-out from memory is what commits it — " + points(COMMIT_SCORE) + "% of the words, unaided."
+            : "Practice recorded. Writing the passage out in full is what commits it.",
+    learnResultDone: !!(result && (result.committed || wasAlreadyCommitted)),
+
+    // Leaving mid-session keeps what has been handed in; the rest of the queue
+    // is simply dropped. Both of those are worth saying out loud.
+    askLeaveReview: actions.askLeaveReview,
+    reviewLeaveAsk: !!state.reviewLeaveAsk,
+    reviewLeaveCancel: actions.cancelLeaveReview,
+    reviewLeaveConfirm: actions.leaveReview,
+    reviewLeaveNote: !submittedCount
+      ? "Nothing has been submitted yet, so no passage will change."
+      : isLearn
+        ? committedHere +
+          (committedHere === 1 ? " passage stays committed" : " passages stay committed") +
+          " and everything you have submitted is kept. The rest of the queue is dropped."
+        : submittedCount +
+          (submittedCount === 1 ? " passage you have submitted keeps" : " passages you have submitted keep") +
+          " the freshness it earned. The rest of the queue is dropped.",
+
+    // Walking off a card that was never handed in — forwards or back — throws
+    // the attempt away, so either direction asks first.
+    reviewMoveAsk: !!state.reviewMoveAsk,
+    reviewMoveTitle: state.reviewMoveAsk === "prev" ? "Go back without submitting?" : "Move on without submitting?",
+    reviewMoveConfirmLabel: state.reviewMoveAsk === "prev" ? "Go back" : "Move on",
+    reviewMoveCancel: actions.cancelMoveCard,
+    reviewMoveConfirm: actions.confirmMoveCard,
+
+    doneHeadline: isLearn
+      ? committedHere + (committedHere === 1 ? " passage committed" : " passages committed")
+      : state.sessionCount + (state.sessionCount === 1 ? " passage refreshed" : " passages refreshed"),
     doneBody:
-      "Every passage you reviewed is fresh again. " +
+      (isLearn
+        ? committedHere
+          ? "Written out in full from memory — that is what commits a passage. "
+          : "Nothing was committed this time. A passage is committed by writing it out in full, so keep at " +
+            "these until you can. "
+        : "Every passage you reviewed is fresh again. ") +
       totals.memorized +
       " of " +
       totals.goal +
       " are committed, with " +
       totals.daysLeft +
       " days to go.",
+    // The obvious next sitting is another of the same; the other one is offered
+    // beside it rather than buried back on the board.
+    doneAgainLabel: isLearn ? "Learn more" : "Review more",
+    doneAgain: () => actions.goto(isLearn ? "learn-setup" : "review-setup"),
+    doneOtherLabel: isLearn ? "Review instead" : "Learn instead",
+    doneOther: () => actions.goto(isLearn ? "review-setup" : "learn-setup"),
   };
 }
 
-/* What a review session should target before it starts. By default it reviews
- * the top-X verses that are due — the same predicate the board's queue uses,
- * but without the board's stalest-first fallback: here an empty due queue means
- * the member has genuinely caught up, and only then do the manual controls (how
- * many uncommitted verses, and a freshness ceiling) come into play. */
-export function reviewSetupVals({ state, prog, actions }) {
-  const setup = state.reviewSetup || { manualSize: 10, manualFreshness: 50 };
+/* What a review session should target before it starts.
+ *
+ * Review is the upkeep half of the app: it draws only on verses already
+ * committed, and only those that have faded to the member's threshold. An empty
+ * due queue therefore means they have genuinely caught up — and only then do the
+ * manual controls come into play, which reach further up the same committed
+ * shelf rather than into uncommitted verses. Learning those is a learn session's
+ * job (see viewmodel/learn.js). */
+export function reviewSetupVals({ state, actions }) {
+  const setup = state.reviewSetup || {};
   const manualSize = setup.manualSize !== undefined ? setup.manualSize : 10;
-  const manualFreshness = setup.manualFreshness !== undefined ? setup.manualFreshness : 50;
+  const manualFreshness = setup.manualFreshness !== undefined ? setup.manualFreshness : 90;
+  const { dueTopX, dueFreshness } = reviewSettings(state.profile);
 
-  const dueTopX = state.profile && state.profile.dueTopX !== undefined ? state.profile.dueTopX : 10;
-  const dueFreshness = state.profile && state.profile.dueFreshness !== undefined ? state.profile.dueFreshness : 50;
-
-  // Stalest-first, without disturbing state.passages (dueOrder copies first).
-  const ranked = dueOrder(state.passages, state.progress);
-  const dueNow = ranked.filter((p) => prog.isDue(p.id) && prog.freshness(p.id) < dueFreshness).slice(0, dueTopX);
+  const dueNow = reviewPool(state.passages, state.progress, dueFreshness).slice(0, dueTopX);
   const hasDue = dueNow.length > 0;
 
-  // Uncommitted verses at or below the chosen freshness ceiling; size 0 = "All".
-  const manualPool = ranked.filter((p) => prog.statusOf(p.id) !== "memorized" && prog.freshness(p.id) <= manualFreshness);
+  // Committed verses at or below the chosen ceiling; size 0 = "All".
+  const manualPool = reviewPool(state.passages, state.progress, manualFreshness);
   const manualVerses = manualSize === 0 ? manualPool : manualPool.slice(0, manualSize);
 
   const versesToReview = hasDue ? dueNow : manualVerses;
   const poolSize = versesToReview.length;
+  const committed = countByStatus(state.passages, state.progress, "memorized");
 
   return {
     // The due queue's availability, not a toggle, decides which controls show.
     reviewHasDue: hasDue,
+    reviewNothingCommitted: committed === 0,
 
     reviewSetupSizes: [5, 10, 20, 0].map((n) => ({
       key: String(n),
@@ -240,13 +439,20 @@ export function reviewSetupVals({ state, prog, actions }) {
     onReviewSetupFreshness: (e) => actions.setReviewSetup({ manualFreshness: Number(e.target.value) }),
 
     reviewSetupCanStart: poolSize > 0,
+    reviewSetupTarget: hasDue
+      ? "Reviewing the committed verses that have faded to " + dueFreshness + "% or below."
+      : committed
+        ? "You're all caught up — nothing you have committed has faded that far. Set up some extra review below."
+        : "You have not committed a verse yet, so there is nothing to review. Start with a learn session instead.",
     reviewSetupNote: hasDue
       ? dueNow.length + (dueNow.length === 1 ? " verse is due right now." : " verses are due right now.")
       : poolSize
-        ? poolSize + (poolSize === 1 ? " uncommitted verse matches these settings." : " uncommitted verses match these settings.")
-        : "No uncommitted verses match these settings.",
+        ? poolSize +
+          (poolSize === 1 ? " committed verse matches these settings." : " committed verses match these settings.")
+        : "No committed verses match these settings.",
 
     startReviewSession: () => actions.startReviewSession(versesToReview.map((v) => v.id)),
     cancelReviewSession: () => actions.goto("board"),
+    reviewSetupGoLearn: () => actions.goto("learn-setup"),
   };
 }

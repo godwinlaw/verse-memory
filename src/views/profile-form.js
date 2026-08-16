@@ -81,10 +81,12 @@ export function profileFormView(v) {
         />
       </label>
 
-      <div style=${sx("margin-top:10px;padding-top:20px;border-top:1px solid var(--color-divider);display:flex;flex-direction:column;gap:20px")}>
-        <div style=${sx(SCREEN_SUBTITLE)}>DUE NOW SETTINGS</div>
+      <div
+        style=${sx("margin-top:10px;padding-top:20px;border-top:1px solid var(--color-divider);display:flex;flex-direction:column;gap:20px")}
+      >
+        <div style=${sx(SCREEN_SUBTITLE)}>REVIEW SETTINGS</div>
         <label style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>Top X verses to show in "Due Now"</span>
+          <span style=${sx(LABEL_SECTION)}>Top X committed verses to review at a time</span>
           <input
             className="input"
             type="number"
@@ -95,7 +97,7 @@ export function profileFormView(v) {
           />
         </label>
         <label style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>Freshness threshold (%) for "Due Now"</span>
+          <span style=${sx(LABEL_SECTION)}>Review a committed verse once it fades to (%)</span>
           <input
             className="input"
             type="number"

@@ -7,10 +7,9 @@ import { muted } from "../ui/tokens.js";
 /* `also` lists the views that belong to a nav item without being it — the
  * screens either side of a session, which should keep their entry underlined. */
 const NAV = [
-  { key: "board", label: "Board", also: ["done"] },
+  { key: "board", label: "Home", also: ["done"] },
   { key: "list", label: "Passages" },
-  { key: "test-setup", label: "Test", also: ["test", "test-done"] },
-  { key: "leaderboard", label: "Leaderboard" },
+  { key: "leaderboard", label: "Stats" },
 ];
 
 const navStyle = (active, underlined) =>
@@ -30,9 +29,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     userName: profile.name || (user && user.name) || (user && user.email) || "",
     signOut: actions.signOut,
     editProfile: actions.editProfile,
-    profileSummary: isProfileComplete(profile)
-      ? profile.ministryGroup + " · Class of " + profile.gradClass
-      : "Set up your profile",
+    profileSummary: isProfileComplete(profile) ? profile.name : "Set up your profile",
 
     nav: NAV.map((n) => ({
       key: n.key,
@@ -47,6 +44,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     isLeader: state.view === "leaderboard",
     isDone: state.view === "done",
     isReviewSetup: state.view === "review-setup",
+    isLearnSetup: state.view === "learn-setup",
     isExamSetup: state.view === "test-setup",
     isExam: state.view === "test",
     isExamDone: state.view === "test-done",
@@ -54,6 +52,6 @@ export function chromeVals({ state, groupName, motto, actions }) {
     goBoard: () => actions.goto("board"),
     goList: () => actions.goto("list"),
     goReviewSetup: () => actions.goto("review-setup"),
-    startDue: () => actions.startSession(),
+    goLearnSetup: () => actions.goto("learn-setup"),
   };
 }

@@ -4,7 +4,7 @@ import { html, sx, corners } from "../dom.js";
 import { muted } from "../ui/tokens.js";
 
 /* One column track shared by the header and every row, so they stay aligned. */
-const COLUMNS = "grid-template-columns:56px 190px 1fr 110px 130px 210px;gap:0";
+const COLUMNS = "grid-template-columns:56px 190px 1fr 110px 130px 110px;gap:0";
 
 export function listView(v) {
   return html`<div
@@ -74,17 +74,10 @@ export function listView(v) {
             <div style=${sx("display:flex;gap:8px;justify-content:flex-end")}>
               <button
                 className="btn btn-secondary"
-                onClick=${r.onReview}
+                onClick=${r.onAction}
                 style=${sx("font-size:12px;padding:4px 10px")}
               >
-                Review
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick=${r.onToggle}
-                style=${sx("font-size:12px;padding:4px 10px")}
-              >
-                ${r.toggleLabel}
+                ${r.actionLabel}
               </button>
             </div>
           </div>`,
