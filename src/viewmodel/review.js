@@ -7,7 +7,7 @@
 import { norm, firstLetters as firstLetterScaffold } from "../text.js";
 import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "../blanks.js";
 import { gradeWritten, matchesWord, revealFirstLetters } from "../grading.js";
-import { REVIEWS_TO_COMMIT } from "../progress.js";
+import { dueOrder } from "../progress.js";
 import { MODES, modeByKey, seededShuffle } from "../review.js";
 import { COLOR_ERROR, WORD_RIGHT, WORD_WRONG, segButton } from "../ui/tokens.js";
 
@@ -201,44 +201,52 @@ export function reviewVals({ state, prog, totals, actions }) {
   };
 }
 
+/* What a review session should target before it starts. By default it reviews
+ * the top-X verses that are due — the same predicate the board's queue uses,
+ * but without the board's stalest-first fallback: here an empty due queue means
+ * the member has genuinely caught up, and only then do the manual controls (how
+ * many uncommitted verses, and a freshness ceiling) come into play. */
 export function reviewSetupVals({ state, prog, actions }) {
-  const setup = state.reviewSetup || { target: "due", manualSize: 10, manualFreshness: 50 };
-  const isDue = setup.target === "due";
-  
+  const setup = state.reviewSetup || { manualSize: 10, manualFreshness: 50 };
+  const manualSize = setup.manualSize !== undefined ? setup.manualSize : 10;
+  const manualFreshness = setup.manualFreshness !== undefined ? setup.manualFreshness : 50;
+
   const dueTopX = state.profile && state.profile.dueTopX !== undefined ? state.profile.dueTopX : 10;
   const dueFreshness = state.profile && state.profile.dueFreshness !== undefined ? state.profile.dueFreshness : 50;
-  const dueRanked = state.passages.sort((a, b) => prog.retrievability(a.id) - prog.retrievability(b.id));
-  const dueNow = dueRanked.filter((p) => prog.isDue(p.id) && prog.freshness(p.id) < dueFreshness).slice(0, dueTopX);
 
-  const manualRanked = dueRanked.filter(p => prog.statusOf(p.id) !== "memorized" && prog.freshness(p.id) <= setup.manualFreshness);
-  const manualVerses = manualRanked.slice(0, setup.manualSize);
+  // Stalest-first, without disturbing state.passages (dueOrder copies first).
+  const ranked = dueOrder(state.passages, state.progress);
+  const dueNow = ranked.filter((p) => prog.isDue(p.id) && prog.freshness(p.id) < dueFreshness).slice(0, dueTopX);
+  const hasDue = dueNow.length > 0;
 
-  const poolSize = isDue ? dueNow.length : manualVerses.length;
-  const versesToReview = isDue ? dueNow : manualVerses;
+  // Uncommitted verses at or below the chosen freshness ceiling; size 0 = "All".
+  const manualPool = ranked.filter((p) => prog.statusOf(p.id) !== "memorized" && prog.freshness(p.id) <= manualFreshness);
+  const manualVerses = manualSize === 0 ? manualPool : manualPool.slice(0, manualSize);
+
+  const versesToReview = hasDue ? dueNow : manualVerses;
+  const poolSize = versesToReview.length;
 
   return {
-    reviewSetupTarget: setup.target,
-    reviewSetupSizes: [5, 10, 20, 0].map(n => ({
+    // The due queue's availability, not a toggle, decides which controls show.
+    reviewHasDue: hasDue,
+
+    reviewSetupSizes: [5, 10, 20, 0].map((n) => ({
       key: String(n),
       label: n === 0 ? "All" : String(n),
       onClick: () => actions.setReviewSetup({ manualSize: n }),
-      style: segButton(setup.manualSize === n)
+      style: segButton(manualSize === n),
     })),
-    reviewSetupFreshness: setup.manualFreshness,
+    reviewSetupFreshness: manualFreshness,
     onReviewSetupFreshness: (e) => actions.setReviewSetup({ manualFreshness: Number(e.target.value) }),
-    
-    setReviewTargetDue: () => actions.setReviewSetup({ target: "due" }),
-    setReviewTargetManual: () => actions.setReviewSetup({ target: "manual" }),
-    
-    reviewSetupDueStyle: segButton(isDue),
-    reviewSetupManualStyle: segButton(!isDue),
-    
+
     reviewSetupCanStart: poolSize > 0,
-    reviewSetupNote: isDue 
-      ? (poolSize ? poolSize + " verses are due right now." : "No verses are currently due.")
-      : (poolSize ? poolSize + " uncommitted verses match these settings." : "No uncommitted verses match these settings."),
-      
-    startReviewSession: () => actions.startReviewSession(versesToReview.map(v => v.id)),
+    reviewSetupNote: hasDue
+      ? dueNow.length + (dueNow.length === 1 ? " verse is due right now." : " verses are due right now.")
+      : poolSize
+        ? poolSize + (poolSize === 1 ? " uncommitted verse matches these settings." : " uncommitted verses match these settings.")
+        : "No uncommitted verses match these settings.",
+
+    startReviewSession: () => actions.startReviewSession(versesToReview.map((v) => v.id)),
     cancelReviewSession: () => actions.goto("board"),
   };
 }

@@ -9,6 +9,7 @@ const appOverrides = (typeof window !== "undefined" && window.__APP_CONFIG__) ||
 
 export const appConfig = {
   groupName: "Acts 2 Network - Berkeley",
+  motto: "Every Member a Self Respecting Christian",
   deadline: "2026-10-31",
   ...appOverrides,
 };

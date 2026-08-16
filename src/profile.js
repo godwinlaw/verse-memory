@@ -7,7 +7,9 @@
  * tested in Node without a browser. */
 
 /* Acts 2 Network ministry groups. This is the authoritative option list for the
- * profile's autocomplete picklist. Keep it in canonical/ministry order. */
+ * profile's autocomplete picklist. Keep it in canonical/ministry order, with the
+ * "Other" catch-all pinned last (not alphabetized) for members whose group isn't
+ * listed. */
 export const MINISTRY_GROUPS = [
   "A2F",
   "Kairos",
@@ -35,6 +37,7 @@ export const MINISTRY_GROUPS = [
   "Aletheia",
   "VSM",
   "ECM",
+  "Other",
 ];
 
 export const GENDERS = ["Male", "Female"];

@@ -39,6 +39,7 @@ import { examDoneView } from "./views/exam-done.js";
 import { leaderboardView } from "./views/leaderboard.js";
 import { authGateView } from "./views/auth-gate.js";
 import { profileFormView } from "./views/profile-form.js";
+import { footerView } from "./views/footer.js";
 
 /* Grace period between the ministry-group input losing focus and its dropdown
  * closing, so a mousedown on an option still registers. */
@@ -104,7 +105,7 @@ function initialState() {
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
 
     // running review flow (Review mode)
-    reviewSetup: { target: "due", manualSize: 10, manualFreshness: 50 },
+    reviewSetup: { manualSize: 10, manualFreshness: 50 },
   };
 }
 
@@ -151,6 +152,9 @@ export class App extends React.Component {
 
   groupName() {
     return this.props.groupName ?? appConfig.groupName;
+  }
+  motto() {
+    return this.props.motto ?? appConfig.motto;
   }
   deadline() {
     return this.props.deadline || appConfig.deadline;
@@ -581,7 +585,7 @@ export class App extends React.Component {
     // Sign-in is required before the app. "disabled" means Firebase is
     // unreachable — fall through to local-only rather than lock members out.
     if (auth.status !== "signed-in" && auth.status !== "disabled") {
-      return authGateView(authGateVals({ auth, groupName: this.groupName(), actions: this.actions }));
+      return authGateView(authGateVals({ auth, groupName: this.groupName(), motto: this.motto(), actions: this.actions }));
     }
 
     // Members give a name, ministry group, gender, and class before the app, so
@@ -601,6 +605,7 @@ export class App extends React.Component {
     const v = buildViewModel({
       state: this.state,
       groupName: this.groupName(),
+      motto: this.motto(),
       deadline: this.deadline(),
       actions: this.actions,
     });
@@ -610,6 +615,7 @@ export class App extends React.Component {
       ${headerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)} ${v.isReviewSetup && reviewSetupView(v)} ${v.isReview && reviewView(v)}
       ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)}
       ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)}
+      ${footerView(v)}
     </div>`;
   }
 }

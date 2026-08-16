@@ -15,6 +15,12 @@ export function authGateView(v) {
       <div style=${sx("display:flex;flex-direction:column;gap:2px")}>
         <div style=${sx(SCREEN_TITLE)}>THE MEMORY BOARD</div>
         <div style=${sx(SCREEN_SUBTITLE)}>${v.groupName}</div>
+        ${v.motto &&
+        html`<div
+          style=${sx("font-family:var(--font-heading);font-weight:600;font-size:13px;letter-spacing:.03em;color:var(--color-accent);margin-top:6px")}
+        >
+          ${v.motto}
+        </div>`}
       </div>
       <p style=${sx(SCREEN_BODY)}>
         Sign in with your <strong>${v.domainLabel}</strong> account to track your passages and sync across devices.

@@ -23,13 +23,14 @@ export function reviewSetupView(v) {
 
       <div style=${sx(FIELD)}>
         <span style=${sx(LABEL_SECTION)}>Target verses</span>
-        <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
-          <button onClick=${v.setReviewTargetDue} style=${sx(v.reviewSetupDueStyle)}>Due Now</button>
-          <button onClick=${v.setReviewTargetManual} style=${sx(v.reviewSetupManualStyle)}>Manual Selection</button>
-        </div>
+        <span style=${sx(`font-size:14px;color:${muted(70)}`)}>
+          ${v.reviewHasDue
+            ? "Reviewing the verses that are due right now."
+            : "You're all caught up — no verses are due. Set up some extra review below."}
+        </span>
       </div>
 
-      ${v.reviewSetupTarget === "manual" && html`<div style=${sx("display:flex;flex-direction:column;gap:26px;border-top:1px solid var(--color-divider);padding-top:20px")}>
+      ${!v.reviewHasDue && html`<div style=${sx("display:flex;flex-direction:column;gap:26px;border-top:1px solid var(--color-divider);padding-top:20px")}>
         <div style=${sx(FIELD)}>
           <span style=${sx(LABEL_SECTION)}>How many uncommitted verses</span>
           <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>

@@ -17,6 +17,10 @@ export function boardView(v) {
     >
       ${corners()}
       <div style=${sx("padding:36px 40px 32px;display:flex;flex-direction:column;gap:22px")}>
+        ${v.motto &&
+        html`<div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:15px;letter-spacing:.03em;opacity:.9")}>
+          ${v.motto}
+        </div>`}
         <div style=${sx("font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.72")}>
           Progress to ${v.deadlineLabel}
         </div>

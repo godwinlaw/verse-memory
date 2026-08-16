@@ -16,7 +16,7 @@ import { reviewVals, reviewSetupVals } from "./review.js";
 import { examVals } from "./exam.js";
 import { leaderboardVals } from "./leaderboard.js";
 
-export function buildViewModel({ state, groupName, deadline, actions, now = new Date() }) {
+export function buildViewModel({ state, groupName, motto, deadline, actions, now = new Date() }) {
   const totals = deriveTotals({
     passages: state.passages,
     progress: state.progress,
@@ -34,7 +34,7 @@ export function buildViewModel({ state, groupName, deadline, actions, now = new 
     remaining: totals.remaining,
     pctLabel: totals.pctLabel,
 
-    ...chromeVals({ state, groupName, actions }),
+    ...chromeVals({ state, groupName, motto, actions }),
     ...boardVals({ state, totals, prog, actions, today: now }),
     ...listVals({ state, prog, actions }),
     ...reviewSetupVals({ state, prog, actions }),

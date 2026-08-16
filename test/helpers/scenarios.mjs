@@ -49,7 +49,11 @@ const PEERS = [
   { name: "Katherine Johnson", count: 12, streak: 0, ministryGroup: "ECM", gender: "Female", gradClass: 2024 },
 ];
 
-export const PROPS = { groupName: "Acts 2 Network - Berkeley", deadline: "2026-10-31" };
+export const PROPS = {
+  groupName: "Acts 2 Network - Berkeley",
+  motto: "Every Member a Self Respecting Christian",
+  deadline: "2026-10-31",
+};
 
 /* The state an App carries once local data has loaded and a member is signed in.
  * Individual scenarios override just the keys they care about. */
@@ -178,6 +182,22 @@ export const scenarios = [
   // ── board ──────────────────────────────────────────────────────────────────
   { name: "board/populated", state: baseState() },
   { name: "board/fresh-account", state: baseState({ progress: {}, log: {}, peers: [] }) },
+
+  // ── review setup ───────────────────────────────────────────────────────────
+  // Most verses are never-reviewed → due, so the default queue is shown.
+  { name: "review-setup/due", state: baseState({ view: "review-setup" }) },
+  // Every verse committed & fully fresh → nothing due, so the manual controls
+  // (how many uncommitted verses, freshness ceiling) take over.
+  {
+    name: "review-setup/caught-up",
+    state: baseState({
+      view: "review-setup",
+      progress: Object.fromEntries(
+        passages.map((p) => [p.id, { hits: 5, status: "memorized", last: daysAgo(0), stability: 30 }]),
+      ),
+      reviewSetup: { manualSize: 10, manualFreshness: 90 },
+    }),
+  },
 
   // ── passage list ───────────────────────────────────────────────────────────
   { name: "list/all", state: baseState({ view: "list" }) },

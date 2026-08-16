@@ -20,11 +20,12 @@ const navStyle = (active, underlined) =>
   ";color:" +
   (active ? "var(--color-text)" : muted(55));
 
-export function chromeVals({ state, groupName, actions }) {
+export function chromeVals({ state, groupName, motto, actions }) {
   const profile = state.profile || {};
   const user = state.auth.user || null;
   return {
     groupName,
+    motto,
     user,
     userName: profile.name || (user && user.name) || (user && user.email) || "",
     signOut: actions.signOut,

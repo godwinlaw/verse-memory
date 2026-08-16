@@ -4,9 +4,10 @@
 import { GENDERS, MINISTRY_GROUPS, isProfileComplete } from "../profile.js";
 import { PRIMARY_DOMAIN } from "../firebase.js";
 
-export function authGateVals({ auth, groupName, actions }) {
+export function authGateVals({ auth, groupName, motto, actions }) {
   return {
     groupName,
+    motto,
     busy: auth.status === "loading" || auth.status === "signing-in",
     denied: auth.status === "denied",
     failed: auth.status === "signed-out" && auth.error === "sign-in-failed",
