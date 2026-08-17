@@ -2,18 +2,19 @@
  * Network member is signed in (or Firebase is unavailable and the app falls back
  * to local-only). */
 
+import { copy } from "../copy.js";
 import { html, sx, corners } from "../dom.js";
 import { CALLOUT_ERROR, SCREEN_BODY, SCREEN_CENTERED, SCREEN_SUBTITLE, SCREEN_TITLE } from "../ui/tokens.js";
 
 export function authGateView(v) {
   return html`<div style=${sx(SCREEN_CENTERED)}>
     <div
-      className="blueprint"
+      className="blueprint shell-settle"
       style=${sx("max-width:460px;width:100%;padding:40px 40px 36px;display:flex;flex-direction:column;gap:18px")}
     >
       ${corners()}
       <div style=${sx("display:flex;flex-direction:column;gap:2px")}>
-        <div style=${sx(SCREEN_TITLE)}>THE MEMORY BOARD</div>
+        <div style=${sx(SCREEN_TITLE)}>${copy.app.wordmark}</div>
         <div style=${sx(SCREEN_SUBTITLE)}>${v.groupName}</div>
         ${
           v.motto &&
@@ -24,15 +25,14 @@ export function authGateView(v) {
           </div>`
         }
         <div style=${sx("font-size:12px;line-height:1.6;color:var(--color-accent);margin-top:8px;font-style:italic")}>
-          "Do your best to present yourself to God as one approved, a worker who has no need to be ashamed, rightly
-          handling the word of truth." — 2 Tim 2:15
+          ${copy.app.epigraph}
         </div>
       </div>
       <p style=${sx(SCREEN_BODY)}>
-        Sign in with your <strong>${v.domainLabel}</strong> account to track your passages and sync across devices.
+        ${copy.authGate.promptLead} <strong>${v.domainLabel}</strong> ${copy.authGate.prompt}
       </p>
-      ${v.denied && html`<div style=${sx(CALLOUT_ERROR)}>That account isn't an Acts 2 Network account. Please sign in with your ${v.domainLabel} account.</div>`}
-      ${v.failed && html`<div style=${sx(CALLOUT_ERROR)}>Sign-in didn't complete. Please try again.</div>`}
+      ${v.denied && html`<div style=${sx(CALLOUT_ERROR)}>${copy.authGate.denied(v.domainLabel)}</div>`}
+      ${v.failed && html`<div style=${sx(CALLOUT_ERROR)}>${copy.authGate.failed}</div>`}
       <button
         className="btn btn-primary"
         onClick=${v.onSignIn}
@@ -41,7 +41,7 @@ export function authGateView(v) {
       >
         ${
           v.busy
-            ? "Signing in…"
+            ? copy.authGate.busy
             : html`<span style=${sx("display:inline-flex;align-items:center;gap:8px")}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48">
                   <path
@@ -61,7 +61,7 @@ export function authGateView(v) {
                     d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
                   />
                 </svg>
-                Sign in with Google
+                ${copy.authGate.signIn}
               </span>`
         }
       </button>

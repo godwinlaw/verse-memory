@@ -8,6 +8,7 @@
  * running session; the keys are namespaced (setup*, q*, exam*) so they stay
  * disjoint from the review session's. */
 
+import { copy } from "../copy.js";
 import { freshColor } from "../srs.js";
 import {
   ACTIVITIES,
@@ -22,8 +23,6 @@ import {
 import { COLOR_ERROR, muted, segButton } from "../ui/tokens.js";
 
 const percent = (score) => Math.round(score * 100) + "%";
-
-const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
 
 /* A card in the activity picker: the same blueprint box whether or not it is
  * chosen, with the accent carrying the state. */
@@ -75,13 +74,13 @@ function setupVals({ state, actions, now }) {
   return {
     setupSizes: SIZE_OPTIONS.map((n) => ({
       key: String(n),
-      label: n === 0 ? "All" : String(n),
+      label: n === 0 ? copy.common.all : String(n),
       onClick: () => actions.setExamSetup({ size: n }),
       style: segButton(setup.size === n),
     })),
 
     setupCommittedOn: setup.committedOnly,
-    setupCommittedLabel: setup.committedOnly ? "On" : "Off",
+    setupCommittedLabel: setup.committedOnly ? copy.common.on : copy.common.off,
     setupCommittedStyle: segButton(setup.committedOnly),
     toggleSetupCommitted: () => actions.setExamSetup({ committedOnly: !setup.committedOnly }),
 
@@ -89,9 +88,7 @@ function setupVals({ state, actions, now }) {
     setupFreshnessStep: FRESHNESS_STEP,
     setupFreshnessLabel: setup.maxFreshness + "%",
     setupFreshnessDesc:
-      setup.maxFreshness >= 100
-        ? "Every verse, however fresh."
-        : "Only verses that have faded to " + setup.maxFreshness + "% or below.",
+      setup.maxFreshness >= 100 ? copy.exam.setupFreshnessDescAny : copy.exam.setupFreshnessDesc(setup.maxFreshness),
     onSetupFreshness: (e) => actions.setExamSetup({ maxFreshness: Number(e.target.value) }),
 
     setupActivities: ACTIVITIES.map((a) => {
@@ -100,7 +97,7 @@ function setupVals({ state, actions, now }) {
         key: a.key,
         name: a.name,
         desc: a.desc,
-        state: active ? "On" : "Off",
+        state: active ? copy.common.on : copy.common.off,
         stateStyle: `font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:${
           active ? "var(--color-accent-700)" : muted(45)
         }`,
@@ -110,13 +107,8 @@ function setupVals({ state, actions, now }) {
     }),
 
     setupPoolNote: chosen.length
-      ? plural(chosen.length, "verse", "verses") +
-        " under test, out of " +
-        pool.length +
-        " that match — " +
-        plural(questions, "question", "questions") +
-        "."
-      : "No verses match these settings yet. Widen the freshness ceiling, or let uncommitted verses in.",
+      ? copy.exam.setupPoolNote(chosen.length, pool.length, questions)
+      : copy.exam.setupPoolEmpty,
     setupCanStart: chosen.length > 0,
     startExam: actions.startExam,
     cancelExam: () => actions.goto("board"),
@@ -157,12 +149,16 @@ function questionVals({ state, actions }) {
 
   const vals = {
     examActivityName: activity.name,
-    examPosLabel: "Question " + (state.examIndex + 1) + " of " + questions.length,
+    // The view keys the question panel on this, so each question arrives as a
+    // replacement rather than a redraw (styles.css, .card-swap) — the same
+    // gesture a review card is dealt with.
+    examCardKey: String(state.examIndex),
+    examPosLabel: copy.exam.position(state.examIndex + 1, questions.length),
     examBarStyle:
       "height:100%;background:var(--color-accent);width:" +
       Math.round((state.examIndex / questions.length) * 100) +
       "%",
-    examNextLabel: last ? "Finish and mark" : "Next question",
+    examNextLabel: last ? copy.exam.finish : copy.exam.next,
     examNext: actions.nextQuestion,
     examBack: actions.prevQuestion,
     examCanGoBack: state.examIndex > 0,
@@ -189,21 +185,21 @@ function questionVals({ state, actions }) {
 
   if (q.kind === "name-ref") {
     vals.qHint = "";
-    vals.qPlaceholder = "Book and chapter, verse optional";
+    vals.qPlaceholder = copy.exam.refPlaceholder;
   }
   if (q.kind === "finish") {
     // Two fields, one answer: the sentence carries most of the mark and the
     // reference the rest (exam.FINISH_REF_WEIGHT).
     const given = answer || {};
-    vals.qHint = "Finish the sentence from memory. Punctuation and capitals are ignored.";
+    vals.qHint = copy.exam.finishHint;
     vals.qPlaceholder = "";
     vals.qTyped = given.text || "";
     vals.onQTyped = (e) => actions.answerExam({ ...given, text: e.target.value });
     vals.qRefTyped = given.ref || "";
     vals.onQRefTyped = (e) => actions.answerExam({ ...given, ref: e.target.value });
-    vals.qRefLabel = "Where is it from?";
-    vals.qRefPlaceholder = "Book and chapter, verse optional";
-    vals.qRefHint = "Book and chapter, worth a quarter of the mark.";
+    vals.qRefLabel = copy.exam.whereFrom;
+    vals.qRefPlaceholder = copy.exam.refPlaceholder;
+    vals.qRefHint = copy.exam.refHint;
   }
   if (q.kind === "pick-ref") {
     vals.qOptions = q.options.map((o) => ({
@@ -230,7 +226,7 @@ function questionVals({ state, actions }) {
       return {
         key: verse.key,
         text: verse.text,
-        filedLabel: ref ? ref.label : state.examPick === verse.key ? "Now pick its reference →" : "Unpaired",
+        filedLabel: ref ? ref.label : state.examPick === verse.key ? copy.exam.matchNowPick : copy.exam.matchUnpaired,
         filedStyle: `font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:${
           hue != null ? pairInk(hue) : muted(45)
         }`,
@@ -244,9 +240,7 @@ function questionVals({ state, actions }) {
       onClick: () => actions.pickMatchRef(r.key),
       style: matchTile({ hue: hueOfRef.has(r.key) ? hueOfRef.get(r.key) : null }),
     }));
-    vals.qMatchNote = state.examPick
-      ? "Now choose the reference it belongs to."
-      : "Click a verse, then its reference. Click a paired verse to undo it.";
+    vals.qMatchNote = state.examPick ? copy.exam.matchPickRef : copy.exam.matchNote;
   }
   if (q.kind === "scramble") {
     const placed = answer || [];
@@ -254,12 +248,14 @@ function questionVals({ state, actions }) {
     vals.qScrambleEmpty = placed.length === 0;
     vals.qScrambleChunks = q.shuffled
       .filter((c) => !placed.includes(c.i))
-      .map((c) => ({
+      .map((c, i) => ({
         key: c.i,
         text: c.v,
         onClick: () => actions.answerExam([...placed, c.i]),
         style:
-          "cursor:pointer;font-family:var(--font-body);font-size:15px;line-height:1.5;text-align:left;max-width:340px;padding:9px 13px;background:transparent;color:var(--color-text);border:1px solid var(--color-divider)",
+          "cursor:pointer;font-family:var(--font-body);font-size:15px;line-height:1.5;text-align:left;max-width:340px;padding:9px 13px;background:transparent;color:var(--color-text);--stagger-i:" +
+          i +
+          ";border:1px solid var(--color-divider)",
       }));
     vals.resetScramble = () => actions.answerExam([]);
   }
@@ -287,7 +283,7 @@ function questionVals({ state, actions }) {
   if (q.kind === "type") {
     vals.qTyped = typeof answer === "string" ? answer : "";
     vals.onQTyped = (e) => actions.answerExam(e.target.value);
-    vals.qPlaceholder = "Type the passage from memory. Punctuation and capitals are ignored.";
+    vals.qPlaceholder = copy.exam.typePlaceholder;
   }
   return vals;
 }
@@ -297,27 +293,27 @@ function questionVals({ state, actions }) {
 /* What the member wrote (or chose, or paired), in a form the summary can show
  * back to them. */
 function givenLabel(m) {
-  if (m.q.kind === "pick-ref") return m.chosenLabel || "Nothing chosen";
-  if (m.q.kind === "match") return plural(m.hits, "pair", "pairs") + " right of " + m.total;
-  if (m.q.kind === "scramble" || m.q.kind === "blanks") return plural(m.hits, "part", "parts") + " right of " + m.total;
+  if (m.q.kind === "pick-ref") return m.chosenLabel || copy.exam.givenNothingChosen;
+  if (m.q.kind === "match") return copy.exam.givenPairs(m.hits, m.total);
+  if (m.q.kind === "scramble" || m.q.kind === "blanks") return copy.exam.givenParts(m.hits, m.total);
   if (m.q.kind === "finish") {
     const given = m.answer || {};
     const text = String(given.text || "").trim();
     const ref = String(given.ref || "").trim();
-    if (!text && !ref) return "Left blank";
-    return (text || "nothing written") + " — " + (ref || "no reference");
+    if (!text && !ref) return copy.exam.givenBlank;
+    return copy.exam.givenFinish(text, ref);
   }
-  return String(m.answer || "").trim() || "Left blank";
+  return String(m.answer || "").trim() || copy.exam.givenBlank;
 }
 
 /* What it should have been. Multiple choice is answered by an option, not by a
  * reference, so when the right option was "None of the above" the summary has
  * to say both — otherwise it reads as if the reference shown was on offer. */
 function expectedLabel(m) {
-  if (m.q.kind === "finish") return m.q.answer + " — " + m.q.ref;
+  if (m.q.kind === "finish") return copy.exam.expectedFinish(m.q.answer, m.q.ref);
   if (m.q.kind === "match") return "";
   if (m.q.kind === "pick-ref" && m.q.correctKey === NONE_OF_THE_ABOVE) {
-    return "None of the above — it is " + m.q.ref;
+    return copy.exam.expectedNoneOfTheAbove(m.q.ref);
   }
   return m.q.ref;
 }
@@ -328,12 +324,14 @@ function summaryVals({ state, byId }) {
 
   return {
     examScoreLabel: percent(result.score),
-    examScoreNote: result.right + " of " + plural(result.total, "question", "questions") + " right",
+    examScoreNote: copy.exam.doneScoreNote(result.right, result.total),
     examHeadline:
-      result.score >= 0.9 ? "Held, all of it." : result.score >= 0.6 ? "Mostly held." : "Worth another week on these.",
-    examBody:
-      "Each verse's freshness now reflects how it went — the ones that slipped have been dated back, and will come " +
-      "round again sooner.",
+      result.score >= 0.9
+        ? copy.exam.doneHeadlineHigh
+        : result.score >= 0.6
+          ? copy.exam.doneHeadlineMid
+          : copy.exam.doneHeadlineLow,
+    examBody: copy.exam.doneBody,
 
     examVerseRows: result.rows.map((row) => {
       const p = byId.get(row.id);
@@ -349,7 +347,12 @@ function summaryVals({ state, byId }) {
         afterStyle: "font-size:13px;font-weight:600;color:" + freshColor(row.after),
         // A verse that came back weaker than it went in is the one worth the
         // member's eye, so it is the only drift the summary colours.
-        driftLabel: row.after > row.before ? "fresher" : row.after === row.before ? "held" : "faded",
+        driftLabel:
+          row.after > row.before
+            ? copy.exam.driftFresher
+            : row.after === row.before
+              ? copy.exam.driftHeld
+              : copy.exam.driftFaded,
         driftStyle: `font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:${
           row.after < row.before ? COLOR_ERROR : muted(45)
         }`,
@@ -359,7 +362,7 @@ function summaryVals({ state, byId }) {
     examAnswerRows: result.marked.map((m) => ({
       key: m.q.key,
       activity: activityByKey(m.q.kind).short,
-      ref: m.q.ref || plural(m.q.ids.length, "verse", "verses"),
+      ref: m.q.ref || copy.exam.versesUnderTest(m.q.ids.length),
       prompt: m.q.prompt || m.q.lead || "",
       given: givenLabel(m),
       expected: expectedLabel(m),

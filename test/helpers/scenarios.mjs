@@ -60,6 +60,7 @@ export const PROPS = {
 export function baseState(overrides = {}) {
   return {
     loaded: true,
+    splashHold: false, // the opening splash has had its minimum turn
     passages,
     view: "board",
     progress: progressFixture(),
@@ -110,6 +111,8 @@ export function baseState(overrides = {}) {
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
     reviewSetup: { manualSize: 10, manualFreshness: 90 },
     learnSetup: { size: 5 },
+    explainerOpen: false,
+    guideDays: 6,
     ...overrides,
   };
 }
@@ -181,9 +184,17 @@ const testing = (kind, overrides) =>
   baseState({ view: "test", exam: EXAM, examIndex: questionAt(kind), examAnswers: EXAM_ANSWERS, ...overrides });
 
 export const scenarios = [
+  // ── the opening splash ─────────────────────────────────────────────────────
+  // The two waits it covers, and the floor under both: local data still
+  // loading, Firebase yet to say whether there is a session to restore, and
+  // everything ready but the minimum hold still running.
+  { name: "splash/loading-data", state: baseState({ loaded: false }) },
+  { name: "splash/checking-session", state: baseState({ auth: { status: "loading" } }) },
+  { name: "splash/holding", state: baseState({ splashHold: true }) },
+
   // ── auth gate ──────────────────────────────────────────────────────────────
-  { name: "auth/loading", state: baseState({ auth: { status: "loading" } }) },
   { name: "auth/signed-out", state: baseState({ auth: { status: "signed-out" } }) },
+  { name: "auth/signing-in", state: baseState({ auth: { status: "signing-in" } }) },
   { name: "auth/denied", state: baseState({ auth: { status: "denied", reason: "x@gmail.com" } }) },
   {
     name: "auth/failed",
@@ -221,9 +232,12 @@ export const scenarios = [
   // Nothing committed at all — there is no review to configure, so the screen
   // explains what commits a passage and points at a learn session instead.
   { name: "review-setup/nothing-committed", state: baseState({ view: "review-setup", progress: {} }) },
+  // A member who has opened "How it works" this visit.
+  { name: "review-setup/explainer-open", state: baseState({ view: "review-setup", explainerOpen: true }) },
 
   // ── learn setup ────────────────────────────────────────────────────────────
   { name: "learn-setup/default", state: baseState({ view: "learn-setup" }) },
+  { name: "learn-setup/explainer-open", state: baseState({ view: "learn-setup", explainerOpen: true }) },
   { name: "learn-setup/all", state: baseState({ view: "learn-setup", learnSetup: { size: 0 } }) },
   { name: "learn-setup/nothing-left", state: baseState({ view: "learn-setup", progress: allCommitted() }) },
 
@@ -416,6 +430,10 @@ export const scenarios = [
   },
   { name: "leaderboard/solo", state: baseState({ view: "leaderboard", peers: [] }) },
 
-  // ── pre-load splash ────────────────────────────────────────────────────────
-  { name: "app/loading", state: baseState({ loaded: false }) },
+  // ── the guide ──────────────────────────────────────────────────────────────
+  { name: "guide/default", state: baseState({ view: "guide" }) },
+  // Both ends of the freshness slider: day 0, where every curve reads 100%, and
+  // a month on, where the held passage is well under the member's mark.
+  { name: "guide/day-zero", state: baseState({ view: "guide", guideDays: 0 }) },
+  { name: "guide/month-later", state: baseState({ view: "guide", guideDays: 30 }) },
 ].map((s) => ({ props: PROPS, ...s }));

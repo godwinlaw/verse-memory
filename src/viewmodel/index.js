@@ -12,6 +12,7 @@ import { deriveTotals } from "./totals.js";
 import { chromeVals } from "./chrome.js";
 import { boardVals } from "./board.js";
 import { explainerVals } from "./explainer.js";
+import { guideVals } from "./guide.js";
 import { listVals } from "./list.js";
 import { reviewVals, reviewSetupVals } from "./review.js";
 import { learnSetupVals } from "./learn.js";
@@ -40,8 +41,10 @@ export function buildViewModel({ state, groupName, motto, deadline, actions, now
     ...boardVals({ state, totals, prog, actions, today: now }),
     ...listVals({ state, prog, actions }),
     // Shared by both setup screens, so it is built once rather than by each.
-    ...explainerVals({ state }),
-    ...reviewSetupVals({ state, actions }),
+    ...explainerVals({ state, actions }),
+    // The long-form version of the same two ideas, plus the tour of the header.
+    ...guideVals({ state, actions }),
+    ...reviewSetupVals({ state, actions, now: now.getTime() }),
     ...learnSetupVals({ state, prog, actions }),
     ...reviewVals({ state, prog, totals, actions }),
     ...examVals({ state, actions, now: now.getTime() }),
@@ -49,4 +52,4 @@ export function buildViewModel({ state, groupName, motto, deadline, actions, now
   };
 }
 
-export { authGateVals, profileFormVals } from "./gate.js";
+export { splashVals, authGateVals, profileFormVals } from "./gate.js";

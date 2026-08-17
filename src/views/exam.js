@@ -5,6 +5,7 @@
  * is no peek, no mode switch, and no mark until the paper is done. Each activity
  * gets its own panel below, selected by the qIs* flags. */
 
+import { copy } from "../copy.js";
 import { html, sx, corners } from "../dom.js";
 import { LABEL_SECTION, muted } from "../ui/tokens.js";
 
@@ -16,7 +17,7 @@ function namePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:22px")}>
     <p style=${sx(QUOTE)}>“${v.qPrompt}”</p>
     <div style=${sx("display:flex;flex-direction:column;gap:8px;max-width:340px")}>
-      <span style=${sx(LABEL_SECTION)}>Where is it from?</span>
+      <span style=${sx(LABEL_SECTION)}>${copy.exam.whereFrom}</span>
       <input className="input" value=${v.qTyped} onChange=${v.onQTyped} placeholder=${v.qPlaceholder} />
       <span style=${sx(`font-size:12px;line-height:1.5;color:${muted(55)}`)}>${v.qHint}</span>
     </div>
@@ -30,7 +31,7 @@ function pickPanel(v) {
     <div style=${sx("display:flex;flex-direction:column;gap:8px;max-width:420px")}>
       ${v.qOptions.map(
         (o) =>
-          html` <button key=${o.key} onClick=${o.onClick} style=${sx(o.style)}>
+          html` <button key=${o.key} className="option" onClick=${o.onClick} style=${sx(o.style)}>
             <span style=${sx(o.markStyle)}></span>${o.label}
           </button>`,
       )}
@@ -66,14 +67,11 @@ function leaveDialog(v) {
   return html`<div className="dialog-backdrop" onClick=${v.examLeaveCancel} style=${sx("z-index:30")}>
     <div className="dialog blueprint" onClick=${(e) => e.stopPropagation()} style=${sx("background:var(--color-bg)")}>
       ${corners()}
-      <div className="dialog-title">Leave the test?</div>
-      <div className="dialog-body">
-        Nothing you have answered will be marked, and no verse's freshness will change. Any progress in this test will
-        not be saved.
-      </div>
+      <div className="dialog-title">${copy.exam.leaveTitle}</div>
+      <div className="dialog-body">${copy.exam.leaveBody}</div>
       <div className="dialog-actions">
-        <button className="btn btn-secondary" onClick=${v.examLeaveCancel}>Keep going</button>
-        <button className="btn btn-primary" onClick=${v.examLeaveConfirm}>Leave the test</button>
+        <button className="btn btn-secondary" onClick=${v.examLeaveCancel}>${copy.common.keepGoing}</button>
+        <button className="btn btn-primary" onClick=${v.examLeaveConfirm}>${copy.exam.leave}</button>
       </div>
     </div>
   </div>`;
@@ -88,14 +86,14 @@ function matchPanel(v) {
       <div style=${sx("display:flex;flex-direction:column;gap:10px")}>
         ${v.qVerses.map(
           (verse) =>
-            html` <button key=${verse.key} onClick=${verse.onClick} style=${sx(verse.style)}>
+            html` <button key=${verse.key} className="option" onClick=${verse.onClick} style=${sx(verse.style)}>
               <div>${verse.text}</div>
               <div style=${sx("margin-top:8px;" + verse.filedStyle)}>${verse.filedLabel}</div>
             </button>`,
         )}
       </div>
       <div style=${sx("display:flex;flex-direction:column;gap:10px")}>
-        ${v.qRefs.map((r) => html`<button key=${r.key} onClick=${r.onClick} style=${sx(r.style)}>${r.label}</button>`)}
+        ${v.qRefs.map((r) => html`<button key=${r.key} className="option" onClick=${r.onClick} style=${sx(r.style)}>${r.label}</button>`)}
       </div>
     </div>
   </div>`;
@@ -107,15 +105,15 @@ function scramblePanel(v) {
     <div
       style=${sx("min-height:96px;border:1px dashed var(--color-divider);padding:16px 18px;font-size:19px;line-height:1.65;color:var(--color-text)")}
     >
-      ${v.qScrambleEmpty && html`<span style=${sx(`font-size:13px;color:${muted(45)}`)}>Click the phrases below in the right order.</span>`}
+      ${v.qScrambleEmpty && html`<span style=${sx(`font-size:13px;color:${muted(45)}`)}>${copy.exam.scrambleEmptyHint}</span>`}
       ${" " + v.qScrambleBuilt}
     </div>
     <div style=${sx("display:flex;flex-wrap:wrap;gap:10px")}>
-      ${v.qScrambleChunks.map((c) => html`<button key=${c.key} onClick=${c.onClick} style=${sx(c.style)}>${c.text}</button>`)}
+      ${v.qScrambleChunks.map((c) => html`<button key=${c.key} className="chunk" onClick=${c.onClick} style=${sx(c.style)}>${c.text}</button>`)}
     </div>
     <div style=${sx("display:flex;gap:10px;align-items:center")}>
       <button className="btn btn-secondary" onClick=${v.resetScramble} style=${sx("font-size:12px;padding:4px 12px")}>
-        Start over
+        ${copy.common.startOver}
       </button>
     </div>
   </div>`;
@@ -132,7 +130,13 @@ function blanksPanel(v) {
           html` <span key=${i} style=${sx(w.wrapStyle)}
             >${
               w.isBlank
-                ? html`<input id=${w.id} value=${w.value} onChange=${w.onChange} style=${sx(w.inputStyle)} />`
+                ? html`<input
+                    id=${w.id}
+                    className="blank-input"
+                    value=${w.value}
+                    onChange=${w.onChange}
+                    style=${sx(w.inputStyle)}
+                  />`
                 : w.word
             }</span
           >`,
@@ -156,32 +160,38 @@ function typePanel(v) {
 
 export function examView(v) {
   return html`<div
+    className="screen"
     style=${sx("max-width:1000px;margin:0 auto;padding:36px 36px 80px;display:flex;flex-direction:column;gap:22px")}
   >
     <div style=${sx("display:flex;align-items:center;gap:16px")}>
       <button className="btn btn-secondary" onClick=${v.examLeave} style=${sx("font-size:12px;padding:4px 12px")}>
-        Leave the test
+        ${copy.exam.leave}
       </button>
       <div style=${sx(LABEL_SECTION)}>${v.examActivityName} · ${v.examPosLabel}</div>
-      <div style=${sx(`margin-left:auto;font-size:12px;color:${muted(50)}`)}>Marked at the end. No peeking.</div>
+      <div style=${sx(`margin-left:auto;font-size:12px;color:${muted(50)}`)}>${copy.exam.noPeeking}</div>
     </div>
 
     <div style=${sx("height:4px;background:var(--color-neutral-200)")}>
-      <div style=${sx(v.examBarStyle)}></div>
+      <div className="meter-step" style=${sx(v.examBarStyle)}></div>
     </div>
 
     <div
       className="blueprint"
       style=${sx("padding:40px 44px;display:flex;flex-direction:column;gap:26px;min-height:400px")}
     >
-      ${corners()} ${v.qIsName && namePanel(v)} ${v.qIsPick && pickPanel(v)} ${v.qIsFinish && finishPanel(v)}
-      ${v.qIsMatch && matchPanel(v)} ${v.qIsScramble && scramblePanel(v)} ${v.qIsBlanks && blanksPanel(v)}
-      ${v.qIsType && typePanel(v)}
+      ${corners()}
+      <div key=${v.examCardKey} className="card-swap" style=${sx("display:flex;flex-direction:column;gap:26px")}>
+        ${v.qIsName && namePanel(v)} ${v.qIsPick && pickPanel(v)} ${v.qIsFinish && finishPanel(v)}
+        ${v.qIsMatch && matchPanel(v)} ${v.qIsScramble && scramblePanel(v)} ${v.qIsBlanks && blanksPanel(v)}
+        ${v.qIsType && typePanel(v)}
+      </div>
 
       <div
         style=${sx("margin-top:auto;display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:20px")}
       >
-        <button className="btn btn-secondary" onClick=${v.examBack} disabled=${!v.examCanGoBack}>Back</button>
+        <button className="btn btn-secondary" onClick=${v.examBack} disabled=${!v.examCanGoBack}>
+          ${copy.exam.back}
+        </button>
         <button className="btn btn-primary" onClick=${v.examNext}>${v.examNextLabel}</button>
       </div>
     </div>

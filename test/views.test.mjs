@@ -51,11 +51,37 @@ for (const s of scenarios) {
   });
 }
 
+test("the splash decides where the member lands, so neither destination shows early", () => {
+  // Firebase has not answered yet: no sign-in prompt (a returning member would
+  // be asked to sign in when they already are) and no board (they may not be).
+  const checking = shown("splash/checking-session");
+  assert.match(checking, /class="blueprint splash-card"/);
+  assert.match(checking, /Checking your session…/);
+  assert.doesNotMatch(checking, /Sign in with Google/);
+  assert.doesNotMatch(checking, /passages committed/);
+
+  // Once it has: a restored session goes straight home, no session to the gate.
+  assert.match(shown("board/populated"), /passages committed/);
+  assert.match(shown("auth/signed-out"), /Sign in with Google/);
+});
+
+test("the splash holds its minimum even when there is nothing left to wait for", () => {
+  // Local data is in and the member is signed in — only splashHold is up, and
+  // the animation still gets its turn rather than flashing past.
+  const holding = shown("splash/holding");
+  assert.match(holding, /class="splash-meter"/);
+  assert.doesNotMatch(holding, /passages committed/);
+});
+
 test("board shows the committed count", () => {
   const s = scenarios.find((x) => x.name === "board/populated");
   const { markup } = renderScenario(s.state, s.props);
-  // progressFixture() commits passages 1, 2, and 3.
-  assert.match(markup, />3</);
+  // progressFixture() commits passages 1, 2, and 3. The hero's figures count up
+  // to themselves in CSS (styles.css, .count-up), so the number reaches the page
+  // as the --count a counter is reset to rather than as a text node. The hero's
+  // own figure is the first of them.
+  const [hero] = markup.match(/<div class="count-up"[^>]*>/) || [];
+  assert.match(hero || "", /--count:3"/);
   assert.match(markup, /passages committed/);
 });
 
@@ -85,6 +111,41 @@ test("the flashcard's show and hide are one button in one place", () => {
   assert.match(shown("review/flip-hidden"), /Show passage/);
   assert.match(shown("review/flip-revealed"), /Hide passage/);
   assert.doesNotMatch(shown("review/flip-revealed"), /Reveal the passage/);
+});
+
+test("the flashcard is a two-sided card: reference out, passage in", () => {
+  // Both faces are always in the card — turning it is what decides which one the
+  // member looks at, and which one a screen reader is given.
+  const front = shown("review/flip-hidden");
+  assert.match(front, /class="flip-card-face" aria-hidden="false"/);
+  assert.match(front, /class="flip-card-face flip-card-back" aria-hidden="true"/);
+  assert.match(front, /Deuteronomy 6:4-5/, "the reference is on the front");
+  assert.doesNotMatch(front, /class="flip-card is-flipped"/);
+  assert.match(front, /title="Turn the card over to show the passage"/);
+
+  const back = shown("review/flip-revealed");
+  assert.match(back, /class="flip-card is-flipped"/);
+  assert.match(back, /class="flip-card-face" aria-hidden="true"/);
+  assert.match(back, /class="flip-card-face flip-card-back" aria-hidden="false"/);
+  assert.match(back, /title="Turn the card back to the reference"/);
+});
+
+test("the first letters are a prompt, so they sit on the front and do not turn it", () => {
+  const letters = shown("review/flip-letters");
+  assert.match(letters, /H, O I: T L o G/, "the scaffold, not the passage");
+  assert.match(letters, /Deuteronomy 6:4-5/, "beside the reference it is helping recall");
+  assert.doesNotMatch(letters, /class="flip-card is-flipped"/, "a hint is not the answer");
+  assert.doesNotMatch(letters, /Say it aloud from memory/, "it replaces the prompt it stands in for");
+  assert.match(letters, /Hide first letters<\/button>/);
+  assert.match(shown("review/flip-hidden"), /Show first letters<\/button>/);
+});
+
+test("the guide demonstrates the flashcard component itself, not a drawing of one", () => {
+  // Both reach for the same classes, so the picture cannot drift from the thing
+  // it is a picture of.
+  assert.match(shown("guide/default"), /class="guide-demo guide-flip flip-card"/);
+  assert.match(shown("guide/default"), /class="flip-card-face flip-card-back"/);
+  assert.match(shown("review/flip-hidden"), /class="flip-card-face flip-card-back"/);
 });
 
 test("every mode but the flashcard is walked with Previous, Submit and Next", () => {
@@ -145,14 +206,102 @@ test("walking off an unsubmitted card asks first, either way", () => {
   assert.match(back, />Go back<\/button>/);
 });
 
-test("the setup screen explains what freshness is and what each activity pays", () => {
-  const markup = shown("review-setup/due");
-  assert.match(markup, /How freshness works/);
+test("the setup screen explains what freshness is and what each activity pays, once opened", () => {
+  const markup = shown("review-setup/explainer-open");
+  assert.match(markup, /How it works/);
   assert.match(markup, /forgetting curve/);
   assert.match(markup, /Write it out<\/span>/);
   assert.match(markup, /Up to 100%, on a clean attempt/, "writing it out pays in full");
   assert.match(markup, /Up to 90%, on a clean attempt/, "and ordering the phrases pays the least");
   assert.match(markup, /Each press of Peek costs 5%/);
+});
+
+test("both setup screens name the explanation 'How it works', hidden until opened", () => {
+  const closed = shown("review-setup/due");
+  assert.match(closed, /How it works/, "the title always shows");
+  assert.doesNotMatch(closed, /forgetting curve/, "but not the body, by default");
+  assert.match(closed, />Show<\/button>/);
+
+  const open = shown("review-setup/explainer-open");
+  assert.match(open, /How it works/);
+  assert.match(open, /forgetting curve/, "opened, it shows");
+  assert.match(open, />Hide<\/button>/);
+
+  const learnClosed = shown("learn-setup/default");
+  assert.match(learnClosed, /How it works/);
+  assert.doesNotMatch(learnClosed, /write the whole thing out from memory/);
+
+  const learnOpen = shown("learn-setup/explainer-open");
+  assert.match(learnOpen, /write the whole thing out from memory/);
+});
+
+/* ── the guide ────────────────────────────────────────────────────────────── */
+
+test("the guide quotes the model rather than prose", () => {
+  const markup = shown("guide/default");
+  assert.match(markup, /95% of the words right/, "the commit bar comes from srs.COMMIT_SCORE");
+  assert.match(markup, /Worth up to 100% freshness/, "writing it out pays in full");
+  assert.match(markup, /Worth up to 90% freshness/, "and ordering the phrases pays the least");
+  assert.match(markup, /asks for it back at 75%/, "and the due mark comes from the profile");
+});
+
+test("the freshness demonstration runs the real curve under the slider", () => {
+  // Day 0: nothing has decayed, whatever the passage's stability.
+  const start = shown("guide/day-zero");
+  assert.match(start, /the same day/);
+  assert.match(start, />100%</);
+  assert.match(start, /Still above the line/);
+
+  // A month on, a well-held passage is well under the mark and a new one is
+  // all but gone — which is the whole point of the picture.
+  const later = shown("guide/month-later");
+  assert.match(later, /30 days later/);
+  assert.match(later, />22%</, "e^(−30/20)");
+  assert.match(later, />0%</, "e^(−30/4) rounds away");
+  assert.match(later, /Below the line/);
+});
+
+test("every activity is demonstrated, and only one is flagged as committing", () => {
+  const markup = shown("guide/default");
+  for (const cls of ["guide-flip", "guide-order", "guide-blanks", "guide-type"]) {
+    assert.match(markup, new RegExp(cls), `no ${cls} demonstration`);
+  }
+  assert.equal((markup.match(/the only one that commits/g) || []).length, 1);
+});
+
+/* The guide is the screen a member reads before they know how any of this
+ * works, so it is written plainly on purpose (see the note atop
+ * viewmodel/guide.js). These are the words the rest of the app is free to use
+ * and this screen is not — a rewrite that reaches for them has drifted back. */
+const GUIDE_JARGON = [
+  /sitting/i,
+  /upkeep/i,
+  /retrievabilit/i,
+  /stability/i,
+  /canonical/i,
+  /marked paper/i,
+  /scaffold/i,
+];
+
+test("the guide says none of it in the app's own shorthand", () => {
+  for (const name of ["guide/default", "guide/month-later"]) {
+    const markup = shown(name);
+    for (const word of GUIDE_JARGON) {
+      assert.doesNotMatch(markup, word, `${name} reaches for ${word}`);
+    }
+  }
+});
+
+test("and teaches the two words it does keep, rather than dodging them", () => {
+  // "committed" and "freshness" are printed on every other screen, so a synonym
+  // here would match nothing the member goes on to see.
+  const markup = shown("guide/default");
+  assert.match(markup, /only counts as committed when you can write the whole thing out from memory/);
+  assert.match(markup, /it calls that freshness/);
+});
+
+test("the board offers a way into the guide", () => {
+  assert.match(shown("board/populated"), /How this works<\/button>/);
 });
 
 /* ── the board's two queues ───────────────────────────────────────────────── */
@@ -176,13 +325,15 @@ test("each queue says why it is empty, and they say different things", () => {
 
 /* ── learning ─────────────────────────────────────────────────────────────── */
 
-test("the learn screen leads with what commits a passage", () => {
+test("the learn screen leads with 'How it works', and opening it explains what commits a passage", () => {
   const markup = shown("learn-setup/default");
-  assert.match(markup, /What commits a passage/);
-  assert.match(markup, /write the whole thing out from memory/);
-  assert.match(markup, /95% of the words right/, "the bar is quoted from the model, not prose");
-  assert.match(markup, /Take as many attempts as you like/);
+  assert.match(markup, /How it works/);
   assert.match(markup, /Start learning/);
+
+  const open = shown("learn-setup/explainer-open");
+  assert.match(open, /write the whole thing out from memory/);
+  assert.match(open, /95% of the words right/, "the bar is quoted from the model, not prose");
+  assert.match(open, /Take as many attempts as you like/);
 });
 
 test("the learn screen previews the verses the sitting will open with", () => {
@@ -200,7 +351,7 @@ test("a fully committed set offers no learn session", () => {
 test("a member with nothing committed is sent to learn, not review", () => {
   const markup = shown("review-setup/nothing-committed");
   assert.match(markup, /not committed a verse yet/);
-  assert.match(markup, /What commits a passage/, "and is told what would");
+  assert.match(markup, /How it works/, "and is offered the explanation");
   assert.match(markup, /disabled="">\s*Start Review/);
 });
 
@@ -274,7 +425,7 @@ test("no learn screen says anything about freshness", () => {
 });
 
 test("the review half still does, so the absence is a choice and not a loss", () => {
-  assert.match(shown("review-setup/due"), /How freshness works/);
+  assert.match(shown("review-setup/explainer-open"), /how much of it you would still recall/);
   assert.match(shown("review/submitted"), /Freshness decays from here/);
 });
 

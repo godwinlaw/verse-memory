@@ -4,31 +4,56 @@
  * mode panel is active. Each mode gets its own function below; they are mutually
  * exclusive, selected by the isFlip/isBlanks/isType/isScramble flags. */
 
+import { copy } from "../copy.js";
 import { html, sx, corners, React } from "../dom.js";
 import { COLOR_ERROR, LABEL_META, LABEL_SECTION, muted } from "../ui/tokens.js";
 
-/* Flashcard: reference only, optionally scaffolded with first letters, until
- * the member shows the text. The two buttons sit in one fixed row below the
- * card, so showing and hiding is the same control in the same place rather than
- * a button that moves when the passage appears. */
+/* Flashcard: a real two-sided card (styles.css, the two-sided card — the guide
+ * demonstrates this same component). The reference is on the front and the
+ * passage on the back, and the card turns over rather than swapping its
+ * contents, so the member can see which way round they are.
+ *
+ * The first-letter scaffold is a prompt, not an answer, so it belongs on the
+ * front beside the reference it is helping recall — turning the card still
+ * shows the passage in full either way.
+ *
+ * The two buttons sit in one fixed row below the card, so showing and hiding is
+ * the same control in the same place rather than a button that moves when the
+ * passage appears. Clicking the card turns it too, but it is deliberately not a
+ * tab stop of its own: "Show passage" below it is a real button that already
+ * does exactly this, and a second one would only be a duplicate stop reading out
+ * the same thing. */
 function flipPanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:26px")}>
     <div
-      style=${sx("min-height:150px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:22px 0")}
+      className=${"flip-card" + (v.flipShown ? " is-flipped" : "")}
+      title=${v.flipCardLabel}
+      onClick=${v.toggleFlip}
+      style=${sx("width:100%;max-width:720px;margin:0 auto;cursor:pointer")}
     >
-      ${
-        v.flipShown
-          ? html`<p style=${sx("margin:0;font-size:21px;line-height:1.62;max-width:74ch")}>${v.curText}</p>`
-          : v.flipLettersOn
-            ? html`<p
-                style=${sx("margin:0;font-size:21px;line-height:1.9;max-width:74ch;letter-spacing:.06em;font-family:var(--font-heading);color:var(--color-text)")}
-              >
-                ${v.flipFirstLetters}
-              </p>`
-            : html`<div style=${sx(`font-size:13px;color:${muted(55)};text-align:center;max-width:420px`)}>
-                Say it aloud from memory, then show the passage to check yourself.
-              </div>`
-      }
+      <div className="flip-card-inner" style=${sx("min-height:196px")}>
+        <div className="flip-card-face" aria-hidden=${v.flipShown}>
+          <div style=${sx(LABEL_META)}>${v.flipFrontLabel}</div>
+          <div style=${sx("font-size:34px;line-height:1.15")}>${v.curRef}</div>
+          ${
+            v.flipLettersOn
+              ? html`<p
+                  style=${sx(`margin:0;font-size:19px;line-height:1.9;max-width:64ch;letter-spacing:.06em;color:${muted(75)}`)}
+                >
+                  ${v.flipFirstLetters}
+                </p>`
+              : html`<div
+                  style=${sx(`font-size:13px;font-family:var(--font-body);font-weight:400;color:${muted(55)};max-width:44ch`)}
+                >
+                  ${v.flipHint}
+                </div>`
+          }
+        </div>
+        <div className="flip-card-face flip-card-back" aria-hidden=${!v.flipShown}>
+          <div style=${sx(LABEL_META + ";font-family:var(--font-heading)")}>${v.curRef}</div>
+          <p style=${sx("margin:0;font-size:21px;line-height:1.62;max-width:74ch")}>${v.curText}</p>
+        </div>
+      </div>
     </div>
     <div style=${sx("display:flex;gap:10px;align-items:center;justify-content:center")}>
       <button className="btn btn-secondary" onClick=${v.toggleFlipLetters} style=${sx("min-width:170px")}>
@@ -45,14 +70,16 @@ function flipPanel(v) {
 function blanksPanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:20px")}>
     <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
-      <span style=${sx(LABEL_SECTION)}>Blanks</span>
+      <span style=${sx(LABEL_SECTION)}>${copy.review.blanksLabel}</span>
       <div style=${sx("display:flex;gap:6px")}>
-        ${v.blankLevels.map((lv) => html`<button key=${lv.key} onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
+        ${v.blankLevels.map((lv) => html`<button key=${lv.key} className="seg-btn" onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
       </div>
       <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${v.blankLevelDesc}</span>
       <span style=${sx("width:1px;height:20px;background:var(--color-divider);margin:0 4px")}></span>
-      <span style=${sx(LABEL_SECTION)}>First letter</span>
-      <button onClick=${v.toggleBlankHint} style=${sx(v.blankHintStyle)}>${v.blankHintOn ? "On" : "Off"}</button>
+      <span style=${sx(LABEL_SECTION)}>${copy.review.blanksFirstLetter}</span>
+      <button className="seg-btn" onClick=${v.toggleBlankHint} style=${sx(v.blankHintStyle)}>
+        ${v.blankHintOn ? copy.common.on : copy.common.off}
+      </button>
     </div>
     <div
       style=${sx("font-size:21px;line-height:2.1;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 7px;align-items:baseline")}
@@ -64,6 +91,7 @@ function blanksPanel(v) {
               w.isBlank
                 ? html`<input
                     id=${w.id}
+                    className="blank-input"
                     value=${w.value}
                     onChange=${w.onChange}
                     onKeyDown=${w.onKeyDown}
@@ -84,13 +112,11 @@ function blanksPanel(v) {
 function typePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:18px")}>
     <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
-      <span style=${sx(LABEL_SECTION)}>First letters only</span>
-      <button onClick=${v.toggleTypeFirstLetter} style=${sx(v.typeFirstLetterStyle)}>
-        ${v.typeFirstLetterOn ? "On" : "Off"}
+      <span style=${sx(LABEL_SECTION)}>${copy.review.typeFirstLetterLabel}</span>
+      <button className="seg-btn" onClick=${v.toggleTypeFirstLetter} style=${sx(v.typeFirstLetterStyle)}>
+        ${v.typeFirstLetterOn ? copy.common.on : copy.common.off}
       </button>
-      <span style=${sx(`font-size:12px;color:${muted(55)}`)}
-        >Type just the first letter of each word instead of the whole passage.</span
-      >
+      <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${copy.review.typeFirstLetterNote}</span>
     </div>
     ${
       v.typeLive
@@ -107,7 +133,7 @@ function typePanel(v) {
                 ${v.typeRevealScore}
               </div>
               <div style=${sx(`font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:${muted(55)}`)}>
-                words revealed
+                ${copy.review.typeRevealed}
               </div>
             </div>
             <div style=${sx("font-size:21px;line-height:2;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 8px")}>
@@ -119,14 +145,16 @@ function typePanel(v) {
             ${
               v.typeGraded &&
               // Nothing grades the attempt until it is submitted, so this is
-              // the marked paper: the score and the passage word by word.
-              html`<div style=${sx("display:flex;flex-direction:column;gap:16px")}>
+              // the marked paper: the score and the passage word by word. It
+              // takes the place of the box the member was writing in, so it
+              // arrives rather than appearing (styles.css, .item-in).
+              html`<div className="item-in" style=${sx("display:flex;flex-direction:column;gap:16px")}>
                 <div style=${sx("display:flex;align-items:baseline;gap:12px")}>
                   <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:52px;line-height:1")}>
                     ${v.typeScore}
                   </div>
                   <div style=${sx(`font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:${muted(55)}`)}>
-                    words matched
+                    ${copy.review.typeMatched}
                   </div>
                 </div>
                 <div style=${sx("font-size:19px;line-height:1.8;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 7px")}>
@@ -144,28 +172,40 @@ function typePanel(v) {
 function scramblePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:22px")}>
     <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
-      <span style=${sx(LABEL_SECTION)}>Granularity</span>
+      <span style=${sx(LABEL_SECTION)}>${copy.review.scrambleLabel}</span>
       <div style=${sx("display:flex;gap:6px")}>
-        ${v.scrambleLevels.map((lv) => html`<button key=${lv.key} onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
+        ${v.scrambleLevels.map((lv) => html`<button key=${lv.key} className="seg-btn" onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
       </div>
       <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${v.scrambleLevelDesc}</span>
     </div>
     <div
       style=${sx("min-height:96px;border:1px dashed var(--color-divider);padding:16px 18px;font-size:19px;line-height:1.65;color:var(--color-text)")}
     >
-      ${v.scrambleEmpty && html`<span style=${sx(`font-size:13px;color:${muted(45)}`)}>Click the phrases below in the right order.</span>`}
+      ${v.scrambleEmpty && html`<span style=${sx(`font-size:13px;color:${muted(45)}`)}>${copy.review.scrambleEmptyHint}</span>`}
       ${" " + v.scrambleBuilt}
     </div>
     <div style=${sx("display:flex;flex-wrap:wrap;gap:10px")}>
-      ${v.scrambleChunks.map((c) => html`<button key=${c.key} onClick=${c.onClick} style=${sx(c.style)}>${c.text}</button>`)}
+      ${v.scrambleChunks.map((c) => html`<button key=${c.key} className="chunk" onClick=${c.onClick} style=${sx(c.style)}>${c.text}</button>`)}
     </div>
     <div style=${sx("display:flex;gap:10px;align-items:center")}>
       <button className="btn btn-secondary" onClick=${v.resetScramble} style=${sx("font-size:12px;padding:4px 12px")}>
-        Start over
+        ${copy.common.startOver}
       </button>
       <div style=${sx(`font-size:13px;color:${muted(60)}`)}>${v.scrambleResult}</div>
       ${v.scrambleMissNote && html`<div style=${sx(`font-size:13px;color:${COLOR_ERROR}`)}>${v.scrambleMissNote}</div>`}
     </div>
+  </div>`;
+}
+
+/* Whichever activity is running, wrapped in the one thing all four share: they
+ * are dealt rather than redrawn. The wrapper is keyed on the card and the mode
+ * together (v.cardKey), so moving to the next verse and switching exercise on
+ * this one are the same gesture — the panel is replaced and enters from the
+ * side (styles.css, .card-swap), while the frame around it holds still. */
+function activityPanel(v) {
+  return html`<div key=${v.cardKey} className="card-swap" style=${sx("display:flex;flex-direction:column;gap:26px")}>
+    ${v.isLearn && commitBanner(v)} ${v.isFlip && flipPanel(v)} ${v.isBlanks && blanksPanel(v)}
+    ${v.isType && typePanel(v)} ${v.isScramble && scramblePanel(v)}
   </div>`;
 }
 
@@ -187,7 +227,7 @@ function commitBanner(v) {
     <span
       style=${sx("font-family:var(--font-heading);font-weight:600;letter-spacing:.08em;font-size:11px;text-transform:uppercase;flex:none")}
     >
-      ${v.commitDone ? "Committed" : "To commit"}
+      ${v.commitDone ? copy.review.commitDoneTag : copy.review.commitTodoTag}
     </span>
     <span>${v.commitNote}</span>
   </div>`;
@@ -200,11 +240,12 @@ function commitBanner(v) {
 function learnResultStrip(v) {
   return html`<div
     key=${v.resultKey}
+    className="result-strip"
     style=${sx(
       "display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-top:1px solid var(--color-divider);padding-top:18px",
     )}
   >
-    <span style=${sx(LABEL_SECTION)}>${v.resultModeName} · submitted</span>
+    <span style=${sx(LABEL_SECTION)}>${copy.review.resultSubmitted(v.resultModeName)}</span>
     <span style=${sx(`font-size:13px;color:${muted(60)}`)}>${v.resultScoreLabel}</span>
     <span
       style=${sx(
@@ -225,10 +266,11 @@ function learnResultStrip(v) {
 function resultStrip(v) {
   return html`<div
     key=${v.resultKey}
+    className="result-strip"
     style=${sx("display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--color-divider);padding-top:18px")}
   >
     <div style=${sx("display:flex;align-items:baseline;gap:12px;flex-wrap:wrap")}>
-      <span style=${sx(LABEL_SECTION)}>${v.resultModeName} · submitted</span>
+      <span style=${sx(LABEL_SECTION)}>${copy.review.resultSubmitted(v.resultModeName)}</span>
       <span style=${sx(`font-size:13px;color:${muted(60)}`)}>${v.resultScoreLabel}</span>
       <span style=${sx(`margin-left:auto;font-size:12px;color:${muted(50)}`)}>${v.resultNote}</span>
     </div>
@@ -236,7 +278,7 @@ function resultStrip(v) {
       <div style=${sx("flex:1;display:flex;flex-direction:column;gap:7px;max-width:520px")}>
         <div style=${sx("display:flex;align-items:center;gap:12px")}>
           <span style=${sx(`font-size:11px;letter-spacing:.1em;text-transform:uppercase;width:44px;color:${muted(50)}`)}
-            >Was</span
+            >${copy.review.resultWas}</span
           >
           <div style=${sx("flex:1;height:9px;background:var(--color-fresh-track);overflow:hidden")}>
             <div style=${sx(v.resultBeforeBar)}></div>
@@ -246,7 +288,9 @@ function resultStrip(v) {
           >
         </div>
         <div style=${sx("display:flex;align-items:center;gap:12px")}>
-          <span style=${sx("font-size:11px;letter-spacing:.1em;text-transform:uppercase;width:44px")}>Now</span>
+          <span style=${sx("font-size:11px;letter-spacing:.1em;text-transform:uppercase;width:44px")}
+            >${copy.review.resultNow}</span
+          >
           <div style=${sx("flex:1;height:9px;background:var(--color-fresh-track);overflow:hidden")}>
             <div className="fresh-fill" style=${sx(v.resultAfterBar)}></div>
           </div>
@@ -264,11 +308,11 @@ function leaveDialog(v) {
   return html`<div className="dialog-backdrop" onClick=${v.reviewLeaveCancel} style=${sx("z-index:30")}>
     <div className="dialog blueprint" onClick=${(e) => e.stopPropagation()} style=${sx("background:var(--color-bg)")}>
       ${corners()}
-      <div className="dialog-title">Leave the session?</div>
+      <div className="dialog-title">${copy.review.leaveTitle}</div>
       <div className="dialog-body">${v.reviewLeaveNote}</div>
       <div className="dialog-actions">
-        <button className="btn btn-secondary" onClick=${v.reviewLeaveCancel}>Keep going</button>
-        <button className="btn btn-primary" onClick=${v.reviewLeaveConfirm}>Leave the session</button>
+        <button className="btn btn-secondary" onClick=${v.reviewLeaveCancel}>${copy.common.keepGoing}</button>
+        <button className="btn btn-primary" onClick=${v.reviewLeaveConfirm}>${copy.review.leaveConfirm}</button>
       </div>
     </div>
   </div>`;
@@ -284,7 +328,7 @@ function moveDialog(v) {
       <div className="dialog-title">${v.reviewMoveTitle}</div>
       <div className="dialog-body">${v.moveNote}</div>
       <div className="dialog-actions">
-        <button className="btn btn-secondary" onClick=${v.reviewMoveCancel}>Stay on this passage</button>
+        <button className="btn btn-secondary" onClick=${v.reviewMoveCancel}>${copy.review.moveStay}</button>
         <button className="btn btn-primary" onClick=${v.reviewMoveConfirm}>${v.reviewMoveConfirmLabel}</button>
       </div>
     </div>
@@ -293,20 +337,21 @@ function moveDialog(v) {
 
 export function reviewView(v) {
   return html`<div
+    className="screen"
     style=${sx("max-width:1000px;margin:0 auto;padding:36px 36px 80px;display:flex;flex-direction:column;gap:22px")}
   >
     <div style=${sx("display:flex;align-items:center;gap:16px")}>
       <button className="btn btn-secondary" onClick=${v.askLeaveReview} style=${sx("font-size:12px;padding:4px 12px")}>
-        Leave session
+        ${copy.review.leave}
       </button>
       <div style=${sx(LABEL_SECTION)}>${v.sessionLabel} · ${v.modeName} · ${v.posLabel}</div>
       <div style=${sx("margin-left:auto;display:flex;gap:6px")}>
-        ${v.modeSwitch.map((m) => html`<button key=${m.key} onClick=${m.onClick} style=${sx(m.style)}>${m.short}</button>`)}
+        ${v.modeSwitch.map((m) => html`<button key=${m.key} className="seg-btn" onClick=${m.onClick} style=${sx(m.style)}>${m.short}</button>`)}
       </div>
     </div>
 
     <div style=${sx("height:4px;background:var(--color-neutral-200)")}>
-      <div style=${sx(v.sessionBarStyle)}></div>
+      <div className="meter-step" style=${sx(v.sessionBarStyle)}></div>
     </div>
 
     <div
@@ -339,15 +384,16 @@ export function reviewView(v) {
         }
       </div>
 
-      ${v.isLearn && commitBanner(v)} ${v.isFlip && flipPanel(v)} ${v.isBlanks && blanksPanel(v)}
-      ${v.isType && typePanel(v)} ${v.isScramble && scramblePanel(v)}
-      ${v.showHelp && html`<div style=${sx(`border-left:2px solid var(--color-accent);padding:4px 0 4px 16px;font-size:15px;line-height:1.65;color:${muted(70)};max-width:74ch`)}>${v.curText}</div>`}
+      ${activityPanel(v)}
+      ${v.showHelp && html`<div className="reveal-in" style=${sx(`border-left:2px solid var(--color-accent);padding:4px 0 4px 16px;font-size:15px;line-height:1.65;color:${muted(70)};max-width:74ch`)}>${v.curText}</div>`}
       ${v.resultShown && (v.isLearn ? learnResultStrip(v) : resultStrip(v))}
 
       <div
         style=${sx("margin-top:auto;display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:20px")}
       >
-        <button className="btn btn-secondary" onClick=${v.goPrev} disabled=${!v.canGoBack}>Previous</button>
+        <button className="btn btn-secondary" onClick=${v.goPrev} disabled=${!v.canGoBack}>
+          ${copy.review.previous}
+        </button>
         ${
           v.canSubmit &&
           html`<button className="btn btn-primary" onClick=${v.submit} disabled=${v.submitDone}>

@@ -493,6 +493,31 @@ test("ticking a row adds it, ticking it again takes it back", () => {
   assert.deepEqual(a.state.selection, [1]);
 });
 
+test("a row ticked on its own becomes the end a run is drawn from", () => {
+  const a = app(baseState({ view: "list" }));
+
+  a.actions.toggleSelect(2);
+  assert.equal(a.state.selectAnchor, 2);
+
+  a.actions.toggleSelect(2);
+  assert.equal(a.state.selectAnchor, 2, "including a row just clicked off");
+
+  // Ticking every shown row, or clearing, leaves no one row to extend from.
+  a.actions.setSelection([1, 2, 3]);
+  assert.equal(a.state.selectAnchor, null);
+});
+
+test("a run adds the rows it covers, or takes them all back, and holds the anchor", () => {
+  const a = app(baseState({ view: "list", selection: [4], selectAnchor: 4 }));
+
+  a.actions.selectRange([1, 2, 3, 4], true);
+  assert.deepEqual(a.state.selection, [4, 1, 2, 3], "a row already ticked is not ticked twice");
+  assert.equal(a.state.selectAnchor, 4, "so the same run can be re-drawn from the same end");
+
+  a.actions.selectRange([2, 3], false);
+  assert.deepEqual(a.state.selection, [4, 1], "and the rest keep their ticks");
+});
+
 test("a hand-picked session survives, so the other half can be taken next", () => {
   const a = app(baseState({ view: "list", selection: [1, 4] }));
   // What the list's Review button hands the shell: the committed half only.

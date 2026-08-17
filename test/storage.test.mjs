@@ -85,6 +85,9 @@ test("device-local preferences round-trip through their own keys", () => {
   storage.saveBlankHint(true);
   assert.equal(storage.loadBlankHint(false), true);
 
+  storage.saveExplainerOpen(false);
+  assert.equal(storage.loadExplainerOpen(true), false);
+
   assert.ok(!map.has("undefined"), "a preference was written under a missing KEYS entry");
   for (const key of map.keys()) assert.match(key, /^mv\./, `unexpected storage key ${key}`);
 });

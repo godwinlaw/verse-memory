@@ -22,6 +22,7 @@ function build(over = {}, progress = PROGRESS, passages = PASSAGES) {
   const actions = {
     startSession: (mode, ids, kind) => capture.started.push({ mode, ids, kind }),
     toggleSelect: (id) => (capture.toggled = id),
+    selectRange: (ids, on) => (capture.range = { ids, on }),
     setSelection: (ids) => (capture.selection = ids),
     setSearch: () => {},
     setFilter: () => {},
@@ -150,6 +151,71 @@ test("clearing drops the whole selection", () => {
   const { v, capture } = build({ selection: [1, 3] });
   v.onClearSelection();
   assert.deepEqual(capture.selection, []);
+});
+
+/* ── shift-clicking takes the run between two rows ────────────────────────── */
+
+/* A click on a tick box, with the shift key down. */
+const shiftClick = (v, id) => rowFor(v, id).onSelect({ shiftKey: true });
+
+test("a shift-click with nothing to extend from is an ordinary tick", () => {
+  const { v, capture } = build();
+  shiftClick(v, 3);
+  assert.equal(capture.toggled, 3);
+  assert.equal(capture.range, undefined);
+});
+
+test("a shift-click ticks every row between the anchor and the row clicked", () => {
+  const { v, capture } = build({ selection: [1], selectAnchor: 1 });
+  shiftClick(v, 4);
+  assert.deepEqual(capture.range, { ids: [1, 2, 3, 4], on: true }, "both ends included");
+  assert.equal(capture.toggled, undefined, "and it is not also a tick of the row clicked");
+});
+
+test("the run reads the same clicked upwards", () => {
+  const { v, capture } = build({ selection: [4], selectAnchor: 4 });
+  shiftClick(v, 2);
+  assert.deepEqual(capture.range, { ids: [2, 3, 4], on: true }, "in the order the rows are on screen");
+});
+
+test("the run is bounded by what the search and filter have left on screen", () => {
+  // Rows 1 and 2 are the committed ones, so row 3 is not on screen to be
+  // swept up by a run drawn across it.
+  const { v, capture } = build({ filter: "Committed", selection: [1], selectAnchor: 1 });
+  shiftClick(v, 2);
+  assert.deepEqual(capture.range, { ids: [1, 2], on: true });
+});
+
+test("a run drawn from a row just unticked clears the rows it covers", () => {
+  // The anchor is the row last clicked on its own — here one that was clicked
+  // off, so the run follows it off rather than back on.
+  const { v, capture } = build({ selection: [2, 3], selectAnchor: 1 });
+  shiftClick(v, 4);
+  assert.deepEqual(capture.range, { ids: [1, 2, 3, 4], on: false });
+});
+
+test("an anchor the filter has hidden is nothing to extend from", () => {
+  const { v, capture } = build({ filter: "Committed", selection: [3], selectAnchor: 3 });
+  shiftClick(v, 1);
+  assert.equal(capture.toggled, 1, "so the shift-click is just a tick");
+  assert.equal(capture.range, undefined);
+});
+
+test("shift-clicking the anchor itself toggles it, rather than doing nothing", () => {
+  const { v, capture } = build({ selection: [2], selectAnchor: 2 });
+  shiftClick(v, 2);
+  assert.equal(capture.toggled, 2);
+  assert.equal(capture.range, undefined);
+});
+
+test("the run is offered only once there is an end to draw it from", () => {
+  assert.equal(build({ selection: [2] }).v.selectionRangeHint, "", "no anchor yet");
+  assert.match(build({ selection: [2], selectAnchor: 2 }).v.selectionRangeHint, /Shift-click/);
+  assert.equal(
+    build({ filter: "Committed", selection: [3], selectAnchor: 3 }).v.selectionRangeHint,
+    "",
+    "an anchor off screen is no end to draw from",
+  );
 });
 
 /* ── the per-row shortcut, unchanged by any of this ───────────────────────── */

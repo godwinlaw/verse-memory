@@ -12,11 +12,14 @@
  *
  * Everything here is a pure function of (map, now) and unit-tested in Node. */
 
+import { copy } from "./copy.js";
 import { migrate, retrievability, freshness, isDue } from "./srs.js";
 import { dayKey } from "./text.js";
 
-/* Member-facing wording for the three statuses a passage can be in. */
-export const STATUS_LABEL = { memorized: "Committed", learning: "In progress", new: "Not started" };
+/* Member-facing wording for the three statuses a passage can be in. Re-exported
+ * from copy.js rather than written here: four screens quote these words, so
+ * they are edited in the one place all the app's wording is edited. */
+export const STATUS_LABEL = copy.status;
 
 /* A passage is committed by writing it out in full from memory, and by nothing
  * else — see srs.commitsVerse(), which is the only thing that sets this status.
