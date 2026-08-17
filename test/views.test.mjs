@@ -55,7 +55,7 @@ test("the splash decides where the member lands, so neither destination shows ea
   // Firebase has not answered yet: no sign-in prompt (a returning member would
   // be asked to sign in when they already are) and no board (they may not be).
   const checking = shown("splash/checking-session");
-  assert.match(checking, /class="blueprint splash-card"/);
+  assert.match(checking, /class="blueprint splash-field"/);
   assert.match(checking, /Checking your session…/);
   assert.doesNotMatch(checking, /Sign in with Google/);
   assert.doesNotMatch(checking, /passages committed/);
@@ -69,8 +69,17 @@ test("the splash holds its minimum even when there is nothing left to wait for",
   // Local data is in and the member is signed in — only splashHold is up, and
   // the animation still gets its turn rather than flashing past.
   const holding = shown("splash/holding");
-  assert.match(holding, /class="splash-meter"/);
+  assert.match(holding, /class="splash-mark"/);
   assert.doesNotMatch(holding, /passages committed/);
+});
+
+test("the splash names the steps but announces only what is true", () => {
+  // The three lines cycle on a CSS timer, not on the boot's real state, so they
+  // are drawn and hidden from assistive tech; the one live line is the note.
+  const checking = shown("splash/checking-session");
+  assert.match(checking, /Indexing \d+ passages/);
+  assert.match(checking, /Building today&#x27;s queue/);
+  assert.match(checking, /class="splash-cycle" aria-hidden="true"/);
 });
 
 test("board shows the committed count", () => {

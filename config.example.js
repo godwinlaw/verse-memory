@@ -12,6 +12,7 @@
 window.__APP_CONFIG__ = {
   groupName: "Acts 2 Network - Berkeley",
   deadline: "2026-10-31", // YYYY-MM-DD, the memorization goal date
+  splashMinMs: 3000, // least time the opening splash stays up, in milliseconds
 };
 
 // Cloud sync uses the default Firebase project baked into src/config.js. Leave

@@ -11,6 +11,12 @@ export const appConfig = {
   groupName: "Acts 2 Network - Berkeley",
   motto: "Every Member a Self Respecting Christian",
   deadline: "2026-10-31",
+  /* The shortest time the opening splash stays up, in milliseconds. It sits
+   * here rather than in App.js because it is a matter of taste — how long the
+   * registration mark is worth watching — and so it can be retuned per deploy
+   * without a code change. Retune this one; SPLASH_MAX_MS in App.js is the
+   * failsafe above it and is not a preference. */
+  splashMinMs: 3000,
   ...appOverrides,
 };
 

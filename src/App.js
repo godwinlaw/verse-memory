@@ -57,16 +57,22 @@ import { footerView } from "./views/footer.js";
  * closing, so a mousedown on an option still registers. */
 const MINISTRY_CLOSE_MS = 120;
 
-/* The shortest time the opening splash stays up. Local data loads in a blink and
- * a restored Firebase session usually answers in well under a second, so without
- * a floor the animation would be a flicker rather than a screen. */
-const SPLASH_MIN_MS = 900;
-
 /* How long to wait for Firebase before sending the member to the sign-in screen
  * anyway. Auth normally answers in a moment; if the SDK never loads (offline, a
  * blocked CDN) nothing else would ever arrive to move the splash on. A late
  * answer still lands — the observer in componentDidMount keeps running. */
 const SPLASH_MAX_MS = 8000;
+
+/* The shortest time the opening splash stays up. Local data loads in a blink and
+ * a restored Firebase session usually answers in well under a second, so without
+ * a floor the mark would be a flicker rather than a screen. The figure is
+ * `appConfig.splashMinMs` — retune it there, or per deploy in config.js — and is
+ * clamped under SPLASH_MAX_MS, since a floor above the ceiling would hold the
+ * member on the splash past the point the app had given up waiting. */
+const splashMinMs = () => {
+  const configured = Number(appConfig.splashMinMs);
+  return Number.isFinite(configured) ? Math.min(Math.max(configured, 0), SPLASH_MAX_MS) : 0;
+};
 
 /* Move the caret to another blank. Lives here rather than in the view-model
  * because it reaches for the DOM. A null index means "nowhere to go". */
@@ -210,7 +216,7 @@ export class App extends React.Component {
     // The two ends of the splash: the least it stays up for, and the most it
     // will wait on Firebase before sending the member to sign in anyway. Set
     // before initAuth, since an unconfigured Firebase answers immediately.
-    this.splashTimer = setTimeout(() => this.setState({ splashHold: false }), SPLASH_MIN_MS);
+    this.splashTimer = setTimeout(() => this.setState({ splashHold: false }), splashMinMs());
     this.authWaitTimer = setTimeout(
       () => this.setState((s) => (s.auth.status === "loading" ? { auth: { status: "signed-out" } } : null)),
       SPLASH_MAX_MS,
@@ -889,7 +895,9 @@ export class App extends React.Component {
     // Deciding behind the splash is the point — otherwise a returning member
     // would be shown a sign-in prompt for the moment the check takes.
     if (!loaded || auth.status === "loading" || splashHold) {
-      return splashView(splashVals({ groupName: this.groupName(), motto: this.motto() }));
+      // The set's size comes from the module rather than from state: state.passages
+      // is not filled until `loaded`, which is one of the things being waited for.
+      return splashView(splashVals({ groupName: this.groupName(), passageCount: passages.length }));
     }
 
     // Sign-in is required before the app. "disabled" means Firebase is
