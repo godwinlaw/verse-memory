@@ -799,7 +799,7 @@ textarea.input {
      on the fastest possible boot should still see the whole set of steps name
      itself. Lower the floor in config.js and the last line will not get its
      turn; lower this to match if you do. */
-  --splash-turn: 3s;
+  --splash-turn: 2s;
 }
 .splash-field > .corner {
   color: rgba(242, 242, 243, 0.75);

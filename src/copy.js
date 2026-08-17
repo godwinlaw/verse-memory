@@ -15,8 +15,8 @@
  * worked out by the caller and returns a string. It must not import from srs,
  * progress, or any other model — the numbers are computed where the rule lives
  * and passed in, so this file cannot become a second place the model is
- * described. (`points(COMMIT_SCORE)` stays in viewmodel/explainer.js; only the
- * sentence around it lives here.)
+ * described. (The member's commit threshold — profile.reviewSettings, read in
+ * viewmodel/explainer.js — stays there; only the sentence around it lives here.)
  *
  * What deliberately is NOT here: the `name`/`short`/`desc` on MODES
  * (review.js), ACTIVITIES (exam.js), and the two difficulty tables (blanks.js).
@@ -88,7 +88,15 @@ export const copy = {
     link: "Fill out this form.",
   },
 
-  /* ── the three gates ────────────────────────────────────────────────────── */
+  /* ── the gates ──────────────────────────────────────────────────────────── */
+
+  /* The first of them, and the only one a member can do nothing about: the app
+   * is not offered on a phone or a tablet (see src/device.js). It stands in
+   * front of the splash, so it is written first here too. */
+  mobileGate: {
+    message:
+      "This app is not available on a mobile device to reduce screen time. Access with a non-mobile device instead.",
+  },
 
   /* The splash the app opens on, while it works out whether the member is
    * already signed in.
@@ -135,8 +143,48 @@ export const copy = {
     reviewSettings: "REVIEW SETTINGS",
     dueTopX: "Top X committed verses to review at a time",
     dueFreshness: "Review a committed verse once it fades to (%)",
+    commitThreshold: "Count a verse committed once a write-out gets (%) of the words right",
     difficulty: "Default difficulty",
     difficultyLevels: ["Easy", "Medium", "Hard"],
+
+    /* Wiping the record. The button is the smaller half of this: what stands
+     * beside it has to say plainly what goes, what stays, and that it reaches
+     * the member's other devices — nothing here is recoverable afterwards. */
+    reset: {
+      section: "RESET",
+      note: "Clear everything you have memorized and start the set from the beginning. Your profile and the settings above are kept.",
+      standing: (committed, inProgress) =>
+        "You have " +
+        plural(committed, "passage", "passages") +
+        " committed and " +
+        plural(inProgress, "passage", "passages") +
+        " in progress.",
+      standingEmpty: "You have not recorded anything yet, so there is nothing to reset.",
+      button: "Reset all progress",
+
+      title: "Reset all progress?",
+      warning: (committed, inProgress, streak) =>
+        "This erases " +
+        plural(committed, "committed passage", "committed passages") +
+        " and " +
+        plural(inProgress, "passage", "passages") +
+        " in progress" +
+        (streak > 0 ? ", along with your streak of " + plural(streak, "day", "days") : "") +
+        ". Every passage goes back to Not started, and all freshness and review history is lost.",
+      sync: "It clears your progress in the cloud too, so it will be gone on every device you sign in on.",
+      keeps: "Your profile and the review settings above are kept. This cannot be undone.",
+      confirm: "Yes, reset everything",
+      cancel: "Keep my progress",
+    },
+  },
+
+  welcome: {
+    title: "You're all set",
+    lead:
+      "Before you dive in, the guide is worth two minutes — it walks through how committing a verse, freshness, " +
+      "and the three ways through the set all work.",
+    guideCta: "Check out the guide",
+    learnCta: "Start learning right away",
   },
 
   /* ── the board ──────────────────────────────────────────────────────────── */
@@ -264,7 +312,7 @@ export const copy = {
     commitBody: (bar) =>
       "A passage is committed when you give the whole thing back from memory — recited aloud or typed, " +
       bar +
-      "% of the words right, with the first-letter scaffold off and without peeking. " +
+      "% of the words right and without peeking; the first-letter scaffold is still allowed here. " +
       "Take as many attempts as you like; only the one you get right counts, and none of them cost you anything.",
   },
 
@@ -407,6 +455,7 @@ export const copy = {
     learnWriteOutNote: (bar) =>
       "Giving the whole passage back from memory is what commits it — " + bar + "% of the words, unaided.",
     learnPracticeNote: "Practice recorded. Giving the passage back in full is what commits it.",
+    tryAgain: "Try again",
 
     /* leaving, and walking off an unsubmitted card */
     leaveTitle: "Leave the session?",
@@ -471,10 +520,11 @@ export const copy = {
       plural(questions, "question", "questions") +
       ".",
     setupPoolEmpty: "No verses match these settings yet. Widen the freshness ceiling, or let uncommitted verses in.",
+    setupPoolEmptyUncommitted:
+      "No verses are committed yet, so “Committed verses only” has nothing to test. Turn it off, or commit a verse first.",
 
     /* the running paper */
     leave: "Leave the test",
-    noPeeking: "Marked at the end. No peeking.",
     position: (i, n) => "Question " + i + " of " + n,
     next: "Next question",
     finish: "Finish and mark",
@@ -572,9 +622,9 @@ export const copy = {
     commitTitle: "Committing a verse to memory",
     commitBody: (bar) =>
       "A verse becomes committed when you give the whole thing back from memory. Say it out loud into your " +
-      "phone, or type it — either one counts. You need " +
+      "phone, or type it — either one counts, and the first-letter hints can stay on. You need " +
       bar +
-      "% of the words right, with the first-letter hints turned off, and no peeking. " +
+      "% of the words right, and no peeking. " +
       "Try as many times as you want. Only the try you get right counts, and the ones you miss cost you nothing.",
     commitFrom: "Learn",
     commitFromNote: "not committed yet",

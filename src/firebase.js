@@ -139,18 +139,35 @@ export async function signOutUser() {
 async function setupSync(s, user, onRemoteData) {
   const { doc, getDoc, setDoc } = s.dbMod;
   const userDoc = doc(s.db, "users", user.uid);
+  const identity = { name: cleanDisplayName(user.displayName), email: user.email || "" };
 
   // Record the member's identity so the leaderboard can show a name for them.
-  setDoc(userDoc, { name: cleanDisplayName(user.displayName), email: user.email || "" }, { merge: true }).catch((e) =>
-    console.warn("Firebase identity write failed:", e),
-  );
+  setDoc(userDoc, identity, { merge: true }).catch((e) => console.warn("Firebase identity write failed:", e));
 
+  /* An ordinary save merges, so a slice left out of the payload is left alone.
+   * A wipe (storage.clearProgressAndLog) cannot: setDoc's merge folds maps
+   * together key by key, so an emptied `progress` would delete nothing and the
+   * next sign-in would pull every wiped verse back. So it writes the document
+   * whole — identity included, since nothing outside this payload survives.
+   *
+   * `pendingReplace` is what survives the debounce. Pushes are coalesced, and a
+   * wipe followed by any ordinary save within the window would otherwise go up
+   * as that save — a merge, deleting nothing. Once a wipe is waiting, whatever
+   * finally fires is a replacement; the payload is read fresh from storage each
+   * time, so it is still the current record that gets written. */
+  let pendingReplace = false;
   const push = debounce(({ progress, log, profile }) => {
-    setDoc(userDoc, { progress, log, profile: profile || {}, updatedAt: Date.now() }, { merge: true }).catch((e) =>
-      console.warn("Firebase push failed:", e),
-    );
+    const record = { progress, log, profile: profile || {}, updatedAt: Date.now() };
+    const write = pendingReplace
+      ? setDoc(userDoc, { ...identity, ...record })
+      : setDoc(userDoc, record, { merge: true });
+    pendingReplace = false;
+    write.catch((e) => console.warn("Firebase push failed:", e));
   }, PUSH_DEBOUNCE_MS);
-  registerRemoteSync(push);
+  registerRemoteSync((payload) => {
+    if (payload.replace) pendingReplace = true;
+    push(payload);
+  });
 
   if (onRemoteData) {
     const snap = await getDoc(userDoc);

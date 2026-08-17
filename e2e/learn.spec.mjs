@@ -2,8 +2,9 @@
  *
  * The rule is srs.commitsVerse() and it is unit-tested there. What only a
  * browser can show is the rule being met — a member typing a passage into the
- * box and the verse moving across — and, just as importantly, the three ways it
- * is not met: a peek, the scaffold, and any activity but recall. */
+ * box, with or without the first-letter scaffold, and the verse moving across —
+ * and, just as importantly, the ways it is not met: a peek, and any activity
+ * but recall. */
 
 import { test, expect } from "./fixtures.mjs";
 import { fullText, passageByRef, passageById, started } from "./helpers/seed.mjs";
@@ -86,7 +87,7 @@ test("a peek means this attempt cannot commit the verse", async ({ app, page }) 
   await expect(app.board).toContainText("1 in progress");
 });
 
-test("the first-letter scaffold cannot commit either", async ({ app, page }) => {
+test("the first-letter scaffold still commits — that is what Learn is for", async ({ app, page }) => {
   await app.boot({ progress: {} });
   await startLearning(app);
   await recallCard(page);
@@ -102,7 +103,7 @@ test("the first-letter scaffold cannot commit either", async ({ app, page }) => 
   );
 
   await page.getByRole("button", { name: "Submit" }).click();
-  await expect(page.locator(".result-strip")).toContainText("Not committed yet");
+  await expect(page.locator(".result-strip")).toContainText("Committed");
 });
 
 test("any other activity is practice, and the card says so", async ({ app, page }) => {
@@ -132,6 +133,74 @@ test("a browser that cannot listen says so, and is still a box you type in", asy
 
   // Nothing about the activity depends on it.
   await box.fill(fullText(FIRST.id));
+  await page.getByRole("button", { name: "Submit" }).click();
+  await expect(page.locator(".result-strip")).toContainText("Committed");
+});
+
+test("the first-letter and voice switches hand focus straight back to the box", async ({ app, page }) => {
+  await app.boot({ progress: {} });
+  await startLearning(app);
+  const box = await recallCard(page);
+  await box.focus();
+
+  // The scaffold swaps in a different box entirely — a live drill, not the
+  // plain recall textarea — so focus has to follow it there.
+  await page.getByRole("button", { name: "Off", exact: true }).first().click();
+  await expect(page.getByPlaceholder(/Type just the first letter of each word/)).toBeFocused();
+
+  // Back off, and the plain box is what gets the focus this time.
+  await page.getByRole("button", { name: "On", exact: true }).click();
+  const plainBox = page.getByPlaceholder(/Type the passage from memory/);
+  await expect(plainBox).toBeFocused();
+
+  // The voice switch never swaps the box out, so it should give focus right
+  // back on the way in and the way out.
+  await page.getByRole("button", { name: "Off", exact: true }).last().click();
+  await expect(plainBox).toBeFocused();
+  await page.getByRole("button", { name: "On", exact: true }).click();
+  await expect(plainBox).toBeFocused();
+});
+
+test("another exercise after handing a card in is a live exercise", async ({ app, page }) => {
+  await app.boot({ progress: {} });
+  await startLearning(app);
+  const box = await recallCard(page);
+
+  // A first attempt that falls short of the bar, so the verse is still to be
+  // committed and the sitting's errand is still open.
+  await box.fill(fullText(FIRST.id).split(" ").slice(0, 4).join(" "));
+  await page.getByRole("button", { name: "Submit" }).click();
+  await expect(page.locator(".result-strip")).toContainText("Not committed yet");
+
+  // Picking another exercise on the same verse used to leave a card that took
+  // nothing: the answers were refused because the card had been handed in, even
+  // though the exercise in front of the member was empty and unmarked.
+  await page.getByRole("button", { name: "Blanks", exact: true }).click();
+  const blank = page.locator(".blank-input").first();
+  await blank.fill("word");
+  await expect(blank).toHaveValue("word");
+
+  await page.getByRole("button", { name: "Order", exact: true }).click();
+  const chunks = page.locator(".chunk");
+  const misses = page.getByText(/wrong tr/);
+  // The tray is shuffled per passage, so which phrase is next is not known
+  // here: click from the end of it until one is refused. Every click before
+  // that placed a phrase, so either way the board is answering — a dead card
+  // does neither.
+  const dealt = await chunks.count();
+  for (let i = 0; i < dealt && (await misses.count()) === 0; i++) await chunks.last().click();
+  await expect(misses).toHaveText("1 wrong try");
+
+  // Start over puts the wrong tries back to nothing along with the board: it is
+  // the same ordering attempted again from scratch.
+  await page.getByRole("button", { name: "Start over" }).click();
+  await expect(misses).toHaveCount(0);
+  await expect(chunks).toHaveCount(dealt);
+
+  // And the recall box takes the passage again, so the verse can still be
+  // committed in this sitting.
+  await recallCard(page);
+  await writeOutCurrent(page);
   await page.getByRole("button", { name: "Submit" }).click();
   await expect(page.locator(".result-strip")).toContainText("Committed");
 });

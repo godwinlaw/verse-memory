@@ -63,8 +63,8 @@ export default defineConfig({
       testIgnore: "**/mobile.spec.mjs",
     },
     {
-      // The header, the board's two grids and the list's column track all have
-      // breakpoints; this project is what walks them at phone width.
+      // A browser that really claims to be a phone, which is the only way to
+      // drive the one screen the app shows one: the refusal (src/device.js).
       name: "mobile",
       use: { ...devices["Pixel 5"] },
       testMatch: "**/mobile.spec.mjs",

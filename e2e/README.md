@@ -9,7 +9,7 @@ everything that only exists once the app is running.
 npx playwright install chromium   # once per machine
 npm run test:e2e                  # the whole suite (starts the dev server itself)
 npm run test:e2e -- e2e/learn.spec.mjs          # one file
-npm run test:e2e -- --project=mobile            # phone width only
+npm run test:e2e -- --project=mobile            # the phone, which the app refuses
 npm run test:e2e -- --headed --debug            # watch it, step through it
 npm run test:e2e:ui                             # the interactive runner
 npm run test:e2e:report                         # the last HTML report
@@ -33,7 +33,7 @@ running.
 | `exam.spec.mjs`    | a test dealt, sat, and marked — and that it never commits             |
 | `guide.spec.mjs`   | the figures it quotes, and the forgetting curve under its slider      |
 | `motion.spec.mjs`  | the motion block, and the same screens under prefers-reduced-motion   |
-| `mobile.spec.mjs`  | phone width (its own project; one known layout finding is a `fixme`)  |
+| `mobile.spec.mjs`  | the refusal a phone gets instead of the app (its own project)         |
 
 ## How a spec is written
 

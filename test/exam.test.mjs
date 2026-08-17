@@ -77,7 +77,7 @@ test("the freshness ceiling excludes anything fresher than it", () => {
 });
 
 test("examPassages honours the size, and 0 means all of them", () => {
-  assert.equal(examPassages(passages, progress, setup({ size: 5 }), NOW).length, 5);
+  assert.equal(examPassages(passages, progress, setup({ size: 20 }), NOW).length, 20);
   assert.equal(examPassages(passages, progress, setup({ size: 0 }), NOW).length, passages.length);
 });
 

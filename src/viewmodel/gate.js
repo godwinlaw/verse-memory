@@ -1,19 +1,31 @@
-/* View-models for the three full-screen gates that stand in front of the app,
- * in the order a member meets them: the opening splash, the Google sign-in
- * prompt, and the member profile form. */
+/* View-models for the full-screen gates that stand in front of the app, in the
+ * order a member meets them: the refusal on a phone, the opening splash, the
+ * Google sign-in prompt, the member profile form, and — once, for a member who
+ * just finished that form for the first time — a nudge toward the guide. */
 
 import { copy } from "../copy.js";
 import {
+  DEFAULT_COMMIT_THRESHOLD,
   DEFAULT_DUE_FRESHNESS,
   DEFAULT_DUE_TOP_X,
   DEFAULT_DIFFICULTY,
   GENDERS,
   MINISTRY_GROUPS,
+  MAX_COMMIT_THRESHOLD,
+  MIN_COMMIT_THRESHOLD,
   isProfileComplete,
 } from "../profile.js";
 import { SCRAMBLE_LEVELS } from "../blanks.js";
+import { committedCount, countByStatus, streakOf } from "../progress.js";
 import { segButton } from "../ui/tokens.js";
 import { PRIMARY_DOMAIN } from "../firebase.js";
+
+/* The mobile gate is a dead end: nothing to press, nothing to wait for, and the
+ * sentence on it is the same every time (copy.mobileGate). All it takes is who
+ * the app belongs to, so it can still name itself while declining. */
+export function mobileGateVals({ groupName }) {
+  return { groupName };
+}
 
 /* The splash carries nothing but the app's identity and the shape of the wait:
  * it is up before there is any progress, profile, or account to show. The three
@@ -58,6 +70,13 @@ const genderButtonStyle = (selected) =>
 
 export function profileFormVals({ state, groupName, isSetup, actions }) {
   const draft = state.profileDraft || state.profile || {};
+  // What a reset would cost, counted the same way the board counts it. A member
+  // still filling the form in for the first time has no record to wipe, so the
+  // section is not offered there at all.
+  const hasRecord = Object.keys(state.progress || {}).length > 0;
+  const committed = committedCount(state.progress);
+  const inProgress = countByStatus(state.passages, state.progress, "learning");
+  const streak = streakOf(state.log);
   // Pre-fill the name from the Google account until the member edits it, so
   // there is usually nothing to type.
   const googleName = (state.auth.user && state.auth.user.name) || "";
@@ -106,6 +125,10 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
     onDueTopX: (e) => actions.setProfileField("dueTopX", e.target.value),
     dueFreshness: draft.dueFreshness !== undefined ? draft.dueFreshness : DEFAULT_DUE_FRESHNESS,
     onDueFreshness: (e) => actions.setProfileField("dueFreshness", e.target.value),
+    commitThreshold: draft.commitThreshold !== undefined ? draft.commitThreshold : DEFAULT_COMMIT_THRESHOLD,
+    onCommitThreshold: (e) => actions.setProfileField("commitThreshold", e.target.value),
+    commitThresholdMin: MIN_COMMIT_THRESHOLD,
+    commitThresholdMax: MAX_COMMIT_THRESHOLD,
     defaultDifficulty: draft.defaultDifficulty !== undefined ? Number(draft.defaultDifficulty) : DEFAULT_DIFFICULTY,
     defaultDifficultyLevels: copy.profileForm.difficultyLevels.map((label, i) => {
       const active =
@@ -118,7 +141,34 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
       };
     }),
 
+    // Resetting the record. Offered only to a member who already has a profile
+    // — the setup form is a gate, and there is nothing behind it yet to clear.
+    showReset: !isSetup,
+    // Anything at all recorded is something to reset — a passage can carry
+    // freshness and a stability without having reached either count — so both
+    // the button and the line above it read the record itself, not the counts.
+    canReset: hasRecord,
+    resetStanding: hasRecord
+      ? copy.profileForm.reset.standing(committed, inProgress)
+      : copy.profileForm.reset.standingEmpty,
+    resetAsking: state.resetAsk,
+    resetWarning: copy.profileForm.reset.warning(committed, inProgress, streak),
+    onResetAsk: actions.askResetProgress,
+    onResetCancel: actions.cancelResetProgress,
+    onResetConfirm: actions.resetProgress,
+
     onSubmit: actions.submitProfile,
     onCancel: actions.cancelEditProfile,
+  };
+}
+
+/* Shown once, right after a member finishes the profile form for the first
+ * time — before they are turned loose on the board. A nudge toward the guide,
+ * with a way out for anyone who would rather start memorizing right away. */
+export function welcomeVals({ groupName, actions }) {
+  return {
+    groupName,
+    onGuide: () => actions.dismissWelcome("guide"),
+    onLearn: () => actions.dismissWelcome("learn-setup"),
   };
 }

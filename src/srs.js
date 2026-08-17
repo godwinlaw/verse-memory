@@ -125,19 +125,28 @@ export const awardCeiling = (ctx = {}) => reviewAward({ ...ctx, score: 1, peeks:
  * memory. Not three reviews of any kind, not a hand-set flag — the member has to
  * produce the text.
  *
- * "From memory" is the whole point, so the bar is the unaided write-out: the
- * first-letter scaffold is a different, easier activity, and a passage that had
- * to be peeked at was read rather than recalled. Both of those still earn
- * freshness through reviewAward() — they just aren't what commits.
+ * "From memory" is the whole point, so the bar is the unaided write-out: a
+ * passage that had to be peeked at was read rather than recalled, and never
+ * commits, in Learn or Review alike. The first-letter scaffold is narrower —
+ * Learn is where an uncommitted verse is trying to become one, so a clean
+ * write-out with the scaffold on still counts there. (Review never reaches
+ * this rule over the scaffold in practice: every verse it offers is already
+ * committed, so `App.record()` never needs commitsVerse to say so again.) Both
+ * peeking and the scaffold still earn freshness through reviewAward() — the
+ * scaffold just does not commit outside Learn.
  *
  * The mark is not held at a literal 100% because gradeWritten() matches word by
  * word: one dropped article would otherwise deny a passage the member plainly
- * knows. COMMIT_SCORE is the margin that buys. */
+ * knows. COMMIT_SCORE is the margin that buys, and the default bar — a member
+ * can move their own (see profile.reviewSettings, threaded in as `threshold`
+ * below), bounded to profile.MIN_COMMIT_THRESHOLD so the bar still means
+ * recalling the passage rather than approximating it. */
 export const COMMIT_SCORE = 0.95;
 
-export function commitsVerse(ctx = {}) {
-  if (ctx.mode !== "type" || ctx.firstLetters || ctx.peeks) return false;
-  return typeof ctx.score === "number" && ctx.score >= COMMIT_SCORE;
+export function commitsVerse(ctx = {}, threshold = COMMIT_SCORE) {
+  if (ctx.mode !== "type" || ctx.peeks) return false;
+  if (ctx.firstLetters && ctx.sessionKind !== "learn") return false;
+  return typeof ctx.score === "number" && ctx.score >= threshold;
 }
 
 /* ── tests ────────────────────────────────────────────────────────────────── */

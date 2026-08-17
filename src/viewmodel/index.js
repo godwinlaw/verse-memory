@@ -52,4 +52,4 @@ export function buildViewModel({ state, groupName, motto, deadline, actions, now
   };
 }
 
-export { splashVals, authGateVals, profileFormVals } from "./gate.js";
+export { mobileGateVals, splashVals, authGateVals, profileFormVals, welcomeVals } from "./gate.js";

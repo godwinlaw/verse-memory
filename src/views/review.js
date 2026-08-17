@@ -145,6 +145,7 @@ function typePanel(v) {
       v.typeLive
         ? html`<${React.Fragment}
             ><textarea
+              id=${v.typeInputId}
               className="input"
               value=${v.typed}
               onChange=${v.onTyped}
@@ -180,8 +181,25 @@ function typePanel(v) {
                     ${copy.review.typeMatched}
                   </div>
                 </div>
-                <div style=${sx("font-size:19px;line-height:1.8;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 7px")}>
-                  ${v.typeDiff.map((d, i) => html`<span key=${i} style=${sx(d.style)}>${d.word}</span>`)}
+                <div
+                  style=${sx(
+                    "font-size:19px;line-height:1.8;max-width:74ch;display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px 7px",
+                  )}
+                >
+                  ${v.typeDiff.map((d, i) =>
+                    d.typed
+                      ? html`<span
+                          key=${i}
+                          style=${sx("display:inline-flex;flex-direction:column;align-items:center;line-height:1.25")}
+                        >
+                          <span style=${sx(d.style)}>${d.word}</span>
+                          <span
+                            style=${sx(`font-size:11px;font-weight:400;text-decoration:line-through;color:${muted(55)}`)}
+                            >${d.typed}</span
+                          >
+                        </span>`
+                      : html`<span key=${i} style=${sx(d.style)}>${d.word}</span>`,
+                  )}
                 </div>
               </div>`
             }</${React.Fragment}
@@ -280,6 +298,12 @@ function learnResultStrip(v) {
       >${v.learnResultHeadline}</span
     >
     <span style=${sx(`flex:1;min-width:220px;font-size:12px;color:${muted(55)}`)}>${v.learnResultNote}</span>
+    ${
+      v.learnRetryShown &&
+      html`<button className="btn btn-secondary" onClick=${v.retryCard} style=${sx("font-size:12px;padding:4px 12px")}>
+        ${copy.review.tryAgain}
+      </button>`
+    }
   </div>`;
 }
 

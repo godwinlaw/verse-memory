@@ -32,7 +32,14 @@ export const matchesWord = (expected, answer) => norm(answer || "") === norm(exp
  * Walks the passage in order, holding a cursor into the typed tokens. A word
  * counts as recalled if the cursor is on it, or if it turns up within the next
  * LOOKAHEAD tokens; the cursor then advances past the match. Returns one entry
- * per passage word plus the tally. */
+ * per passage word plus the tally.
+ *
+ * A miss also carries `typed`: whatever token was waiting at the cursor when
+ * this word was checked, i.e. what the member wrote in its place — mirroring
+ * revealFirstLetters, which shows a wrong letter rather than just flagging it.
+ * That token may still go on to match a later word within LOOKAHEAD (the
+ * member wrote it one word early); it is shown here anyway, since the mistake
+ * — this word did not come out where it belonged — is real either way. */
 export function gradeWritten(words, typed, { firstLetters = false } = {}) {
   const tokens = attemptTokens(typed, { firstLetters });
   const keyOf = (w) => (firstLetters ? norm(w).slice(0, 1) : norm(w));
@@ -42,14 +49,20 @@ export function gradeWritten(words, typed, { firstLetters = false } = {}) {
     const key = keyOf(word);
     const at = tokens.indexOf(key, cursor);
     const hit = tokens[cursor] === key || (at > -1 && at < cursor + LOOKAHEAD);
+    const missTyped = tokens[cursor];
     if (hit) {
       cursor = Math.max(cursor + 1, at + 1);
       hits++;
     }
-    return { word, hit };
+    return { word, hit, typed: hit ? "" : missTyped || "" };
   });
   return { diff, hits, total: words.length, score: words.length ? hits / words.length : 0 };
 }
+
+/* A masked word's stand-in — the same three dots for every word, so a hidden
+ * word gives away nothing about how long it is. One dot per letter would turn
+ * the mask into a length hint, which defeats the point of hiding it. */
+const HIDDEN_WORD = "···";
 
 /* First-letter drill: map the Nth letter typed onto the Nth word.
  *
@@ -63,7 +76,7 @@ export function revealFirstLetters(words, typed) {
   const revealed = words.map((word, i) => {
     const got = tokens[i];
     const want = norm(word).slice(0, 1);
-    if (got == null) return { text: word.replace(/[A-Za-z0-9]/g, "·"), state: "hidden" };
+    if (got == null) return { text: HIDDEN_WORD, state: "hidden" };
     if (got === want) {
       hits++;
       return { text: word, state: "right" };

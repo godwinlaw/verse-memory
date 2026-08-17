@@ -42,13 +42,23 @@ export const MINISTRY_GROUPS = [
 
 export const GENDERS = ["Male", "Female"];
 
-/* The two review settings a member can tune on their profile: how many verses a
+/* The review settings a member can tune on their profile: how many verses a
  * review session takes, and how far a committed verse may fade before it comes
  * back round. The threshold sits well above the point where a verse is properly
  * at risk — a passage is easiest to hold when it is topped up before it slips,
  * and reviewing at 75% costs a fraction of what relearning at 20% does. */
 export const DEFAULT_DUE_TOP_X = 10;
 export const DEFAULT_DUE_FRESHNESS = 75;
+
+/* How many of the words a write-out has to get right to commit a verse (see
+ * srs.commitsVerse). 95% by default, matching srs.COMMIT_SCORE, so one dropped
+ * article does not deny a passage the member plainly knows — a member who
+ * wants a stricter or more forgiving bar can move it, down to MIN_COMMIT_THRESHOLD
+ * so the bar still means recalling the passage rather than approximating it. */
+export const DEFAULT_COMMIT_THRESHOLD = 95;
+export const MIN_COMMIT_THRESHOLD = 90;
+export const MAX_COMMIT_THRESHOLD = 100;
+const clampCommitThreshold = (n) => Math.max(MIN_COMMIT_THRESHOLD, Math.min(MAX_COMMIT_THRESHOLD, n));
 
 /* Default exercise difficulty: 0 = Coarse (fewest blanks / longest phrases),
  * 1 = Medium, 2 = Fine (every key word / shortest phrases). Sets the starting
@@ -64,6 +74,9 @@ export function reviewSettings(profile) {
     dueTopX: p.dueTopX !== undefined ? Number(p.dueTopX) : DEFAULT_DUE_TOP_X,
     dueFreshness: p.dueFreshness !== undefined ? Number(p.dueFreshness) : DEFAULT_DUE_FRESHNESS,
     defaultDifficulty: p.defaultDifficulty !== undefined ? Number(p.defaultDifficulty) : DEFAULT_DIFFICULTY,
+    commitThreshold: clampCommitThreshold(
+      p.commitThreshold !== undefined ? Number(p.commitThreshold) : DEFAULT_COMMIT_THRESHOLD,
+    ),
   };
 }
 

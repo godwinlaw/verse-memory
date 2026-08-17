@@ -25,17 +25,28 @@ import { committedCount, dueOrder, freshnessSum, streakOf } from "./progress.js"
 import { DEFAULT_MODE, LEARN, LEARN_SIZE, REVIEW, SESSION_SIZE } from "./review.js";
 import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "./exam.js";
 import {
+  DEFAULT_COMMIT_THRESHOLD,
   DEFAULT_DUE_FRESHNESS,
   DEFAULT_DUE_TOP_X,
   DEFAULT_DIFFICULTY,
   isProfileComplete,
   mergeProfile,
+  reviewSettings,
 } from "./profile.js";
 import { appConfig } from "./config.js";
+import { detectMobile } from "./device.js";
 import { initAuth, signIn, signOutUser, fetchRoster } from "./firebase.js";
 import { passages } from "../data/passages.js";
-import { buildViewModel, authGateVals, profileFormVals, splashVals } from "./viewmodel/index.js";
+import {
+  buildViewModel,
+  authGateVals,
+  mobileGateVals,
+  profileFormVals,
+  splashVals,
+  welcomeVals,
+} from "./viewmodel/index.js";
 import { RECALL_INPUT_ID } from "./viewmodel/review.js";
+import { mobileGateView } from "./views/mobile-gate.js";
 import { splashView } from "./views/splash.js";
 import { headerView } from "./views/header.js";
 import { boardView } from "./views/board.js";
@@ -51,6 +62,7 @@ import { leaderboardView } from "./views/leaderboard.js";
 import { guideView } from "./views/guide.js";
 import { authGateView } from "./views/auth-gate.js";
 import { profileFormView } from "./views/profile-form.js";
+import { welcomeView } from "./views/welcome.js";
 import { footerView } from "./views/footer.js";
 
 /* Grace period between the ministry-group input losing focus and its dropdown
@@ -89,6 +101,16 @@ function scrollRecallToEnd() {
   if (el) el.scrollTop = el.scrollHeight;
 }
 
+/* Send focus back to the recall box after a control beside it is pressed. The
+ * voice switch and the first-letter toggle are both buttons, so clicking
+ * either steals focus from the box the member was just writing or reciting
+ * into — and the point of a box that stays live across both is that they
+ * should not have to click back into it themselves. */
+function focusRecall() {
+  const el = document.getElementById(RECALL_INPUT_ID);
+  if (el) el.focus();
+}
+
 /* The microphone at rest. Reset between cards, since an attempt's transcript
  * belongs to that attempt. `tail` is where the phrase currently being heard
  * begins in `typed` (see voice.js); at rest there is no such phrase. */
@@ -96,6 +118,11 @@ const quietVoice = () => ({ status: "off", error: null, tail: 0 });
 
 function initialState() {
   return {
+    // Settled once, at startup: what the app is being read on. A phone or a
+    // tablet is turned away before anything else happens (see device.js), and
+    // the answer cannot change under a member mid-session, so nothing ever
+    // asks again.
+    isMobile: detectMobile(),
     loaded: false,
     // The splash stands in front of everything until local data has loaded and
     // Firebase has said whether there is a session to restore — only then does
@@ -163,9 +190,11 @@ function initialState() {
 
     // account, profile, leaderboard
     auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
-    profile: {}, // { name, ministryGroup, gender, gradClass, dueTopX, dueFreshness, updatedAt }
+    profile: {}, // { name, ministryGroup, gender, gradClass, dueTopX, dueFreshness, commitThreshold, updatedAt }
     profileDraft: null, // in-progress edits for the profile form
     editingProfile: false, // reopen the form for an already-complete profile
+    resetAsk: false, // "reset all progress?" confirmation is open on that form
+    welcomePrompt: false, // shown once, right after the sign-up profile form completes
     ministryOpen: false, // ministry-group combobox dropdown visibility
     peers: null, // leaderboard roster, minus self
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
@@ -292,6 +321,9 @@ export class App extends React.Component {
   toggleVoice() {
     if (this.state.voice.status === "off") this.startVoice();
     else this.stopVoice();
+    // The box itself never unmounts across this switch, so focus can return
+    // to it right away rather than waiting on a render that isn't coming.
+    focusRecall();
   }
 
   /* A phrase from the engine, settled or still being revised (see voice.js —
@@ -361,8 +393,12 @@ export class App extends React.Component {
   }
 
   /* Persist the draft and leave the form. Stamped with updatedAt so a
-   * cross-device merge keeps the most recent edit (see profile.mergeProfile). */
+   * cross-device merge keeps the most recent edit (see profile.mergeProfile).
+   * A member completing the form for the first time (the profile was
+   * incomplete going in) is shown the welcome prompt on the way out; reopening
+   * an already-complete profile to edit it never triggers it again. */
   submitProfile() {
+    const isSignUp = !isProfileComplete(this.state.profile);
     const draft = this.state.profileDraft || this.state.profile || {};
     // Fall back to the Google account's display name if the member never touched
     // the pre-filled name field.
@@ -378,11 +414,29 @@ export class App extends React.Component {
       dueTopX: draft.dueTopX !== undefined ? Number(draft.dueTopX) : DEFAULT_DUE_TOP_X,
       dueFreshness: draft.dueFreshness !== undefined ? Number(draft.dueFreshness) : DEFAULT_DUE_FRESHNESS,
       defaultDifficulty: draft.defaultDifficulty !== undefined ? Number(draft.defaultDifficulty) : DEFAULT_DIFFICULTY,
+      commitThreshold: draft.commitThreshold !== undefined ? Number(draft.commitThreshold) : DEFAULT_COMMIT_THRESHOLD,
       updatedAt: Date.now(),
     };
     if (!isProfileComplete(next)) return;
     this.saveProfile(next);
-    this.setState({ editingProfile: false, profileDraft: null });
+    this.setState({ editingProfile: false, profileDraft: null, welcomePrompt: isSignUp });
+  }
+
+  /* Start the set over: every passage back to Not started.
+   *
+   * What goes is the record of what has been memorized — the progress map and
+   * the daily log — and nothing else. The profile, the settings sitting on the
+   * same screen, and the device-local exercise preferences are not that record,
+   * so they stay. The wipe goes to the cloud copy as a replacement rather than
+   * a merge (storage.clearProgressAndLog), because a wipe that only reached
+   * this device would be undone by the next sign-in's merge.
+   *
+   * Only reachable from the settings form, so no session is running. The ticks
+   * on the passage list go too: they were picked against a record that no
+   * longer exists. */
+  resetProgress() {
+    storage.clearProgressAndLog();
+    this.setState({ progress: {}, log: {}, selection: [], selectAnchor: null, resetAsk: false });
   }
 
   /* Pull every registered member and shape them into leaderboard rows. Self is
@@ -424,6 +478,7 @@ export class App extends React.Component {
       blankLevel: this.state.blankLevel,
       scrambleLevel: this.state.scrambleLevel,
       firstLetters: this.state.typeFirstLetter,
+      sessionKind: this.state.sessionKind,
       score,
       peeks: this.state.peeks,
     };
@@ -447,7 +502,8 @@ export class App extends React.Component {
     const award = reviewAward(ctx);
     const progress = { ...this.state.progress };
     const cur = progress[id] || { hits: 0, status: "new" };
-    const committed = prev.status === "memorized" || commitsVerse(ctx);
+    const { commitThreshold } = reviewSettings(this.state.profile);
+    const committed = prev.status === "memorized" || commitsVerse(ctx, commitThreshold / 100);
     progress[id] = {
       ...cur,
       hits: (cur.hits || 0) + 1,
@@ -554,11 +610,53 @@ export class App extends React.Component {
     }));
   }
 
-  /* Whether the card in front of us has already been handed in — after which
-   * the mark is final, so the exercise stops taking answers. */
+  /* Try the same card again after a learn attempt did not commit the verse.
+   * Clears the mark so Submit is live again, and gives the card the same clean
+   * slate resetCard gives a fresh one — without moving off it, so the second
+   * attempt is still this passage. record() reads whatever progress the first
+   * attempt already left, so nothing about it is undone; a second clean recall
+   * can still commit the verse. */
+  retryCard() {
+    const id = this.state.queue[this.state.qi];
+    if (id == null) return;
+    this.setState((s) => {
+      const results = { ...s.results };
+      delete results[id];
+      return { results };
+    });
+    this.resetCard();
+  }
+
+  /* Whether the card in front of us has already been handed in — after which it
+   * cannot be marked again this session. */
   cardSubmitted() {
     const id = this.state.queue[this.state.qi];
     return id != null && !!this.state.results[id];
+  }
+
+  /* Whether the mark on this card was earned in the exercise now on screen — in
+   * which case that exercise is showing its marked paper, and must stop taking
+   * answers so the paper cannot change under the mark.
+   *
+   * This is deliberately narrower than cardSubmitted(): the answers live in a
+   * slot per activity, so switching exercise on a handed-in card puts an empty,
+   * unmarked exercise in front of the member. Refusing that one's answers too is
+   * what left the card dead to every click. */
+  activityMarked() {
+    const id = this.state.queue[this.state.qi];
+    const result = id != null ? this.state.results[id] : null;
+    return !!result && result.mode === this.state.mode;
+  }
+
+  /* Whether this card can still be handed in again: the mark it got left the
+   * verse uncommitted, so what the sitting is for is still open. A review
+   * session only ever deals committed verses, so this is only ever a learn card
+   * that fell short — the same case "Try again" is offered for (see
+   * viewmodel/review.js, learnRetryShown). */
+  cardOpenAgain() {
+    const id = this.state.queue[this.state.qi];
+    if (id == null || !this.state.results[id]) return false;
+    return (this.state.progress[id] || {}).status !== "memorized";
   }
 
   /* Walk one card forward or back, ending the session past the queue's end.
@@ -597,7 +695,7 @@ export class App extends React.Component {
   }
 
   placeChunk(index) {
-    if (this.cardSubmitted()) return;
+    if (this.activityMarked()) return;
     const placed = this.state.scrambleOrder;
     if (index === placed.length) this.setState({ scrambleOrder: [...placed, index], scrambleWrong: -1 });
     // A wrong chunk is refused rather than accepted, and counted: it is what
@@ -735,10 +833,19 @@ export class App extends React.Component {
       // account + profile
       signIn: () => this.signIn(),
       signOut: () => signOutUser().catch(() => {}),
-      editProfile: () => set({ editingProfile: true, profileDraft: { ...this.state.profile } }),
-      cancelEditProfile: () => set({ editingProfile: false, profileDraft: null }),
+      editProfile: () => set({ editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false }),
+      cancelEditProfile: () => set({ editingProfile: false, profileDraft: null, resetAsk: false }),
       submitProfile: () => this.submitProfile(),
+      dismissWelcome: (view) => {
+        set({ welcomePrompt: false });
+        this.goto(view);
+      },
       setProfileField: (key, value) => this.setProfileField(key, value),
+      // Wiping the record is asked about first, and the dialog is the only way
+      // to reach resetProgress — the button on the form only opens it.
+      askResetProgress: () => set({ resetAsk: true }),
+      cancelResetProgress: () => set({ resetAsk: false }),
+      resetProgress: () => this.resetProgress(),
       setMinistryOpen: (open) => {
         clearTimeout(this.ministryTimer);
         set({ ministryOpen: open });
@@ -779,12 +886,21 @@ export class App extends React.Component {
       // review — shared
       setMode: (mode) => {
         set({ mode });
-        this.resetCard();
+        // A card not yet handed in starts the new exercise clean. One already
+        // handed in is not cleared: the answers sit in a slot per activity, so
+        // the marked paper stays there to come back to and the exercise switched
+        // to is live because the mark is not its (see activityMarked). The
+        // exception is a mark that left the verse uncommitted — what the sitting
+        // is for is still open, so the switch reopens the card exactly as "Try
+        // again" does, and the new exercise can be handed in.
+        if (!this.cardSubmitted()) this.resetCard();
+        else if (this.cardOpenAgain()) this.retryCard();
       },
       // Peeking is counted, not prevented: each press costs the card freshness
       // (see srs.reviewAward), so only the press is worth counting.
       setPeek: (showHelp) => this.setState((s) => ({ showHelp, peeks: showHelp ? s.peeks + 1 : s.peeks })),
       submitCard: (score) => this.submitCard(score),
+      retryCard: () => this.retryCard(),
       nextCard: () => this.moveCard(1),
       prevCard: () => this.moveCard(-1),
       cancelMoveCard: () => set({ reviewMoveAsk: null }),
@@ -799,7 +915,7 @@ export class App extends React.Component {
 
       // review — fill the blanks
       setAnswer: (index, value, focusIndex) => {
-        if (this.cardSubmitted()) return;
+        if (this.activityMarked()) return;
         this.setState(
           (s) => ({ answers: { ...s.answers, [index]: value } }),
           () => focusBlank(focusIndex),
@@ -821,7 +937,7 @@ export class App extends React.Component {
       // transcript over, so the next phrase heard starts after what they left
       // rather than overwriting it.
       setTyped: (typed) => {
-        if (this.cardSubmitted()) return;
+        if (this.activityMarked()) return;
         this.setState((s) => ({ typed, voice: { ...s.voice, tail: typed.length } }));
       },
       toggleTypeFirstLetter: () => {
@@ -831,12 +947,17 @@ export class App extends React.Component {
         const on = !this.state.typeFirstLetter;
         storage.saveTypeFirstLetter(on);
         this.stopListening();
-        this.setState((s) => ({
-          typeFirstLetter: on,
-          typed: "",
-          typeGraded: false,
-          voice: { ...s.voice, ...quietVoice() },
-        }));
+        // This switch swaps in a different box (the live reveal has no voice
+        // row of its own), so focus has to wait for that render to land.
+        this.setState(
+          (s) => ({
+            typeFirstLetter: on,
+            typed: "",
+            typeGraded: false,
+            voice: { ...s.voice, ...quietVoice() },
+          }),
+          focusRecall,
+        );
       },
 
       // review — reciting aloud. One switch, and nothing else: correcting a
@@ -845,10 +966,11 @@ export class App extends React.Component {
 
       // review — order the phrases
       placeChunk: (index) => this.placeChunk(index),
-      // Starting over clears the board but not the wrong tries — they are what
-      // the mark is for, and wiping them would make the penalty opt-out.
+      // Starting over is the ordering attempted again from scratch, so the board
+      // and the wrong tries both go: a tally carried over from an attempt the
+      // member has thrown away would mark this one for mistakes it never made.
       resetScramble: () => {
-        if (!this.cardSubmitted()) set({ scrambleOrder: [], scrambleWrong: -1 });
+        if (!this.activityMarked()) set({ scrambleOrder: [], scrambleWrong: -1, scrambleMisses: 0 });
       },
       setScrambleLevel: (level) => {
         storage.saveScrambleLevel(level);
@@ -888,7 +1010,12 @@ export class App extends React.Component {
   }
 
   render() {
-    const { loaded, splashHold, auth, profile, editingProfile } = this.state;
+    const { isMobile, loaded, splashHold, auth, profile, editingProfile, welcomePrompt } = this.state;
+
+    // Nothing is offered on a phone or a tablet — and the refusal comes before
+    // the splash, since a member who is not getting in should not be made to
+    // watch the boot first. It is a dead end, so no other screen follows it.
+    if (isMobile) return mobileGateView(mobileGateVals({ groupName: this.groupName() }));
 
     // The splash is up until the app knows where the member is going: their
     // board if Firebase restores a session, the sign-in screen if it does not.
@@ -920,6 +1047,12 @@ export class App extends React.Component {
           actions: this.actions,
         }),
       );
+    }
+
+    // A one-time nudge toward the guide, shown between finishing sign-up and
+    // landing on the board — see submitProfile.
+    if (welcomePrompt) {
+      return welcomeView(welcomeVals({ groupName: this.groupName(), actions: this.actions }));
     }
 
     const v = buildViewModel({

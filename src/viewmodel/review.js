@@ -11,7 +11,7 @@ import { gradeWritten, matchesWord, revealFirstLetters } from "../grading.js";
 import { countByStatus, reviewPool } from "../progress.js";
 import { reviewSettings } from "../profile.js";
 import { LEARN, MODES, modeByKey, seededShuffle, scrambleScore } from "../review.js";
-import { COMMIT_SCORE, freshColor, PEEK_COST } from "../srs.js";
+import { freshColor, PEEK_COST } from "../srs.js";
 import { COLOR_ERROR, muted, WORD_RIGHT, WORD_WRONG, segButton } from "../ui/tokens.js";
 
 /* Spreads consecutive passage ids across the shuffle's seed space, so verse 12
@@ -102,11 +102,15 @@ const levelButtons = (levels, current, onPick) =>
  * in one voice or the other. The scheduling underneath is unchanged — a learn
  * card still earns stability and still costs freshness for a peek — it is only
  * never the thing the screen is about. */
-function stakeVals({ state, prog, cur, isLearn, result }) {
+function stakeVals({ state, prog, cur, isLearn, result, commitThreshold }) {
   const commitDone = cur ? prog.statusOf(cur.id) === "memorized" : false;
-  // The one activity that can commit: the passage written out, unaided.
-  const writing = state.mode === "type" && !state.typeFirstLetter;
-  const bar = points(COMMIT_SCORE);
+  // The activity that can commit: the passage given back from memory. In Learn
+  // the first-letter scaffold still counts — that is where an uncommitted verse
+  // is trying to become one (see srs.commitsVerse); in Review it does not, since
+  // every card there is already committed and the scaffold's own vocabulary
+  // (commitOtherNote) still fits it best.
+  const writing = state.mode === "type" && (isLearn || !state.typeFirstLetter);
+  const bar = commitThreshold;
 
   if (!isLearn) {
     return {
@@ -179,6 +183,7 @@ function voiceVals({ state, actions, submitted }) {
 
 export function reviewVals({ state, prog, totals, actions }) {
   const isLearn = state.sessionKind === LEARN;
+  const { commitThreshold } = reviewSettings(state.profile);
   const cur = state.passages.find((p) => p.id === state.queue[state.qi]);
   const curText = cur ? cur.text : "";
   const words = curText ? curText.split(" ") : [];
@@ -228,7 +233,7 @@ export function reviewVals({ state, prog, totals, actions }) {
   const committedHere = Object.values(state.results).filter((r) => r.committed).length;
 
   return {
-    ...stakeVals({ state, prog, cur, isLearn, result }),
+    ...stakeVals({ state, prog, cur, isLearn, result, commitThreshold }),
     ...voiceVals({ state, actions, submitted: !!result }),
 
     sessionLabel: isLearn ? copy.review.sessionLearn : copy.review.sessionReview,
@@ -296,7 +301,9 @@ export function reviewVals({ state, prog, totals, actions }) {
     typeUngraded: state.mode === "type" && !state.typeGraded,
     typeGraded: state.mode === "type" && state.typeGraded,
     typeScore: percent(written.score, words.length),
-    typeDiff: written.diff.map((d) => ({ word: d.word, style: d.hit ? WORD_RIGHT : WORD_WRONG })),
+    // A missed word carries what was written in its place, so the mistake is
+    // legible rather than just flagged (see grading.gradeWritten).
+    typeDiff: written.diff.map((d) => ({ word: d.word, style: d.hit ? WORD_RIGHT : WORD_WRONG, typed: d.typed })),
     // First-letter mode is a live drill: the reveal updates as you type and
     // there is no separate "Grade it" step.
     typeLive: state.mode === "type" && state.typeFirstLetter,
@@ -386,9 +393,14 @@ export function reviewVals({ state, prog, totals, actions }) {
         : wasAlreadyCommitted
           ? copy.review.learnStillCommittedNote
           : result.mode === "type"
-            ? copy.review.learnWriteOutNote(points(COMMIT_SCORE))
+            ? copy.review.learnWriteOutNote(commitThreshold)
             : copy.review.learnPracticeNote,
     learnResultDone: !!(result && (result.committed || wasAlreadyCommitted)),
+    // A first attempt that did not commit the verse is not the only chance
+    // this sitting gives it — offered beside the verdict, since that is where
+    // the member is looking, rather than making them walk off and back on.
+    learnRetryShown: isLearn && !!result && !result.committed && !wasAlreadyCommitted,
+    retryCard: actions.retryCard,
 
     // Leaving mid-session keeps what has been handed in; the rest of the queue
     // is simply dropped. Both of those are worth saying out loud.

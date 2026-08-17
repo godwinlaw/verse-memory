@@ -168,7 +168,6 @@ export function examView(v) {
         ${copy.exam.leave}
       </button>
       <div style=${sx(LABEL_SECTION)}>${v.examActivityName} · ${v.examPosLabel}</div>
-      <div style=${sx(`margin-left:auto;font-size:12px;color:${muted(50)}`)}>${copy.exam.noPeeking}</div>
     </div>
 
     <div style=${sx("height:4px;background:var(--color-neutral-200)")}>

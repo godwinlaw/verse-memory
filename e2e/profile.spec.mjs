@@ -11,7 +11,7 @@
 
 import { test, expect } from "./fixtures.mjs";
 import { MEMBER } from "./helpers/firebase-stub.mjs";
-import { committed, passageById } from "./helpers/seed.mjs";
+import { committed, passageById, started } from "./helpers/seed.mjs";
 
 const signedIn = { session: MEMBER };
 
@@ -78,4 +78,53 @@ test("editing can be backed out of", async ({ app, page }) => {
 
   await expect(app.board).toBeVisible();
   await expect(app.header).toContainText("Ada Lovelace");
+});
+
+/* Resetting the record. Worth driving in a browser rather than asserting on the
+ * view-model: what makes a wipe a wipe is that it is still gone on the next
+ * visit, and that it went up as a replacement — a merged push would leave every
+ * verse in the cloud copy to come back on the following sign-in. */
+test("resetting all progress empties the board, and stays empty", async ({ app, page }) => {
+  await app.boot({ progress: { 1: committed(1), 2: committed(0.6), 3: started(0.5) }, firebase: signedIn });
+  expect(await app.figure(app.committedFigure)).toBe(2);
+
+  await app.header.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Reset all progress" }).click();
+
+  // The warning stands in front of it, counting what would go.
+  await expect(app.dialog).toContainText("erases 2 committed passages and 1 passage in progress");
+  await expect(app.dialog).toContainText("This cannot be undone.");
+
+  // Backing out changes nothing.
+  await page.getByRole("button", { name: "Keep my progress" }).click();
+  await expect(app.dialog).toHaveCount(0);
+  expect(await app.stored("mv.progress")).toMatchObject({ 1: { status: "memorized" } });
+
+  await page.getByRole("button", { name: "Reset all progress" }).click();
+  await page.getByRole("button", { name: "Yes, reset everything" }).click();
+  await expect(app.dialog).toHaveCount(0);
+
+  // The profile is not the record, so the form is still open on it.
+  await expect(page.getByPlaceholder("Your full name")).toHaveValue("Ada Lovelace");
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(app.board).toBeVisible();
+  expect(await app.figure(app.committedFigure)).toBe(0);
+  expect(await app.stored("mv.progress")).toEqual({});
+
+  // The wipe went up as a whole document — no merge option — since merging an
+  // empty map into the stored one would delete nothing, and every wiped verse
+  // would come back on the next sign-in. (Ordinary saves after it still merge,
+  // so it is the write without options that has to be found.)
+  await expect(async () => {
+    const wipes = (await app.writes()).filter((w) => w.data && w.data.progress && !w.options);
+    expect(wipes).toHaveLength(1);
+    expect(wipes[0].data.progress).toEqual({});
+    expect(wipes[0].data.log).toEqual({});
+    // Written whole, so identity has to be in it or the roster would lose them.
+    expect(wipes[0].data.email).toBe(MEMBER.email);
+  }).toPass();
+
+  await app.revisit();
+  expect(await app.figure(app.committedFigure)).toBe(0);
 });

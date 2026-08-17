@@ -36,13 +36,11 @@ test("a paper is dealt, walked to the end, and marked", async ({ app, page }) =>
   expect(await app.figure(app.committedFigure)).toBe(0);
 
   await openSetup(app);
-  await page.getByRole("button", { name: "5", exact: true }).click();
+  await page.getByRole("button", { name: "10", exact: true }).click();
   await page.getByRole("button", { name: "Start the test" }).click();
 
-  // Nothing is revealed until the summary, whatever the question is.
-  await expect(page.getByText("Marked at the end. No peeking.")).toBeVisible();
   // The activity and the position share one line ("Fill the blanks · Question 1
-  // of 5"), so the paper's length is read out of it. textContent, not innerText:
+  // of 10"), so the paper's length is read out of it. textContent, not innerText:
   // the line is upper-cased by CSS, and innerText would hand back what is drawn.
   const [, total] = (await page.getByText(/Question \d+ of \d+/).textContent()).match(/of (\d+)/);
 
@@ -59,7 +57,7 @@ test("a paper is dealt, walked to the end, and marked", async ({ app, page }) =>
   // A test moves freshness, never status: nothing sat here can commit a verse.
   await page.getByRole("button", { name: "Back to the board" }).click();
   expect(await app.figure(app.committedFigure)).toBe(0);
-  await expect(app.board).toContainText("5 in progress");
+  await expect(app.board).toContainText("10 in progress");
 });
 
 test("a paper answered right is marked right", async ({ app, page }) => {
@@ -68,7 +66,7 @@ test("a paper answered right is marked right", async ({ app, page }) => {
   await app.boot({ progress: { 2: committed(0.5), 3: committed(0.5) } });
   await openSetup(app);
 
-  await page.getByRole("button", { name: "5", exact: true }).click();
+  await page.getByRole("button", { name: "10", exact: true }).click();
   await page.getByRole("button", { name: "Off", exact: true }).click(); // committed verses only
   await onlyActivity(page, "Name the passage");
   await expect(page.getByText("2 verses under test, out of 2 that match — 2 questions.")).toBeVisible();
@@ -91,7 +89,7 @@ test("a paper answered right is marked right", async ({ app, page }) => {
 test("leaving a test marks nothing", async ({ app, page }) => {
   await app.boot({ progress: { 2: committed(0.5) } });
   await openSetup(app);
-  await page.getByRole("button", { name: "5", exact: true }).click();
+  await page.getByRole("button", { name: "10", exact: true }).click();
   await page.getByRole("button", { name: "Start the test" }).click();
 
   await page.getByRole("button", { name: "Leave the test" }).click();
@@ -112,6 +110,6 @@ test("the setup refuses to deal a paper it has no verses for", async ({ app, pag
   await openSetup(app);
 
   await page.getByRole("button", { name: "Off", exact: true }).click(); // committed only
-  await expect(page.getByText("No verses match these settings yet.")).toBeVisible();
+  await expect(page.getByText("has nothing to test")).toBeVisible();
   await expect(page.getByRole("button", { name: "Start the test" })).toBeDisabled();
 });
