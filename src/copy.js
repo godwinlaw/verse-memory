@@ -537,6 +537,9 @@ export const copy = {
     filterClassOf: (year) => "Class of " + year,
     count: (n) => plural(n, "person", "people"),
     empty: "No one matches these filters yet.",
+    /* Shown in place of a name for a row with nothing committed yet — there is
+     * no reason to put a member's name next to a blank record. */
+    unnamed: "—",
     places: ["First", "Second", "Third"],
     you: "You",
     podiumOf: (goal) => "of " + goal,

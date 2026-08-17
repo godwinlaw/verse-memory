@@ -77,7 +77,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
 
     podium: ranked.slice(0, PLACES.length).map((p, i) => ({
       place: PLACES[i],
-      name: p.name,
+      name: p.count > 0 ? p.name : copy.leaderboard.unnamed,
       count: p.count,
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       cardStyle:
@@ -87,7 +87,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
 
     board: ranked.map((p, i) => ({
       rank: i + 1,
-      name: p.name,
+      name: p.count > 0 ? p.name : copy.leaderboard.unnamed,
       count: p.count,
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       streak: copy.leaderboard.streakDays(p.streak),
