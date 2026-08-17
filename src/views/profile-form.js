@@ -4,6 +4,7 @@
  * group, gender, and graduating class (v.isSetup — no way out), and reopened
  * from the header for later edits (v.isSetup false — cancellable). */
 
+import { copy } from "../copy.js";
 import { html, sx, corners } from "../dom.js";
 import { LABEL_SECTION, SCREEN_BODY, SCREEN_CENTERED, SCREEN_SUBTITLE, SCREEN_TITLE } from "../ui/tokens.js";
 
@@ -17,7 +18,7 @@ const NUMERIC_KEYBOARD = { inputMode: "numeric" };
 export function profileFormView(v) {
   return html`<div style=${sx(SCREEN_CENTERED)}>
     <div
-      className="blueprint"
+      className="blueprint shell-settle"
       style=${sx("max-width:480px;width:100%;padding:40px 40px 36px;display:flex;flex-direction:column;gap:20px")}
     >
       ${corners()}
@@ -25,18 +26,15 @@ export function profileFormView(v) {
         <div style=${sx(SCREEN_TITLE)}>${v.title}</div>
         <div style=${sx(SCREEN_SUBTITLE)}>${v.groupName}</div>
       </div>
-      <p style=${sx(SCREEN_BODY)}>
-        Tell us a bit about yourself. Your name, ministry group, gender, and graduating class shape the leaderboard and
-        group stats.
-      </p>
+      <p style=${sx(SCREEN_BODY)}>${copy.profileForm.intro}</p>
 
       <label style=${sx(FIELD)}>
-        <span style=${sx(LABEL_SECTION)}>Name</span>
-        <input className="input" value=${v.name} onChange=${v.onName} placeholder="Your full name" />
+        <span style=${sx(LABEL_SECTION)}>${copy.profileForm.name}</span>
+        <input className="input" value=${v.name} onChange=${v.onName} placeholder=${copy.profileForm.namePlaceholder} />
       </label>
 
       <div style=${sx(FIELD)}>
-        <span style=${sx(LABEL_SECTION)}>Ministry group</span>
+        <span style=${sx(LABEL_SECTION)}>${copy.profileForm.ministryGroup}</span>
         <div style=${sx("position:relative")}>
           <input
             className="input"
@@ -44,7 +42,7 @@ export function profileFormView(v) {
             onChange=${v.onMinistryInput}
             onFocus=${v.onMinistryFocus}
             onBlur=${v.onMinistryBlur}
-            placeholder="Start typing to search…"
+            placeholder=${copy.profileForm.ministryPlaceholder}
             style=${sx("width:100%;box-sizing:border-box")}
           />
           ${
@@ -62,7 +60,7 @@ export function profileFormView(v) {
       </div>
 
       <div style=${sx(FIELD)}>
-        <span style=${sx(LABEL_SECTION)}>Gender</span>
+        <span style=${sx(LABEL_SECTION)}>${copy.profileForm.gender}</span>
         <div style=${sx("display:flex;gap:8px")}>
           ${v.genders.map(
             (g) => html`<button key=${g.label} onClick=${g.onClick} style=${sx(g.style)}>${g.label}</button>`,
@@ -71,12 +69,12 @@ export function profileFormView(v) {
       </div>
 
       <label style=${sx(FIELD)}>
-        <span style=${sx(LABEL_SECTION)}>Graduating class</span>
+        <span style=${sx(LABEL_SECTION)}>${copy.profileForm.gradClass}</span>
         <input
           className="input"
           value=${v.gradClass}
           onChange=${v.onGradClass}
-          placeholder="e.g. 2016"
+          placeholder=${copy.profileForm.gradClassPlaceholder}
           ...${NUMERIC_KEYBOARD}
         />
       </label>
@@ -84,9 +82,9 @@ export function profileFormView(v) {
       <div
         style=${sx("margin-top:10px;padding-top:20px;border-top:1px solid var(--color-divider);display:flex;flex-direction:column;gap:20px")}
       >
-        <div style=${sx(SCREEN_SUBTITLE)}>REVIEW SETTINGS</div>
+        <div style=${sx(SCREEN_SUBTITLE)}>${copy.profileForm.reviewSettings}</div>
         <label style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>Top X committed verses to review at a time</span>
+          <span style=${sx(LABEL_SECTION)}>${copy.profileForm.dueTopX}</span>
           <input
             className="input"
             type="number"
@@ -97,7 +95,7 @@ export function profileFormView(v) {
           />
         </label>
         <label style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>Review a committed verse once it fades to (%)</span>
+          <span style=${sx(LABEL_SECTION)}>${copy.profileForm.dueFreshness}</span>
           <input
             className="input"
             type="number"
@@ -108,6 +106,14 @@ export function profileFormView(v) {
             ...${NUMERIC_KEYBOARD}
           />
         </label>
+        <div style=${sx(FIELD)}>
+          <span style=${sx(LABEL_SECTION)}>${copy.profileForm.difficulty}</span>
+          <div style=${sx("display:flex;gap:8px")}>
+            ${v.defaultDifficultyLevels.map(
+              (lv) => html`<button key=${lv.key} onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`,
+            )}
+          </div>
+        </div>
       </div>
 
       <div style=${sx("display:flex;gap:10px;margin-top:4px")}>
@@ -119,7 +125,7 @@ export function profileFormView(v) {
         >
           ${v.submitLabel}
         </button>
-        ${!v.isSetup && html`<button className="btn btn-secondary" onClick=${v.onCancel}>Cancel</button>`}
+        ${!v.isSetup && html`<button className="btn btn-secondary" onClick=${v.onCancel}>${copy.common.cancel}</button>`}
       </div>
     </div>
   </div>`;

@@ -13,6 +13,7 @@
  * So a change to how something looks belongs in views/, a change to what is
  * shown in viewmodel/, and a change to how memory is modelled in srs.js. */
 
+import { copy } from "./copy.js";
 import { React, html, sx } from "./dom.js";
 import { dayKey } from "./text.js";
 import { commitsVerse, freshness, migrate, nextStability, reviewAward, reviewedLast } from "./srs.js";
@@ -21,12 +22,18 @@ import { storage, mergeProgress, mergeLog } from "./storage.js";
 import { committedCount, dueOrder, freshnessSum, streakOf } from "./progress.js";
 import { DEFAULT_MODE, LEARN, LEARN_SIZE, REVIEW, SESSION_SIZE } from "./review.js";
 import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "./exam.js";
-import { DEFAULT_DUE_FRESHNESS, DEFAULT_DUE_TOP_X, isProfileComplete, mergeProfile } from "./profile.js";
+import {
+  DEFAULT_DUE_FRESHNESS,
+  DEFAULT_DUE_TOP_X,
+  DEFAULT_DIFFICULTY,
+  isProfileComplete,
+  mergeProfile,
+} from "./profile.js";
 import { appConfig } from "./config.js";
 import { initAuth, signIn, signOutUser, fetchRoster } from "./firebase.js";
 import { passages } from "../data/passages.js";
-import { buildViewModel, authGateVals, profileFormVals } from "./viewmodel/index.js";
-import { muted } from "./ui/tokens.js";
+import { buildViewModel, authGateVals, profileFormVals, splashVals } from "./viewmodel/index.js";
+import { splashView } from "./views/splash.js";
 import { headerView } from "./views/header.js";
 import { boardView } from "./views/board.js";
 import { listView } from "./views/list.js";
@@ -38,6 +45,7 @@ import { examSetupView } from "./views/exam-setup.js";
 import { examView } from "./views/exam.js";
 import { examDoneView } from "./views/exam-done.js";
 import { leaderboardView } from "./views/leaderboard.js";
+import { guideView } from "./views/guide.js";
 import { authGateView } from "./views/auth-gate.js";
 import { profileFormView } from "./views/profile-form.js";
 import { footerView } from "./views/footer.js";
@@ -45,6 +53,17 @@ import { footerView } from "./views/footer.js";
 /* Grace period between the ministry-group input losing focus and its dropdown
  * closing, so a mousedown on an option still registers. */
 const MINISTRY_CLOSE_MS = 120;
+
+/* The shortest time the opening splash stays up. Local data loads in a blink and
+ * a restored Firebase session usually answers in well under a second, so without
+ * a floor the animation would be a flicker rather than a screen. */
+const SPLASH_MIN_MS = 900;
+
+/* How long to wait for Firebase before sending the member to the sign-in screen
+ * anyway. Auth normally answers in a moment; if the SDK never loads (offline, a
+ * blocked CDN) nothing else would ever arrive to move the splash on. A late
+ * answer still lands — the observer in componentDidMount keeps running. */
+const SPLASH_MAX_MS = 8000;
 
 /* Move the caret to another blank. Lives here rather than in the view-model
  * because it reaches for the DOM. A null index means "nowhere to go". */
@@ -57,9 +76,15 @@ function focusBlank(index) {
 function initialState() {
   return {
     loaded: false,
+    // The splash stands in front of everything until local data has loaded and
+    // Firebase has said whether there is a session to restore — only then does
+    // the app know whether the member is going to their board or to sign-in.
+    // `splashHold` is the minimum it stays up (SPLASH_MIN_MS), so the boot reads
+    // as a screen rather than a flash.
+    splashHold: true,
     passages: [],
     // board | list | review-setup | learn-setup | review | done | leaderboard
-    // | test-setup | test | test-done
+    // | test-setup | test | test-done | guide
     view: "board",
     progress: {}, // { [passageId]: { hits, status, last, stability } }
     log: {}, // { [YYYY-MM-DD]: reviews that day }
@@ -106,6 +131,10 @@ function initialState() {
     // than drawn from a pool. Kept as an array, in the order they were ticked;
     // the view-model is what asks whether a given row is in it.
     selection: [],
+    // The row a shift-click measures its range from: the last row ticked on its
+    // own. Null when there is nothing to extend from, so a shift-click is then
+    // just a tick (see viewmodel/list.js).
+    selectAnchor: null,
 
     // account, profile, leaderboard
     auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
@@ -120,6 +149,14 @@ function initialState() {
     // levels): extra review once caught up, and how much to take on learning
     reviewSetup: { manualSize: 10, manualFreshness: 90 },
     learnSetup: { size: LEARN_SIZE },
+    // "How it works", on those same two screens: hidden by default, collapsible
+    // once opened (device-local, like the setups above).
+    explainerOpen: false,
+
+    // the guide: where the freshness demonstration's slider sits. Not
+    // persisted — a slider position is worth nothing on the next visit,
+    // unlike the setups above.
+    guideDays: 6,
   };
 }
 
@@ -132,26 +169,39 @@ export class App extends React.Component {
   }
 
   componentDidMount() {
+    const profile = storage.loadProfile();
+    const defaultDiff = profile.defaultDifficulty != null ? Number(profile.defaultDifficulty) : DEFAULT_DIFFICULTY;
     this.setState({
       passages,
       progress: storage.loadProgress(),
       log: storage.loadLog(),
-      profile: storage.loadProfile(),
-      blankLevel: storage.loadBlankLevel(this.state.blankLevel, BLANK_LEVELS.length),
+      profile,
+      blankLevel: storage.loadBlankLevel(defaultDiff, BLANK_LEVELS.length),
       blankHint: storage.loadBlankHint(this.state.blankHint),
       typeFirstLetter: storage.loadTypeFirstLetter(this.state.typeFirstLetter),
-      scrambleLevel: storage.loadScrambleLevel(this.state.scrambleLevel, SCRAMBLE_LEVELS.length),
+      scrambleLevel: storage.loadScrambleLevel(defaultDiff, SCRAMBLE_LEVELS.length),
       examSetup: normalizeSetup(storage.loadExamSetup()),
       reviewSetup: storage.loadReviewSetup(this.state.reviewSetup),
       learnSetup: storage.loadLearnSetup(this.state.learnSetup),
+      explainerOpen: storage.loadExplainerOpen(this.state.explainerOpen),
       loaded: true,
     });
+    // The two ends of the splash: the least it stays up for, and the most it
+    // will wait on Firebase before sending the member to sign in anyway. Set
+    // before initAuth, since an unconfigured Firebase answers immediately.
+    this.splashTimer = setTimeout(() => this.setState({ splashHold: false }), SPLASH_MIN_MS);
+    this.authWaitTimer = setTimeout(
+      () => this.setState((s) => (s.auth.status === "loading" ? { auth: { status: "signed-out" } } : null)),
+      SPLASH_MAX_MS,
+    );
     // Auth + cloud sync. Access is gated to Acts 2 Network Google accounts; on a
     // valid sign-in, remote progress is pulled and reconciled with local, and the
     // leaderboard roster is loaded. If Firebase is unreachable the status becomes
     // "disabled" and the app runs local-only rather than locking members out.
     initAuth({
       onChange: (auth) => {
+        // Whatever it says, Firebase has answered — the splash can stop waiting.
+        clearTimeout(this.authWaitTimer);
         this.setState({ auth });
         if (auth.status === "signed-in") this.loadRoster();
       },
@@ -161,6 +211,8 @@ export class App extends React.Component {
 
   componentWillUnmount() {
     clearTimeout(this.ministryTimer);
+    clearTimeout(this.splashTimer);
+    clearTimeout(this.authWaitTimer);
   }
 
   /* ── configuration ──────────────────────────────────────────────────────── */
@@ -229,6 +281,7 @@ export class App extends React.Component {
       gradClass: /^\d+$/.test(gradClass) ? Number(gradClass) : gradClass,
       dueTopX: draft.dueTopX !== undefined ? Number(draft.dueTopX) : DEFAULT_DUE_TOP_X,
       dueFreshness: draft.dueFreshness !== undefined ? Number(draft.dueFreshness) : DEFAULT_DUE_FRESHNESS,
+      defaultDifficulty: draft.defaultDifficulty !== undefined ? Number(draft.defaultDifficulty) : DEFAULT_DIFFICULTY,
       updatedAt: Date.now(),
     };
     if (!isProfileComplete(next)) return;
@@ -253,7 +306,7 @@ export class App extends React.Component {
       peers: rows
         .filter((r) => r.uid !== myUid && isProfileComplete(r.profile))
         .map((r) => ({
-          name: r.profile.name || r.name || r.email || "Member",
+          name: r.profile.name || r.name || r.email || copy.app.anonymousMember,
           count: committedCount(r.progress),
           freshnessScore: freshnessSum(r.progress),
           streak: streakOf(r.log),
@@ -585,14 +638,30 @@ export class App extends React.Component {
       // passage list
       setSearch: (search) => set({ search }),
       setFilter: (filter) => set({ filter }),
+      // A row ticked on its own also becomes the anchor a later shift-click
+      // measures its range from — including a row just unticked, since that is
+      // the end a shift-click would clear a run from.
       toggleSelect: (id) =>
         this.setState((s) => ({
           selection: s.selection.includes(id) ? s.selection.filter((x) => x !== id) : [...s.selection, id],
+          selectAnchor: id,
         })),
+      // A shift-clicked run of rows, ticked or cleared together. Which ids that
+      // is comes from the view-model, since it is what knows the order the rows
+      // are in on screen; the anchor stays put, so the run can be re-drawn from
+      // the same end.
+      selectRange: (ids, on) =>
+        this.setState((s) => {
+          const inRange = new Set(ids);
+          if (!on) return { selection: s.selection.filter((id) => !inRange.has(id)) };
+          const held = new Set(s.selection);
+          return { selection: [...s.selection, ...ids.filter((id) => !held.has(id))] };
+        }),
       // Ticking every shown row, and clearing, are both a whole new selection —
       // the view-model works out which ids that is, since it is what knows
-      // which rows the search and filter have left on screen.
-      setSelection: (selection) => set({ selection }),
+      // which rows the search and filter have left on screen. Neither leaves an
+      // end to extend from, so both drop the anchor.
+      setSelection: (selection) => set({ selection, selectAnchor: null }),
 
       // review — shared
       setMode: (mode) => {
@@ -676,6 +745,14 @@ export class App extends React.Component {
       startReviewSession: (ids) => this.startSession(null, ids, REVIEW),
       setLearnSetup: (patch) => this.setLearnSetup(patch),
       startLearnSession: (ids) => this.startSession(null, ids, LEARN),
+      toggleExplainer: () => {
+        const open = !this.state.explainerOpen;
+        storage.saveExplainerOpen(open);
+        set({ explainerOpen: open });
+      },
+
+      // guide
+      setGuideDays: (guideDays) => set({ guideDays }),
 
       // leaderboard
       setLeaderFilter: (key, value) => this.setState((s) => ({ leaderFilter: { ...s.leaderFilter, [key]: value } })),
@@ -683,11 +760,14 @@ export class App extends React.Component {
   }
 
   render() {
-    const { loaded, auth, profile, editingProfile } = this.state;
-    if (!loaded) {
-      return html`<div style=${sx(`padding:80px 36px;font-family:var(--font-body);color:${muted(55)}`)}>
-        Loading the board…
-      </div>`;
+    const { loaded, splashHold, auth, profile, editingProfile } = this.state;
+
+    // The splash is up until the app knows where the member is going: their
+    // board if Firebase restores a session, the sign-in screen if it does not.
+    // Deciding behind the splash is the point — otherwise a returning member
+    // would be shown a sign-in prompt for the moment the check takes.
+    if (!loaded || auth.status === "loading" || splashHold) {
+      return splashView(splashVals({ groupName: this.groupName(), motto: this.motto() }));
     }
 
     // Sign-in is required before the app. "disabled" means Firebase is
@@ -725,7 +805,7 @@ export class App extends React.Component {
       ${headerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)} ${v.isReviewSetup && reviewSetupView(v)}
       ${v.isLearnSetup && learnSetupView(v)} ${v.isReview && reviewView(v)} ${v.isDone && doneView(v)}
       ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)} ${v.isExam && examView(v)}
-      ${v.isExamDone && examDoneView(v)} ${footerView(v)}
+      ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)} ${footerView(v)}
     </div>`;
   }
 }

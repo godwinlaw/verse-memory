@@ -12,58 +12,56 @@
  * screen renders which is the view's call (see views/explainer.js). */
 
 import { BLANK_LEVELS, SCRAMBLE_LEVELS } from "../blanks.js";
+import { copy } from "../copy.js";
 import { reviewSettings } from "../profile.js";
 import { MODES } from "../review.js";
 import { awardCeiling, COMMIT_SCORE, freshColor, PEEK_COST } from "../srs.js";
 
-const points = (r) => Math.round(r * 100);
+export const points = (r) => Math.round(r * 100);
+
+/* What one activity pays, quoted at its hardest setting — the one that earns its
+ * full ceiling. The modes without a difficulty setting only have the one.
+ *
+ * Exported because the guide (viewmodel/guide.js) lists the same four activities
+ * at length, and the two must not be able to quote different numbers. */
+export function modeCeiling(mode) {
+  const levels = { blanks: BLANK_LEVELS.length, scramble: SCRAMBLE_LEVELS.length };
+  const level = (levels[mode] || 1) - 1;
+  return points(awardCeiling({ mode, blankLevel: level, scrambleLevel: level }));
+}
 
 /* A freshness meter: the track a bar is drawn on, and the bar itself. */
 const METER_TRACK = "flex:1;height:9px;background:var(--color-fresh-track);overflow:hidden";
 const meterBar = (pct) => "height:100%;width:" + pct + "%;background:" + freshColor(pct);
 
-export function explainerVals({ state }) {
+export function explainerVals({ state, actions }) {
   const { dueFreshness } = reviewSettings(state.profile);
 
-  // Quoted at each mode's hardest setting, which is the one that pays its full
-  // ceiling; the modes without a difficulty setting only have the one.
-  const levels = { blanks: BLANK_LEVELS.length, scramble: SCRAMBLE_LEVELS.length };
-  const ceilingOf = (mode) => {
-    const level = (levels[mode] || 1) - 1;
-    return points(awardCeiling({ mode, blankLevel: level, scrambleLevel: level }));
-  };
-
   return {
-    freshnessTitle: "How freshness works",
-    freshnessBody:
-      "Every passage carries a freshness — how much of it you would still recall right now. It falls a little " +
-      "every day along a forgetting curve, fast at first and then more slowly the better you know it. Once a " +
-      "committed passage has faded to " +
-      dueFreshness +
-      "% it comes back round to you, most faded first. (That mark is yours to set, on your profile.)",
+    // Hidden by default on both setup screens; a member who opens it stays
+    // opened until they collapse it again. One flag for both cards — they are
+    // the same "How it works" explanation, just split across two screens.
+    explainerOpen: state.explainerOpen,
+    toggleExplainer: actions.toggleExplainer,
+
+    freshnessTitle: copy.explainer.freshnessTitle,
+    freshnessBody: copy.explainer.freshnessBody(dueFreshness),
     freshnessRules: MODES.map((m) => ({
       key: m.key,
       name: m.name,
-      note:
-        m.key === "flip"
-          ? "Unmarked — nothing to grade, so it counts as reviewed in full, but builds the least lasting memory."
-          : "Up to " + ceilingOf(m.key) + "%, on a clean attempt.",
+      note: m.key === "flip" ? copy.explainer.ruleUnmarked : copy.explainer.ruleCeiling(modeCeiling(m.key)),
       meterStyle: METER_TRACK + ";max-width:120px",
-      barStyle: meterBar(ceilingOf(m.key)),
+      barStyle: meterBar(modeCeiling(m.key)),
     })),
     freshnessNotes: [
-      "Submitting is what marks a passage: what you get right is what it earns.",
-      "Harder settings pay more — the finest cut of phrases and the fullest set of blanks are worth the most.",
-      "Each press of Peek costs " + points(PEEK_COST) + "%, so a passage you look up stays due sooner.",
+      copy.explainer.noteSubmitting,
+      copy.explainer.noteDifficulty,
+      copy.explainer.notePeek(points(PEEK_COST)),
     ],
 
     // The one rule that decides which half of the set a passage sits in, said
     // the same way wherever it is said.
-    commitTitle: "What commits a passage",
-    commitBody:
-      "A passage is committed when you write the whole thing out from memory — " +
-      points(COMMIT_SCORE) +
-      "% of the words right, with the first-letter scaffold off and without peeking. " +
-      "Take as many attempts as you like; only the one you get right counts, and none of them cost you anything.",
+    commitTitle: copy.explainer.commitTitle,
+    commitBody: copy.explainer.commitBody(points(COMMIT_SCORE)),
   };
 }

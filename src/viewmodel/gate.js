@@ -1,14 +1,35 @@
-/* View-models for the two full-screen gates that stand in front of the app:
- * the Google sign-in prompt and the member profile form. */
+/* View-models for the three full-screen gates that stand in front of the app,
+ * in the order a member meets them: the opening splash, the Google sign-in
+ * prompt, and the member profile form. */
 
-import { DEFAULT_DUE_FRESHNESS, DEFAULT_DUE_TOP_X, GENDERS, MINISTRY_GROUPS, isProfileComplete } from "../profile.js";
+import { copy } from "../copy.js";
+import {
+  DEFAULT_DUE_FRESHNESS,
+  DEFAULT_DUE_TOP_X,
+  DEFAULT_DIFFICULTY,
+  GENDERS,
+  MINISTRY_GROUPS,
+  isProfileComplete,
+} from "../profile.js";
+import { SCRAMBLE_LEVELS } from "../blanks.js";
+import { segButton } from "../ui/tokens.js";
 import { PRIMARY_DOMAIN } from "../firebase.js";
+
+/* The splash carries nothing but the app's identity: it is up before there is
+ * any progress, profile, or account to show. It wears the sign-in gate's shell
+ * on purpose (see views/splash.js), so a member sent there sees one screen
+ * settle rather than two unrelated ones. */
+export function splashVals({ groupName, motto }) {
+  return { groupName, motto };
+}
 
 export function authGateVals({ auth, groupName, motto, actions }) {
   return {
     groupName,
     motto,
-    busy: auth.status === "loading" || auth.status === "signing-in",
+    // Only the member's own press: the wait for Firebase to answer at startup
+    // happens behind the splash, so this screen is never reached mid-check.
+    busy: auth.status === "signing-in",
     denied: auth.status === "denied",
     failed: auth.status === "signed-out" && auth.error === "sign-in-failed",
     // Every domain in ALLOWED_DOMAINS can sign in; the prompt names one so the
@@ -41,8 +62,8 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
   return {
     isSetup,
     groupName,
-    title: isSetup ? "SET UP YOUR PROFILE" : "EDIT YOUR PROFILE",
-    submitLabel: isSetup ? "Save and continue" : "Save changes",
+    title: isSetup ? copy.profileForm.titleSetup : copy.profileForm.titleEdit,
+    submitLabel: isSetup ? copy.profileForm.submitSetup : copy.profileForm.submitEdit,
     complete: isProfileComplete({ ...draft, name }),
 
     name,
@@ -80,6 +101,17 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
     onDueTopX: (e) => actions.setProfileField("dueTopX", e.target.value),
     dueFreshness: draft.dueFreshness !== undefined ? draft.dueFreshness : DEFAULT_DUE_FRESHNESS,
     onDueFreshness: (e) => actions.setProfileField("dueFreshness", e.target.value),
+    defaultDifficulty: draft.defaultDifficulty !== undefined ? Number(draft.defaultDifficulty) : DEFAULT_DIFFICULTY,
+    defaultDifficultyLevels: copy.profileForm.difficultyLevels.map((label, i) => {
+      const active =
+        i === (draft.defaultDifficulty !== undefined ? Number(draft.defaultDifficulty) : DEFAULT_DIFFICULTY);
+      return {
+        key: SCRAMBLE_LEVELS[i].key,
+        label,
+        style: segButton(active),
+        onClick: () => actions.setProfileField("defaultDifficulty", i),
+      };
+    }),
 
     onSubmit: actions.submitProfile,
     onCancel: actions.cancelEditProfile,

@@ -18,6 +18,7 @@ const KEYS = {
   examSetup: "mv.examSetup",
   reviewSetup: "mv.reviewSetup",
   learnSetup: "mv.learnSetup",
+  explainerOpen: "mv.explainerOpen",
 };
 
 /* ── guarded primitives ───────────────────────────────────────────────────── */
@@ -73,6 +74,8 @@ export const storage = {
   loadScrambleLevel: (fallback, count) => readIndex(KEYS.scrambleLevel, fallback, count),
   loadBlankHint: (fallback) => readBool(KEYS.blankHint, fallback),
   loadTypeFirstLetter: (fallback) => readBool(KEYS.typeFirstLetter, fallback),
+  // Hidden by default on a setup screen; left however a member last leaves it.
+  loadExplainerOpen: (fallback) => readBool(KEYS.explainerOpen, fallback),
   /* The Test mode setup, as last left. Returned raw — exam.normalizeSetup() is
    * what decides whether a stored value is still a legal one. */
   loadExamSetup: () => readJSON(KEYS.examSetup, null),
@@ -99,6 +102,7 @@ export const storage = {
   saveExamSetup: (setup) => write(KEYS.examSetup, JSON.stringify(setup)),
   saveReviewSetup: (setup) => write(KEYS.reviewSetup, JSON.stringify(setup)),
   saveLearnSetup: (setup) => write(KEYS.learnSetup, JSON.stringify(setup)),
+  saveExplainerOpen: (open) => writeBool(KEYS.explainerOpen, open),
 };
 
 /* ── cloud-sync seam ──────────────────────────────────────────────────────── */

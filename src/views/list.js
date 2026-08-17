@@ -2,8 +2,15 @@
  * screen where a sitting can be hand-picked: tick the rows you want and take
  * them as a review or a learn session. */
 
+import { copy } from "../copy.js";
 import { html, sx, corners } from "../dom.js";
 import { muted } from "../ui/tokens.js";
+
+/* Shift-clicking ticks a run of rows (see viewmodel/list.js), and the browser's
+ * own meaning for a shift-click — extend the text selection — would drag a blue
+ * smear across the table on the way. Suppressed on mousedown, where that
+ * selection is made; the click itself still fires. */
+const noTextSelect = (e) => e.shiftKey && e.preventDefault();
 
 /* One column track shared by the header and every row, so they stay aligned. */
 const COLUMNS = "grid-template-columns:34px 56px 190px 1fr 110px 130px 110px;gap:0";
@@ -13,6 +20,7 @@ const COLUMNS = "grid-template-columns:34px 56px 190px 1fr 110px 130px 110px;gap
  * one-verse case. */
 function selectionBar(v) {
   return html`<div
+    className="selection-bar"
     style=${sx(
       "display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px;" +
         "border-bottom:1px solid var(--color-divider);background:var(--color-accent-100)",
@@ -27,35 +35,42 @@ function selectionBar(v) {
           ${a.label}
         </button>`,
     )}
-    <button className="btn btn-secondary" onClick=${v.onClearSelection} style=${sx("font-size:13px")}>Clear</button>
+    <button className="btn btn-secondary" onClick=${v.onClearSelection} style=${sx("font-size:13px")}>
+      ${copy.common.clear}
+    </button>
     ${
       v.selectionNote &&
       html`<span style=${sx(`font-size:12px;color:${muted(60)};max-width:46ch`)}>${v.selectionNote}</span>`
+    }
+    ${
+      v.selectionRangeHint &&
+      html`<span style=${sx(`font-size:12px;color:${muted(60)};max-width:46ch`)}>${v.selectionRangeHint}</span>`
     }
   </div>`;
 }
 
 export function listView(v) {
   return html`<div
+    className="screen"
     style=${sx("max-width:1280px;margin:0 auto;padding:40px 36px 80px;display:flex;flex-direction:column;gap:24px")}
   >
     <div style=${sx("display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap")}>
       <div>
-        <h2 style=${sx("margin:0")}>All passages</h2>
+        <h2 style=${sx("margin:0")}>${copy.list.title}</h2>
         <div style=${sx(`font-size:13px;color:${muted(55)}`)}>
-          ${v.shownCount} shown · ${v.memorized} committed · ${v.remaining} untouched
+          ${copy.list.summary(v.shownCount, v.memorized, v.remaining)}
         </div>
       </div>
       <div style=${sx("margin-left:auto;display:flex;gap:12px;align-items:center")}>
         <input
           className="input"
-          placeholder="Search reference or text"
+          placeholder=${copy.list.searchPlaceholder}
           value=${v.search}
           onChange=${v.onSearch}
           style=${sx("width:260px")}
         />
         <div className="seg">
-          ${v.statusTabs.map((t) => html`<button key=${t.label} onClick=${t.onClick} style=${sx(t.style)}>${t.label}</button>`)}
+          ${v.statusTabs.map((t) => html`<button key=${t.label} className="seg-btn" onClick=${t.onClick} style=${sx(t.style)}>${t.label}</button>`)}
         </div>
       </div>
     </div>
@@ -67,6 +82,7 @@ export function listView(v) {
       >
         <div>
           <button
+            className="tick"
             onClick=${v.onSelectAll}
             title=${v.selectAllTitle}
             aria-label=${v.selectAllTitle}
@@ -76,25 +92,28 @@ export function listView(v) {
             ${v.selectAllMark}
           </button>
         </div>
-        <div>No.</div>
-        <div>Reference</div>
-        <div>Opening words</div>
-        <div>Freshness</div>
-        <div>Status</div>
-        <div style=${sx("text-align:right")}>Action</div>
+        <div>${copy.list.colNum}</div>
+        <div>${copy.list.colRef}</div>
+        <div>${copy.list.colSnippet}</div>
+        <div>${copy.list.colFreshness}</div>
+        <div>${copy.list.colStatus}</div>
+        <div style=${sx("text-align:right")}>${copy.list.colAction}</div>
       </div>
       ${v.rows.map(
         (r, i) =>
           html` <div
             key=${r.id}
+            className="item-in"
             style=${sx(
-              `display:grid;${COLUMNS};align-items:center;padding:11px 18px` +
+              `display:grid;${COLUMNS};align-items:center;padding:11px 18px;--stagger-i:${i}` +
                 (i ? `;border-top:1px solid ${muted(8)}` : ""),
             )}
           >
             <div>
               <button
+                className="tick"
                 onClick=${r.onSelect}
+                onMouseDown=${noTextSelect}
                 title=${r.selectTitle}
                 aria-label=${r.selectTitle}
                 aria-pressed=${r.selected}
@@ -120,7 +139,7 @@ export function listView(v) {
             </div>
             <div style=${sx("display:flex;align-items:center;gap:6px")}>
               <span style=${sx(r.tagStyle)}>${r.statusLabel}</span>
-              ${r.fading ? html`<span style=${sx(r.fadingStyle)}>Fading</span>` : null}
+              ${r.fading ? html`<span style=${sx(r.fadingStyle)}>${copy.list.fading}</span>` : null}
             </div>
             <div style=${sx("display:flex;gap:8px;justify-content:flex-end")}>
               <button

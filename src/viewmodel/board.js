@@ -1,6 +1,7 @@
 /* View-model for the board: the hero stats, today's queue, the mode cards, the
  * whole-set map, and the activity chart. */
 
+import { copy } from "../copy.js";
 import { dayKey } from "../text.js";
 import { freshColor } from "../srs.js";
 import { learnPool, reviewPool, streakOf, STATUS_LABEL } from "../progress.js";
@@ -46,12 +47,16 @@ function queueRow(p, i, { prog, kind, actions, showFreshness }) {
     snippet: p.text.slice(0, 90),
     statusLabel: STATUS_LABEL[status],
     tagStyle: statusTag(status),
-    freshLabel: !showFreshness ? "" : reviewed ? fresh + "%" : "new",
+    freshLabel: !showFreshness ? "" : reviewed ? fresh + "%" : copy.board.freshNew,
     freshStyle:
       "font-family:var(--font-heading);font-size:12px;font-weight:600;width:44px;flex:none;text-align:right;color:" +
       (reviewed ? freshColor(fresh) : muted(45)),
+    // The row's resting fill is deliberately absent here: .queue-row draws it,
+    // so the hover that marks the row about to be opened has something it can
+    // outrank. An inline background could not be.
     style:
-      "display:flex;align-items:center;gap:14px;padding:13px 18px;background:transparent;border:none;cursor:pointer;font-family:var(--font-body);color:var(--color-text)" +
+      "display:flex;align-items:center;gap:14px;padding:13px 18px;border:none;cursor:pointer;font-family:var(--font-body);color:var(--color-text);--stagger-i:" +
+      i +
       (i ? ";border-top:1px solid var(--color-divider)" : ""),
     onClick: () => actions.startSession(undefined, [p.id], kind),
   };
@@ -77,18 +82,28 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
     barStyle: "position:absolute;inset:0 auto 0 0;width:" + pct + "%;background:#f2f2f3",
 
     heroStats: [
-      { label: "Days left", value: daysLeft, note: "until " + shortDate(deadline), style: HERO_CELL },
-      { label: "Pace needed", value: perWeek, note: "passages a week", style: HERO_CELL + ";border-right:none" },
       {
-        label: "Reviewed today",
+        label: copy.board.statDaysLeft,
+        value: daysLeft,
+        note: copy.board.statDaysLeftNote(shortDate(deadline)),
+        style: HERO_CELL,
+      },
+      {
+        label: copy.board.statPace,
+        value: perWeek,
+        note: copy.board.statPaceNote,
+        style: HERO_CELL + ";border-right:none",
+      },
+      {
+        label: copy.board.statReviewed,
         value: state.log[dayKey(today)] || 0,
-        note: "cards handled",
+        note: copy.board.statReviewedNote,
         style: HERO_CELL + ";border-bottom:none",
       },
       {
-        label: "Streak",
+        label: copy.board.statStreak,
         value: streakOf(state.log, today),
-        note: "days running",
+        note: copy.board.statStreakNote,
         style: HERO_CELL + ";border-bottom:none;border-right:none",
       },
     ],
@@ -96,18 +111,16 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
     // ── review today: committed verses that have started to fade ────────────
     reviewCount: toReview.length,
     reviewQueue: toReview.map((p, i) => queueRow(p, i, { prog, kind: REVIEW, actions, showFreshness: true })),
-    reviewQueueNote: "committed · faded to " + dueFreshness + "% or below",
-    reviewQueueEmpty: memorized
-      ? "Nothing to review. Every verse you have committed is still fresh."
-      : "Nothing to review yet — a verse arrives here once you have committed it.",
+    reviewQueueNote: copy.board.reviewQueueNote(dueFreshness),
+    reviewQueueEmpty: memorized ? copy.board.reviewQueueEmpty : copy.board.reviewQueueEmptyNoneCommitted,
 
     // ── learn today: what is not committed yet ──────────────────────────────
     learnCount: toLearn.length,
     learnQueue: toLearn.map((p, i) => queueRow(p, i, { prog, kind: LEARN, actions, showFreshness: false })),
-    learnQueueNote: "not committed · write one out in full to commit it",
-    learnQueueEmpty: "Every passage in the set is committed. Nothing left to learn.",
+    learnQueueNote: copy.board.learnQueueNote,
+    learnQueueEmpty: copy.board.learnQueueEmpty,
 
-    mapCells: state.passages.map((p) => {
+    mapCells: state.passages.map((p, i) => {
       const status = prog.statusOf(p.id);
       const reviewed = prog.isReviewed(p.id);
       const fresh = prog.freshness(p.id);
@@ -116,10 +129,14 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
       const fade = status !== "new" && reviewed ? ";opacity:" + (0.4 + (0.6 * fresh) / 100).toFixed(2) : "";
       return {
         id: p.id,
-        title: p.ref + " — " + STATUS_LABEL[status] + (reviewed ? " · " + fresh + "% fresh" : ""),
+        title: copy.board.mapCellTitle(p.ref, STATUS_LABEL[status], reviewed ? fresh : null),
         onClick: () => actions.startSession(undefined, [p.id]),
+        // The cell's place in the set is also its place in the wave the map
+        // wakes up with (styles.css, .board-map-grid > button).
         style:
-          "aspect-ratio:1;padding:0;cursor:pointer;border:1px solid " +
+          "aspect-ratio:1;padding:0;cursor:pointer;--stagger-i:" +
+          i +
+          ";border:1px solid " +
           (status === "new" ? "var(--color-divider)" : "transparent") +
           ";background:" +
           (status === "memorized"
@@ -132,11 +149,13 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
     }),
 
     activityDays: ACTIVITY_DAYS,
-    dayBars: days.map((x) => ({
+    dayBars: days.map((x, i) => ({
       key: dayKey(x.d),
-      title: x.d.toDateString() + ": " + x.n,
+      title: copy.board.dayBarTitle(x.d.toDateString(), x.n),
       style:
-        "flex:1;background:" +
+        "flex:1;--stagger-i:" +
+        i +
+        ";background:" +
         (x.n ? "var(--color-accent)" : "var(--color-neutral-200)") +
         ";height:" +
         Math.max(3, Math.round((x.n / peak) * 100)) +
@@ -144,16 +163,7 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
     })),
     barsFrom: shortDate(days[0].d),
 
-    paceHeadline: memorized >= goal ? "All of them. Well done." : perWeek + " a week from here",
-    paceBody:
-      memorized >= goal
-        ? "Every passage is committed. Keep reviewing so they stay that way."
-        : "You have " +
-          (goal - memorized) +
-          " passages left and " +
-          daysLeft +
-          " days. That is about " +
-          perWeek +
-          " newly committed each week, plus review of what you already hold.",
+    paceHeadline: memorized >= goal ? copy.board.paceHeadlineDone : copy.board.paceHeadline(perWeek),
+    paceBody: memorized >= goal ? copy.board.paceBodyDone : copy.board.paceBody(goal - memorized, daysLeft, perWeek),
   };
 }

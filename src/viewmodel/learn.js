@@ -7,6 +7,7 @@
  * and that writing a passage out in full here is what commits it
  * (see srs.commitsVerse). */
 
+import { copy } from "../copy.js";
 import { learnPool } from "../progress.js";
 import { LEARN_SIZE, QUEUE_PREVIEW_ROWS } from "../review.js";
 import { segButton } from "../ui/tokens.js";
@@ -25,7 +26,7 @@ export function learnSetupVals({ state, prog, actions }) {
   return {
     learnSetupSizes: SIZES.map((n) => ({
       key: String(n),
-      label: n === 0 ? "All" : String(n),
+      label: n === 0 ? copy.common.all : String(n),
       onClick: () => actions.setLearnSetup({ size: n }),
       style: segButton(size === n),
     })),
@@ -35,19 +36,14 @@ export function learnSetupVals({ state, prog, actions }) {
       id: p.id,
       ref: p.ref,
       snippet: p.text.slice(0, 70),
-      statusLabel: prog.statusOf(p.id) === "learning" ? "In progress" : "Not started",
+      statusLabel:
+        prog.statusOf(p.id) === "learning" ? copy.learnSetup.previewStarted : copy.learnSetup.previewNotStarted,
     })),
-    learnPreviewMore: verses.length > QUEUE_PREVIEW_ROWS ? "+" + (verses.length - QUEUE_PREVIEW_ROWS) + " more" : "",
+    learnPreviewMore:
+      verses.length > QUEUE_PREVIEW_ROWS ? copy.learnSetup.previewMore(verses.length - QUEUE_PREVIEW_ROWS) : "",
 
     learnSetupCanStart: verses.length > 0,
-    learnSetupNote: pool.length
-      ? verses.length +
-        (verses.length === 1 ? " verse in this sitting" : " verses in this sitting") +
-        " · " +
-        pool.length +
-        " uncommitted in the set" +
-        (started ? ", " + started + " already in progress" : "")
-      : "Every passage in the set is committed. There is nothing left to learn.",
+    learnSetupNote: pool.length ? copy.learnSetup.note(verses.length, pool.length, started) : copy.learnSetup.noteEmpty,
 
     startLearnSession: () => actions.startLearnSession(verses.map((p) => p.id)),
     cancelLearnSession: () => actions.goto("board"),

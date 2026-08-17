@@ -8,19 +8,20 @@
  * so a member with fewer but well-maintained verses can rank above one who has
  * committed many but let them all fade. */
 
+import { copy } from "../copy.js";
 import { freshnessSum } from "../progress.js";
 
 /* The filters offered above the board. `field` is the profile attribute each one
  * narrows by, which is also what makes the option lists self-building: every
  * distinct value present in the roster becomes a choice. */
 const FILTERS = [
-  { key: "group", field: "ministryGroup", label: "Ministry group" },
-  { key: "gender", field: "gender", label: "Gender" },
-  { key: "gradClass", field: "gradClass", label: "Class" },
+  { key: "group", field: "ministryGroup", label: copy.leaderboard.filterGroup },
+  { key: "gender", field: "gender", label: copy.leaderboard.filterGender },
+  { key: "gradClass", field: "gradClass", label: copy.leaderboard.filterClass },
 ];
 
-const ANY = "All";
-const PLACES = ["First", "Second", "Third"];
+const ANY = copy.common.all;
+const PLACES = copy.leaderboard.places;
 
 /* Distinct non-empty values of one attribute across the roster. Numbers sort
  * descending (newest class first); everything else alphabetically. */
@@ -39,7 +40,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   const myFreshnessScore = freshnessSum(state.progress, now);
   const roster = (state.peers || []).concat([
     {
-      name: "You",
+      name: copy.leaderboard.you,
       count: totals.memorized,
       freshnessScore: myFreshnessScore,
       streak: myStreak,
@@ -60,7 +61,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   const top = Math.max(1, ranked[0] ? ranked[0].freshnessScore : 1);
 
   return {
-    daysLeftLabel: totals.daysLeft + " days remaining",
+    daysLeftLabel: copy.leaderboard.daysLeft(totals.daysLeft),
 
     leaderFilters: FILTERS.map((f) => ({
       key: f.key,
@@ -68,7 +69,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
       value: selected[f.key],
       onChange: (e) => actions.setLeaderFilter(f.key, e.target.value),
       opts: [ANY, ...distinctValues(roster, f.field)],
-      fmt: (o) => (f.key === "gradClass" && o !== ANY ? "Class of " + o : o),
+      fmt: (o) => (f.key === "gradClass" && o !== ANY ? copy.leaderboard.filterClassOf(o) : o),
     })),
 
     leaderCount: ranked.length,
@@ -89,7 +90,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
       name: p.name,
       count: p.count,
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
-      streak: p.streak + " days",
+      streak: copy.leaderboard.streakDays(p.streak),
       rowStyle: p.me ? "background:var(--color-accent-100)" : "",
       barStyle:
         "height:100%;background:" +

@@ -1,0 +1,612 @@
+/* Every word the app says, in one place.
+ *
+ * The one stop shop for editing labels. Views and view-models import from here
+ * rather than writing text inline, so re-wording a screen is a change to this
+ * file and nothing else.
+ *
+ * Two shapes live here, and the difference is only whether the sentence has a
+ * number in it:
+ *
+ *   - a plain string for text that never changes ("Back to the board");
+ *   - a function for text that reads a value the app computed
+ *     (`peekCost: (pct) => "Each peek costs " + pct + "%"`).
+ *
+ * A copy function is a formatter and nothing more: it takes values already
+ * worked out by the caller and returns a string. It must not import from srs,
+ * progress, or any other model — the numbers are computed where the rule lives
+ * and passed in, so this file cannot become a second place the model is
+ * described. (`points(COMMIT_SCORE)` stays in viewmodel/explainer.js; only the
+ * sentence around it lives here.)
+ *
+ * What deliberately is NOT here: the `name`/`short`/`desc` on MODES
+ * (review.js), ACTIVITIES (exam.js), and the two difficulty tables (blanks.js).
+ * Those sit beside `key` fields that are part of the persisted data model, and
+ * splitting a row across two files to save a string would cost more than it
+ * saves. STATUS_LABEL is the exception and is defined below, because it is
+ * pure wording that four screens quote; progress.js re-exports it.
+ *
+ * Ordered to mirror src/views/ and src/viewmodel/ — one block per screen. */
+
+/* n with a unit that agrees with it: plural(1, "verse", "verses") → "1 verse". */
+const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+
+export const copy = {
+  /* ── shared ─────────────────────────────────────────────────────────────── */
+
+  app: {
+    wordmark: "THE MEMORY BOARD",
+    /* The epigraph under the wordmark, on the sign-in gate and the board hero. */
+    epigraph:
+      '"Do your best to present yourself to God as one approved, a worker who has no need to be ashamed, rightly ' +
+      'handling the word of truth." — 2 Tim 2:15',
+    /* Stands in for a member who has not filled in their profile yet. */
+    anonymousMember: "Member",
+  },
+
+  /* Words that appear on more than one screen and mean the same thing on each. */
+  common: {
+    all: "All",
+    backToBoard: "Back to the board",
+    cancel: "Cancel",
+    clear: "Clear",
+    keepGoing: "Keep going",
+    off: "Off",
+    on: "On",
+    startOver: "Start over",
+  },
+
+  /* The member-facing name of each status. Quoted by the board, the list's
+   * filter tabs and row pills, and the queue previews, so it is said once. */
+  status: {
+    memorized: "Committed",
+    learning: "In progress",
+    new: "Not started",
+  },
+
+  /* ── chrome ─────────────────────────────────────────────────────────────── */
+
+  nav: {
+    board: "Home",
+    list: "Passages",
+    leaderboard: "Stats",
+    guide: "Guide",
+  },
+
+  header: {
+    learn: "LEARN",
+    review: "REVIEW",
+    test: "TEST",
+    settings: "Settings",
+    signOut: "Sign out",
+    /* Shown in place of a name until the profile is filled in. */
+    setUpProfile: "Set up your profile",
+  },
+
+  footer: {
+    url: "https://forms.gle/H3YGDEJ4XXtN4Aoz5",
+    prompt: "🐛 Spotted bugs or got a feature request?",
+    link: "Fill out this form.",
+  },
+
+  /* ── the three gates ────────────────────────────────────────────────────── */
+
+  /* The splash the app opens on, while it works out whether the member is
+   * already signed in. It says what is being waited for, since that is what
+   * decides which screen comes next. */
+  splash: {
+    note: "Checking your session…",
+  },
+
+  authGate: {
+    prompt: "account to track your passages and sync across devices.",
+    promptLead: "Sign in with your",
+    denied: (domain) =>
+      "That account isn't an Acts 2 Network account. Please sign in with your " + domain + " account.",
+    failed: "Sign-in didn't complete. Please try again.",
+    busy: "Signing in…",
+    signIn: "Sign in with Google",
+  },
+
+  profileForm: {
+    titleSetup: "SET UP YOUR PROFILE",
+    titleEdit: "EDIT YOUR PROFILE",
+    submitSetup: "Save and continue",
+    submitEdit: "Save changes",
+    intro:
+      "Tell us a bit about yourself. Your name, ministry group, gender, and graduating class shape the leaderboard " +
+      "and group stats.",
+    name: "Name",
+    namePlaceholder: "Your full name",
+    ministryGroup: "Ministry group",
+    ministryPlaceholder: "Start typing to search…",
+    gender: "Gender",
+    gradClass: "Graduating class",
+    gradClassPlaceholder: "e.g. 2016",
+    reviewSettings: "REVIEW SETTINGS",
+    dueTopX: "Top X committed verses to review at a time",
+    dueFreshness: "Review a committed verse once it fades to (%)",
+    difficulty: "Default difficulty",
+    difficultyLevels: ["Easy", "Medium", "Hard"],
+  },
+
+  /* ── the board ──────────────────────────────────────────────────────────── */
+
+  board: {
+    progressTo: (dateLabel) => "Progress to " + dateLabel,
+    goalUnit: "passages committed",
+    inProgress: (n) => n + " in progress",
+    notStarted: (n) => n + " not started",
+    ofGoal: (pctLabel) => pctLabel + " of the goal",
+
+    statDaysLeft: "Days left",
+    statDaysLeftNote: (dateLabel) => "until " + dateLabel,
+    statPace: "Pace needed",
+    statPaceNote: "passages a week",
+    statReviewed: "Reviewed today",
+    statReviewedNote: "cards handled",
+    statStreak: "Streak",
+    statStreakNote: "days running",
+
+    reviewTitle: "Review today",
+    learnTitle: "Learn today",
+    queueCount: (n) => plural(n, "passage", "passages"),
+    reviewQueueNote: (dueFreshness) => "committed · faded to " + dueFreshness + "% or below",
+    reviewQueueEmpty: "Nothing to review. Every verse you have committed is still fresh.",
+    reviewQueueEmptyNoneCommitted: "Nothing to review yet — a verse arrives here once you have committed it.",
+    learnQueueNote: "not committed · write one out in full to commit it",
+    learnQueueEmpty: "Every passage in the set is committed. Nothing left to learn.",
+    /* A verse in the learn queue has no freshness worth quoting yet. */
+    freshNew: "new",
+
+    mapTitle: "The whole set",
+    mapNote: "one cell per passage, in canonical order",
+    legendCommitted: "committed",
+    legendLearning: "in progress",
+    legendNew: "not started",
+    /* Hover text on one cell: the passage, its status, and its freshness if it
+     * has been reviewed at all. */
+    mapCellTitle: (ref, statusLabel, fresh) =>
+      ref + " — " + statusLabel + (fresh == null ? "" : " · " + fresh + "% fresh"),
+
+    activityTitle: (days) => "Last " + days + " days",
+    activityAxis: "reviews per day",
+    activityToday: "today",
+    dayBarTitle: (dateLabel, n) => dateLabel + ": " + n,
+
+    paceTitle: "Pace check",
+    paceHeadlineDone: "All of them. Well done.",
+    paceHeadline: (perWeek) => perWeek + " a week from here",
+    paceBodyDone: "Every passage is committed. Keep reviewing so they stay that way.",
+    paceBody: (left, daysLeft, perWeek) =>
+      "You have " +
+      left +
+      " passages left and " +
+      daysLeft +
+      " days. That is about " +
+      perWeek +
+      " newly committed each week, plus review of what you already hold.",
+    paceLearn: "Learn a passage",
+    paceReview: "Review",
+    paceTest: "Take a test",
+    paceBrowse: (goal) => "Browse all " + goal,
+    paceGuide: "How this works",
+  },
+
+  /* ── the passage list ───────────────────────────────────────────────────── */
+
+  list: {
+    title: "All passages",
+    summary: (shown, committed, untouched) =>
+      shown + " shown · " + committed + " committed · " + untouched + " untouched",
+    searchPlaceholder: "Search reference or text",
+
+    colNum: "No.",
+    colRef: "Reference",
+    colSnippet: "Opening words",
+    colFreshness: "Freshness",
+    colStatus: "Status",
+    colAction: "Action",
+    fading: "Fading",
+    /* A passage never reviewed has no freshness to show. */
+    freshNone: "—",
+
+    selectionLabel: (count, hidden) =>
+      plural(count, "verse selected", "verses selected") + (hidden ? " · " + hidden + " not shown" : ""),
+    /* Said only when the ticks straddle both halves of the set, since that is
+     * the only time the two buttons need explaining. */
+    selectionNote: "Committed verses are reviewed and the rest are learned, so this is two sittings. Your ticks keep.",
+    /* How a run of rows is ticked at once. Said beside the ticks rather than in
+     * the guide, because it is worth nothing until there is a first tick. */
+    selectionRange: "Shift-click another row to tick everything in between.",
+    selectionReview: "Review",
+    selectionLearn: "Learn",
+    selectionSitting: (label, n) => label + " " + n,
+    selectAllOn: "Clear the rows shown",
+    selectAllOff: "Select the rows shown",
+    selectRow: (selected, ref) => (selected ? "Deselect " : "Select ") + ref,
+
+    actionReview: "Review",
+    actionLearn: "Learn",
+  },
+
+  /* ── the explainer both setup screens carry ─────────────────────────────── */
+
+  explainer: {
+    show: "Show",
+    hide: "Hide",
+
+    freshnessTitle: "How it works",
+    freshnessBody: (dueFreshness) =>
+      "Every passage carries a freshness — how much of it you would still recall right now. It falls a little " +
+      "every day along a forgetting curve, fast at first and then more slowly the better you know it. Once a " +
+      "committed passage has faded to " +
+      dueFreshness +
+      "% it comes back round to you, most faded first. (That mark is yours to set, on your profile.)",
+    /* The flashcard is the one activity with nothing to grade. */
+    ruleUnmarked: "Unmarked — nothing to grade, so it counts as reviewed in full, but builds the least lasting memory.",
+    ruleCeiling: (ceiling) => "Up to " + ceiling + "%, on a clean attempt.",
+    noteSubmitting: "Submitting is what marks a passage: what you get right is what it earns.",
+    noteDifficulty:
+      "Harder settings pay more — the finest cut of phrases and the fullest set of blanks are worth the most.",
+    notePeek: (cost) => "Each press of Peek costs " + cost + "%, so a passage you look up stays due sooner.",
+
+    commitTitle: "How it works",
+    commitBody: (bar) =>
+      "A passage is committed when you write the whole thing out from memory — " +
+      bar +
+      "% of the words right, with the first-letter scaffold off and without peeking. " +
+      "Take as many attempts as you like; only the one you get right counts, and none of them cost you anything.",
+  },
+
+  /* ── review setup ───────────────────────────────────────────────────────── */
+
+  reviewSetup: {
+    kicker: "Review",
+    title: "Configure your review",
+    target: "Target verses",
+    size: "How many committed verses",
+    freshness: "Freshness ceiling",
+    freshnessDescAny: "Any committed verse.",
+    freshnessDesc: (pct) => "Only committed verses faded to " + pct + "% or below.",
+    start: "Start Review",
+    goLearn: "Learn instead",
+
+    targetDue: (dueFreshness) => "Reviewing the committed verses that have faded to " + dueFreshness + "% or below.",
+    targetCaughtUp:
+      "You're all caught up — nothing you have committed has faded that far. Set up some extra review below.",
+    targetNothingCommitted:
+      "You have not committed a verse yet, so there is nothing to review. Start with a learn session instead.",
+    noteDue: (n) => plural(n, "verse is due right now.", "verses are due right now."),
+    noteManual: (n) => plural(n, "committed verse matches these settings.", "committed verses match these settings."),
+    noteNone: "No committed verses match these settings.",
+  },
+
+  /* ── learn setup ────────────────────────────────────────────────────────── */
+
+  learnSetup: {
+    kicker: "Learn",
+    title: "Commit a passage to memory",
+    size: "How many verses",
+    sizeNote: "Verses you have already started come first, then the ones you have not opened yet.",
+    previewTitle: "What you will work on",
+    previewStarted: "In progress",
+    previewNotStarted: "Not started",
+    previewMore: (n) => "+" + n + " more",
+    start: "Start learning",
+    goReview: "Review instead",
+
+    note: (sitting, pool, started) =>
+      plural(sitting, "verse in this sitting", "verses in this sitting") +
+      " · " +
+      pool +
+      " uncommitted in the set" +
+      (started ? ", " + started + " already in progress" : ""),
+    noteEmpty: "Every passage in the set is committed. There is nothing left to learn.",
+  },
+
+  /* ── the review / learn session ─────────────────────────────────────────── */
+
+  review: {
+    leave: "Leave session",
+    sessionLearn: "Learn",
+    sessionReview: "Review",
+    position: (i, n) => "Passage " + i + " of " + n,
+    meta: (testament, words) => (testament === "OT" ? "Old Testament" : "New Testament") + " · " + words + " words",
+    peek: "Peek",
+
+    /* flashcard */
+    flipFront: "Reference",
+    flipHint: "Say it aloud from memory, then turn the card to check yourself.",
+    flipShow: "Show passage",
+    flipHide: "Hide passage",
+    flipLettersShow: "Show first letters",
+    flipLettersHide: "Hide first letters",
+    flipCardToBack: "Turn the card over to show the passage",
+    flipCardToFront: "Turn the card back to the reference",
+
+    /* fill the blanks */
+    blanksLabel: "Blanks",
+    blanksFirstLetter: "First letter",
+    blanksLevelDesc: (desc) => "Blanking " + desc,
+    blanksResult: (right, total) => right + " of " + total + " right",
+    blanksCount: (total) => total + " blanks",
+
+    /* write it out */
+    typeFirstLetterLabel: "First letters only",
+    typeFirstLetterNote: "Type just the first letter of each word instead of the whole passage.",
+    typePlaceholder: "Type the passage from memory. Punctuation and capitals are ignored.",
+    typeFirstLetterPlaceholder:
+      "Type just the first letter of each word — e.g. “f t h w”. Spacing and punctuation are ignored.",
+    typeRevealed: "words revealed",
+    typeMatched: "words matched",
+
+    /* order the phrases */
+    scrambleLabel: "Granularity",
+    scrambleLevelDesc: (desc) => "Cutting into " + desc,
+    scrambleEmptyHint: "Click the phrases below in the right order.",
+    scrambleDone: "Complete — in order.",
+    scrambleProgress: (placed, total) => placed + " of " + total + " placed",
+    scrambleMisses: (n) => plural(n, "wrong try", "wrong tries"),
+
+    /* what the card is playing for — a learn session's voice */
+    commitDoneTag: "Committed",
+    commitTodoTag: "To commit",
+    commitDoneNote: "Committed. You have written this one out in full from memory.",
+    commitWritingNote: (bar) => "Get " + bar + "% of the words right, without peeking, and this verse is committed.",
+    commitOtherNote: "Write the passage in full to commit the verse into your memory bank.",
+    peekCostsCommit: "A peek means this attempt cannot commit the verse.",
+    peekSpentCommit: "Peeked — this attempt can no longer commit the verse.",
+
+    /* and a review session's */
+    peekCost: (cost) => "Each peek costs " + cost + "%",
+    peekSpent: (n, cost) => plural(n, "peek · −", "peeks · −") + cost + "%",
+
+    /* handing the card in */
+    submit: "Submit",
+    submitted: "Submitted",
+    previous: "Previous",
+    next: "Next passage",
+    finish: "Finish session",
+
+    resultSubmitted: (modeName) => modeName + " · submitted",
+    resultScore: (pct) => pct + "% right",
+    resultReviewed: "Reviewed",
+    resultWas: "Was",
+    resultNow: "Now",
+    resultDecays: "Freshness decays from here.",
+    resultDecaysAfterPeeks: (n) => "After " + plural(n, "peek.", "peeks.") + " Freshness decays from here.",
+
+    learnCommitted: "Committed",
+    learnStillCommitted: "Still committed",
+    learnNotYet: "Not committed yet",
+    learnCommittedNote: "You wrote the passage out in full from memory. It moves to your review list from here.",
+    learnStillCommittedNote: "You already have this one. Keep it in your review list.",
+    learnWriteOutNote: (bar) => "A full write-out from memory is what commits it — " + bar + "% of the words, unaided.",
+    learnPracticeNote: "Practice recorded. Writing the passage out in full is what commits it.",
+
+    /* leaving, and walking off an unsubmitted card */
+    leaveTitle: "Leave the session?",
+    leaveConfirm: "Leave the session",
+    leaveNothing: "Nothing has been submitted yet, so no passage will change.",
+    leaveLearn: (committed) =>
+      plural(committed, "passage stays committed", "passages stay committed") +
+      " and everything you have submitted is kept. The rest of the queue is dropped.",
+    leaveReview: (submitted) =>
+      plural(submitted, "passage you have submitted keeps", "passages you have submitted keep") +
+      " the freshness it earned. The rest of the queue is dropped.",
+    moveBackTitle: "Go back without submitting?",
+    moveOnTitle: "Move on without submitting?",
+    moveBack: "Go back",
+    moveOn: "Move on",
+    moveStay: "Stay on this passage",
+    moveNoteReview:
+      "This passage has not been handed in, so it earns no freshness, its place in your queue does not change, " +
+      "and what you have filled in here is lost.",
+    moveNoteLearn:
+      "This passage has not been handed in, so nothing about it is recorded, its place in your queue does not " +
+      "change, and what you have filled in here is lost.",
+  },
+
+  /* ── end of a session ───────────────────────────────────────────────────── */
+
+  done: {
+    kicker: "Session complete",
+    headlineLearn: (n) => plural(n, "passage committed", "passages committed"),
+    headlineReview: (n) => plural(n, "passage refreshed", "passages refreshed"),
+    leadCommitted: "Written out in full from memory — that is what commits a passage. ",
+    leadNothingCommitted:
+      "Nothing was committed this time. A passage is committed by writing it out in full, so keep at these until " +
+      "you can. ",
+    leadReviewed: "Every passage you reviewed is fresh again. ",
+    tally: (committed, goal, daysLeft) =>
+      committed + " of " + goal + " are committed, with " + daysLeft + " days to go.",
+    againLearn: "Learn more",
+    againReview: "Review more",
+    otherReview: "Review instead",
+    otherLearn: "Learn instead",
+  },
+
+  /* ── test mode ──────────────────────────────────────────────────────────── */
+
+  exam: {
+    /* setup */
+    setupKicker: "Test mode",
+    setupTitle: "Set the test",
+    setupSize: "How many verses",
+    setupCommitted: "Committed verses only",
+    setupFreshness: "Freshness ceiling",
+    setupFreshnessDescAny: "Every verse, however fresh.",
+    setupFreshnessDesc: (pct) => "Only verses that have faded to " + pct + "% or below.",
+    setupActivities: "Activities",
+    setupStart: "Start the test",
+    setupPoolNote: (chosen, pool, questions) =>
+      plural(chosen, "verse", "verses") +
+      " under test, out of " +
+      pool +
+      " that match — " +
+      plural(questions, "question", "questions") +
+      ".",
+    setupPoolEmpty: "No verses match these settings yet. Widen the freshness ceiling, or let uncommitted verses in.",
+
+    /* the running paper */
+    leave: "Leave the test",
+    noPeeking: "Marked at the end. No peeking.",
+    position: (i, n) => "Question " + i + " of " + n,
+    next: "Next question",
+    finish: "Finish and mark",
+    back: "Back",
+    leaveTitle: "Leave the test?",
+    leaveBody:
+      "Nothing you have answered will be marked, and no verse's freshness will change. Any progress in this test " +
+      "will not be saved.",
+
+    whereFrom: "Where is it from?",
+    refPlaceholder: "Book and chapter, verse optional",
+    finishHint: "Finish the sentence from memory. Punctuation and capitals are ignored.",
+    refHint: "Book and chapter, worth a quarter of the mark.",
+    typePlaceholder: "Type the passage from memory. Punctuation and capitals are ignored.",
+    matchNote: "Click a verse, then its reference. Click a paired verse to undo it.",
+    matchPickRef: "Now choose the reference it belongs to.",
+    matchNowPick: "Now pick its reference →",
+    matchUnpaired: "Unpaired",
+    scrambleEmptyHint: "Click the phrases below in the right order.",
+
+    /* the summary */
+    doneKicker: "Test complete",
+    doneScoreNote: (right, total) => right + " of " + plural(total, "question", "questions") + " right",
+    doneHeadlineHigh: "Held, all of it.",
+    doneHeadlineMid: "Mostly held.",
+    doneHeadlineLow: "Worth another week on these.",
+    doneBody:
+      "Each verse's freshness now reflects how it went — the ones that slipped have been dated back, and will come " +
+      "round again sooner.",
+    doneAgain: "Another test",
+    doneVersesTitle: "Where each verse landed",
+    doneVersesNote: "freshness before and after",
+    donePaperTitle: "The paper",
+    doneYou: "You ",
+    doneAnswer: "Answer ",
+    driftFresher: "fresher",
+    driftHeld: "held",
+    driftFaded: "faded",
+
+    givenNothingChosen: "Nothing chosen",
+    givenBlank: "Left blank",
+    givenPairs: (hits, total) => plural(hits, "pair", "pairs") + " right of " + total,
+    givenParts: (hits, total) => plural(hits, "part", "parts") + " right of " + total,
+    givenFinish: (text, ref) => (text || "nothing written") + " — " + (ref || "no reference"),
+    expectedFinish: (answer, ref) => answer + " — " + ref,
+    expectedNoneOfTheAbove: (ref) => "None of the above — it is " + ref,
+    versesUnderTest: (n) => plural(n, "verse", "verses"),
+  },
+
+  /* ── the leaderboard ────────────────────────────────────────────────────── */
+
+  leaderboard: {
+    title: "Leaderboard",
+    blurb: "Ranked by freshness score — committed verses weighted by how well they are retained right now.",
+    daysLeft: (n) => n + " days remaining",
+    filterGroup: "Ministry group",
+    filterGender: "Gender",
+    filterClass: "Class",
+    filterEveryone: "Everyone",
+    filterClassOf: (year) => "Class of " + year,
+    count: (n) => plural(n, "person", "people"),
+    empty: "No one matches these filters yet.",
+    places: ["First", "Second", "Third"],
+    you: "You",
+    podiumOf: (goal) => "of " + goal,
+    podiumAvg: "avg freshness",
+    streakDays: (n) => n + " days",
+    colRank: "#",
+    colName: "Name",
+    colCommitted: "Committed",
+    colAvgFresh: "Avg fresh",
+    colFreshness: "Freshness",
+    colStreak: "Streak",
+  },
+
+  /* ── the guide ──────────────────────────────────────────────────────────── */
+
+  /* Written at about a middle-school reading level on purpose: short sentences,
+   * plain words, one idea at a time. This is the screen a member reads when they
+   * do not yet know how any of this works, so it does not get to use the voice
+   * the rest of the app does — keep it plain when editing.
+   *
+   * Two words are the exception: "committed" and "freshness" are printed on
+   * every other screen, so the guide teaches them rather than inventing easier
+   * synonyms that would then match nothing the member sees elsewhere. */
+  guide: {
+    kicker: "The guide",
+    title: "How this app works",
+    lead:
+      "Two ideas run this whole app. First: a verse only counts as committed when you can write the whole thing " +
+      "out from memory. Second: after you learn a verse, you slowly start to forget it. " +
+      "The app keeps track of how much you still remember — it calls that freshness — and asks for the verse back " +
+      "before you lose it.",
+
+    commitTitle: "Committing a verse to memory",
+    commitBody: (bar) =>
+      "A verse becomes committed when you write the whole thing out from memory. You need " +
+      bar +
+      "% of the words right, with the first-letter hints turned off, and no peeking. " +
+      "Try as many times as you want. Only the try you get right counts, and the ones you miss cost you nothing.",
+    commitFrom: "Learn",
+    commitFromNote: "not committed yet",
+    commitTo: "Review",
+    commitToNote: "committed — now you keep it fresh",
+    commitStamp: "wrote it out from memory",
+    commitFoot:
+      "Nothing sends a verse back the other way. Mistakes can cost you freshness, but you won't lose a verse you " +
+      "have already committed.",
+
+    freshTitle: "Freshness, and why reviewing helps",
+    freshNote: "drag the slider",
+    freshBody: (dueFreshness) =>
+      "Every committed verse has a freshness score. It is how much of the verse you would still remember right " +
+      "now. It drops a little every day — quickly at first, then slower once you know the verse well. When it " +
+      "drops to " +
+      dueFreshness +
+      "%, the app puts the verse back on your list. Drag the slider to visualize how freshness decays.",
+    daysPrompt: "Days since you last reviewed it",
+    dayLabel: (d) => (d === 0 ? "the same day" : d === 1 ? "1 day later" : d + " days later"),
+    axisToday: "today",
+    axisDay: (d) => d + "d",
+    curveHeld: "A verse you have reviewed a few times",
+    curveFresh: "A verse you just learned",
+    markLabel: (dueFreshness) => "asks for it back at " + dueFreshness + "%",
+    curveAria: (dayLabel, held, fresh) =>
+      "Two forgetting curves over a month. " +
+      dayLabel +
+      ", a verse you have reviewed a few times is " +
+      held +
+      "% fresh, and one you just learned is " +
+      fresh +
+      "% fresh.",
+    freshVerdictAbove: "Still above the line, so the app leaves this verse alone.",
+    freshVerdictBelow: "Below the line, so this verse goes back on your review list.",
+    freshFoot: (holdsFor) =>
+      "Both verses were reviewed on the same day. The one you have practiced a few times stays off your list for " +
+      "about " +
+      holdsFor +
+      " days. The one you just learned is back in a day or two. Every review you do stretches that gap out " +
+      "further.",
+
+    activityTitle: "Four ways to practise a verse",
+    activityNote: "you get the same four in Learn, Review and Test",
+    activityUnmarked: "Not graded. It counts as a full review, but it helps your memory the least.",
+    activityPays: (ceiling) => "Worth up to " + ceiling + "% freshness if you get it all right on the hardest setting.",
+    commitsFlag: "the only one that commits",
+
+    /* The sample passage the four demonstrations are drawn from. Short, and one
+     * most members will recognise, so the drawing reads as a verse rather than
+     * as lorem ipsum. */
+    sample: {
+      ref: "Deuteronomy 6:4",
+      lead: "Hear, O Israel: The LORD our God, the LORD is",
+      blank: "one",
+      phrases: ["Hear, O Israel:", "The LORD our God,", "the LORD is one."],
+    },
+    start: "Start learning",
+  },
+};

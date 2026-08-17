@@ -15,9 +15,13 @@ import assert from "node:assert/strict";
 
 import { DEFAULT_DUE_FRESHNESS } from "../src/profile.js";
 import { reviewSetupVals } from "../src/viewmodel/review.js";
-import { committed, learning, stateOf } from "./helpers/setup-fixtures.mjs";
+import { committed, learning, stateOf, NOW } from "./helpers/setup-fixtures.mjs";
 
-/* Build the view-model for a state, capturing what its callbacks would do. */
+/* Build the view-model for a state, capturing what its callbacks would do.
+ * Pinned to the fixture's NOW — reviewSetupVals defaults to Date.now(), which
+ * would let these freshness figures drift, and quietly wrong, with the wall
+ * clock (see reviewPool()'s ceiling being read against the real time this
+ * once caught). */
 function build(state) {
   const capture = {};
   const actions = {
@@ -25,7 +29,7 @@ function build(state) {
     setReviewSetup: (patch) => (capture.setup = { ...(capture.setup || {}), ...patch }),
     goto: (view) => (capture.goto = view),
   };
-  return { v: reviewSetupVals({ state, actions }), capture };
+  return { v: reviewSetupVals({ state, actions, now: NOW }), capture };
 }
 
 test("building the view-model does not reorder state.passages", () => {

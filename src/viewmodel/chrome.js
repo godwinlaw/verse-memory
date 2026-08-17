@@ -1,15 +1,17 @@
 /* App chrome: the header's identity block, the primary nav, and the flags that
  * decide which view the shell renders. */
 
+import { copy } from "../copy.js";
 import { isProfileComplete } from "../profile.js";
 import { muted } from "../ui/tokens.js";
 
 /* `also` lists the views that belong to a nav item without being it — the
  * screens either side of a session, which should keep their entry underlined. */
 const NAV = [
-  { key: "board", label: "Home", also: ["done"] },
-  { key: "list", label: "Passages" },
-  { key: "leaderboard", label: "Stats" },
+  { key: "board", label: copy.nav.board, also: ["done"] },
+  { key: "list", label: copy.nav.list },
+  { key: "leaderboard", label: copy.nav.leaderboard },
+  { key: "guide", label: copy.nav.guide },
 ];
 
 const navStyle = (active, underlined) =>
@@ -29,7 +31,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     userName: profile.name || (user && user.name) || (user && user.email) || "",
     signOut: actions.signOut,
     editProfile: actions.editProfile,
-    profileSummary: isProfileComplete(profile) ? profile.name : "Set up your profile",
+    profileSummary: isProfileComplete(profile) ? profile.name : copy.header.setUpProfile,
 
     nav: NAV.map((n) => ({
       key: n.key,
@@ -42,6 +44,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     isList: state.view === "list",
     isReview: state.view === "review",
     isLeader: state.view === "leaderboard",
+    isGuide: state.view === "guide",
     isDone: state.view === "done",
     isReviewSetup: state.view === "review-setup",
     isLearnSetup: state.view === "learn-setup",
@@ -53,5 +56,6 @@ export function chromeVals({ state, groupName, motto, actions }) {
     goList: () => actions.goto("list"),
     goReviewSetup: () => actions.goto("review-setup"),
     goLearnSetup: () => actions.goto("learn-setup"),
+    goGuide: () => actions.goto("guide"),
   };
 }

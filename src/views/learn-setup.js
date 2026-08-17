@@ -4,6 +4,7 @@
  * verses to keep fresh, this one asks how many uncommitted verses to work at —
  * and says plainly what it takes to commit one. */
 
+import { copy } from "../copy.js";
 import { html, sx, corners } from "../dom.js";
 import { LABEL_SECTION, muted } from "../ui/tokens.js";
 import { commitCard } from "./explainer.js";
@@ -14,7 +15,7 @@ const FIELD = "display:flex;flex-direction:column;gap:9px";
  * choice. Truncated by the view-model, with the remainder counted. */
 function preview(v) {
   return html`<div style=${sx(FIELD)}>
-    <span style=${sx(LABEL_SECTION)}>What you will work on</span>
+    <span style=${sx(LABEL_SECTION)}>${copy.learnSetup.previewTitle}</span>
     <div style=${sx("display:flex;flex-direction:column;border:1px solid var(--color-divider)")}>
       ${v.learnQueuePreview.map(
         (p, i) =>
@@ -44,13 +45,14 @@ function preview(v) {
 
 export function learnSetupView(v) {
   return html`<div
+    className="screen"
     style=${sx("max-width:900px;margin:0 auto;padding:40px 36px 80px;display:flex;flex-direction:column;gap:22px")}
   >
     <div style=${sx("display:flex;flex-direction:column;gap:6px")}>
       <div style=${sx("font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--color-accent-700)")}>
-        Learn
+        ${copy.learnSetup.kicker}
       </div>
-      <h1 style=${sx("margin:0")}>Commit a passage to memory</h1>
+      <h1 style=${sx("margin:0")}>${copy.learnSetup.title}</h1>
     </div>
 
     ${commitCard(v)}
@@ -59,13 +61,11 @@ export function learnSetupView(v) {
       ${corners()}
 
       <div style=${sx(FIELD)}>
-        <span style=${sx(LABEL_SECTION)}>How many verses</span>
+        <span style=${sx(LABEL_SECTION)}>${copy.learnSetup.size}</span>
         <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
           ${v.learnSetupSizes.map((s) => html`<button key=${s.key} onClick=${s.onClick} style=${sx(s.style)}>${s.label}</button>`)}
         </div>
-        <span style=${sx(`font-size:12px;color:${muted(55)}`)}>
-          Verses you have already started come first, then the ones you have not opened yet.
-        </span>
+        <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${copy.learnSetup.sizeNote}</span>
       </div>
 
       ${v.learnSetupCanStart && preview(v)}
@@ -74,10 +74,10 @@ export function learnSetupView(v) {
         style=${sx("display:flex;gap:12px;align-items:center;border-top:1px solid var(--color-divider);padding-top:20px;flex-wrap:wrap")}
       >
         <button className="btn btn-primary" onClick=${v.startLearnSession} disabled=${!v.learnSetupCanStart}>
-          Start learning
+          ${copy.learnSetup.start}
         </button>
-        <button className="btn btn-secondary" onClick=${v.learnSetupGoReview}>Review instead</button>
-        <button className="btn btn-secondary" onClick=${v.cancelLearnSession}>Back to the board</button>
+        <button className="btn btn-secondary" onClick=${v.learnSetupGoReview}>${copy.learnSetup.goReview}</button>
+        <button className="btn btn-secondary" onClick=${v.cancelLearnSession}>${copy.common.backToBoard}</button>
         <div style=${sx(`margin-left:auto;font-size:13px;text-align:right;color:${muted(60)};max-width:44ch`)}>
           ${v.learnSetupNote}
         </div>

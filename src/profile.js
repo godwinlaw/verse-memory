@@ -50,6 +50,12 @@ export const GENDERS = ["Male", "Female"];
 export const DEFAULT_DUE_TOP_X = 10;
 export const DEFAULT_DUE_FRESHNESS = 75;
 
+/* Default exercise difficulty: 0 = Coarse (fewest blanks / longest phrases),
+ * 1 = Medium, 2 = Fine (every key word / shortest phrases). Sets the starting
+ * level for both Fill the Blanks and Order the Phrases when no per-device
+ * override is saved. */
+export const DEFAULT_DIFFICULTY = 1;
+
 /* Those settings as the app reads them, filled in from the defaults for a member
  * who has never touched them. */
 export function reviewSettings(profile) {
@@ -57,6 +63,7 @@ export function reviewSettings(profile) {
   return {
     dueTopX: p.dueTopX !== undefined ? Number(p.dueTopX) : DEFAULT_DUE_TOP_X,
     dueFreshness: p.dueFreshness !== undefined ? Number(p.dueFreshness) : DEFAULT_DUE_FRESHNESS,
+    defaultDifficulty: p.defaultDifficulty !== undefined ? Number(p.defaultDifficulty) : DEFAULT_DIFFICULTY,
   };
 }
 

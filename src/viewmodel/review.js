@@ -4,13 +4,14 @@
  * lives in grading.js and the exercise generation in blanks.js; this module
  * turns their output into the shapes and style strings the view renders. */
 
+import { copy } from "../copy.js";
 import { norm, firstLetters as firstLetterScaffold } from "../text.js";
 import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "../blanks.js";
 import { gradeWritten, matchesWord, revealFirstLetters } from "../grading.js";
 import { countByStatus, reviewPool } from "../progress.js";
 import { reviewSettings } from "../profile.js";
 import { LEARN, MODES, modeByKey, seededShuffle, scrambleScore } from "../review.js";
-import { awardCeiling, COMMIT_SCORE, freshColor, PEEK_COST } from "../srs.js";
+import { COMMIT_SCORE, freshColor, PEEK_COST } from "../srs.js";
 import { COLOR_ERROR, muted, WORD_RIGHT, WORD_WRONG, segButton } from "../ui/tokens.js";
 
 /* Spreads consecutive passage ids across the shuffle's seed space, so verse 12
@@ -96,7 +97,7 @@ const levelButtons = (levels, current, onPick) =>
  * in one voice or the other. The scheduling underneath is unchanged — a learn
  * card still earns stability and still costs freshness for a peek — it is only
  * never the thing the screen is about. */
-function stakeVals({ state, prog, cur, isLearn, isFlip, result, ceiling }) {
+function stakeVals({ state, prog, cur, isLearn, result }) {
   const commitDone = cur ? prog.statusOf(cur.id) === "memorized" : false;
   // The one activity that can commit: the passage written out, unaided.
   const writing = state.mode === "type" && !state.typeFirstLetter;
@@ -114,11 +115,9 @@ function stakeVals({ state, prog, cur, isLearn, isFlip, result, ceiling }) {
       peekNote: result
         ? ""
         : state.peeks
-          ? state.peeks + (state.peeks === 1 ? " peek · −" : " peeks · −") + points(PEEK_COST * state.peeks) + "%"
-          : "Each peek costs " + points(PEEK_COST) + "%",
-      moveNote:
-        "This passage has not been handed in, so it earns no freshness, its place in your queue does not change, " +
-        "and what you have filled in here is lost.",
+          ? copy.review.peekSpent(state.peeks, points(PEEK_COST * state.peeks))
+          : copy.review.peekCost(points(PEEK_COST)),
+      moveNote: copy.review.moveNoteReview,
     };
   }
 
@@ -126,23 +125,17 @@ function stakeVals({ state, prog, cur, isLearn, isFlip, result, ceiling }) {
     isLearn: true,
     commitDone,
     commitNote: commitDone
-      ? "Committed. You have written this one out in full from memory."
+      ? copy.review.commitDoneNote
       : writing
-        ? "Get " + bar + "% of the words right, without peeking, and this verse is committed."
-        : "Write the passage in full to commit the verse into your memory bank.",
+        ? copy.review.commitWritingNote(bar)
+        : copy.review.commitOtherNote,
     // The banner above already states the stake, and it is not a number.
     stakeLabel: "",
     // Peeking is what separates reading a passage from recalling one, so in a
     // learn session the cost worth quoting is the commitment, not the freshness.
     peekNote:
-      result || commitDone || !writing
-        ? ""
-        : state.peeks
-          ? "Peeked — this attempt can no longer commit the verse."
-          : "A peek means this attempt cannot commit the verse.",
-    moveNote:
-      "This passage has not been handed in, so nothing about it is recorded, its place in your queue does not " +
-      "change, and what you have filled in here is lost.",
+      result || commitDone || !writing ? "" : state.peeks ? copy.review.peekSpentCommit : copy.review.peekCostsCommit,
+    moveNote: copy.review.moveNoteLearn,
   };
 }
 
@@ -185,12 +178,6 @@ export function reviewVals({ state, prog, totals, actions }) {
         ? (state.typeFirstLetter ? live : written).score
         : scrambleMark;
 
-  const ceiling = awardCeiling({
-    mode: state.mode,
-    blankLevel: state.blankLevel,
-    scrambleLevel: state.scrambleLevel,
-    firstLetters: state.typeFirstLetter,
-  });
   // A card is marked once a session: the result is kept by passage, so walking
   // back to a verse shows what it was worth rather than marking it again.
   const result = cur ? state.results[cur.id] : null;
@@ -203,11 +190,15 @@ export function reviewVals({ state, prog, totals, actions }) {
   const committedHere = Object.values(state.results).filter((r) => r.committed).length;
 
   return {
-    ...stakeVals({ state, prog, cur, isLearn, isFlip, result, ceiling }),
+    ...stakeVals({ state, prog, cur, isLearn, result }),
 
-    sessionLabel: isLearn ? "Learn" : "Review",
+    sessionLabel: isLearn ? copy.review.sessionLearn : copy.review.sessionReview,
+    // What makes the card a card rather than a redraw: the view keys the panel
+    // on this, so the next verse and a different exercise on this one both
+    // arrive as a replacement (styles.css, .card-swap).
+    cardKey: state.qi + ":" + state.mode,
     modeName: modeByKey(state.mode).name,
-    posLabel: "Passage " + Math.min(state.qi + 1, state.queue.length) + " of " + state.queue.length,
+    posLabel: copy.review.position(Math.min(state.qi + 1, state.queue.length), state.queue.length),
     modeSwitch: MODES.map((m) => ({
       key: m.key,
       short: m.short,
@@ -221,12 +212,12 @@ export function reviewVals({ state, prog, totals, actions }) {
 
     curRef: cur ? cur.ref : "",
     curText,
-    curMeta: cur ? (cur.testament === "OT" ? "Old Testament" : "New Testament") + " · " + words.length + " words" : "",
+    curMeta: cur ? copy.review.meta(cur.testament, words.length) : "",
 
     // Peeking at the text is available in every mode except the flashcard,
     // which is already a reveal. It is allowed and counted either way; what it
     // is said to cost depends on the errand (see stakeVals).
-    helpLabel: "Peek",
+    helpLabel: copy.review.peek,
     peekOn: () => actions.setPeek(true),
     peekOff: () => actions.setPeek(false),
     showHelp: state.showHelp && !isFlip,
@@ -235,18 +226,26 @@ export function reviewVals({ state, prog, totals, actions }) {
     isFlip,
     flipShown: isFlip && state.revealed,
     // One button, one place: it reads Show or Hide and never moves.
-    flipToggleLabel: state.revealed ? "Hide passage" : "Show passage",
+    flipToggleLabel: state.revealed ? copy.review.flipHide : copy.review.flipShow,
     toggleFlip: () => actions.setRevealed(!state.revealed),
-    flipLettersLabel: state.flipLetters ? "Hide first letters" : "Show first letters",
+    flipLettersLabel: state.flipLetters ? copy.review.flipLettersHide : copy.review.flipLettersShow,
     flipLettersOn: state.flipLetters,
     flipFirstLetters: firstLetterScaffold(curText),
     toggleFlipLetters: actions.toggleFlipLetters,
+    // The card is two-sided, so the front says which side it is, and the whole
+    // card is a control — hence a label for it that names the turn, not the
+    // state, since a screen reader reads it before the member acts.
+    flipFrontLabel: copy.review.flipFront,
+    flipHint: copy.review.flipHint,
+    flipCardLabel: state.revealed ? copy.review.flipCardToFront : copy.review.flipCardToBack,
 
     isBlanks: state.mode === "blanks",
     blankWords: blankCells,
-    blanksResult: state.blanksChecked ? blanksRight + " of " + blanksTotal + " right" : blanksTotal + " blanks",
+    blanksResult: state.blanksChecked
+      ? copy.review.blanksResult(blanksRight, blanksTotal)
+      : copy.review.blanksCount(blanksTotal),
     blankLevels: levelButtons(BLANK_LEVELS, state.blankLevel, actions.setBlankLevel),
-    blankLevelDesc: "Blanking " + (BLANK_LEVELS[state.blankLevel] || BLANK_LEVELS[1]).desc,
+    blankLevelDesc: copy.review.blanksLevelDesc((BLANK_LEVELS[state.blankLevel] || BLANK_LEVELS[1]).desc),
     blankHintOn: state.blankHint,
     toggleBlankHint: actions.toggleBlankHint,
     blankHintStyle: segButton(state.blankHint),
@@ -269,44 +268,44 @@ export function reviewVals({ state, prog, totals, actions }) {
     typeFirstLetterOn: state.typeFirstLetter,
     toggleTypeFirstLetter: actions.toggleTypeFirstLetter,
     typeFirstLetterStyle: segButton(state.typeFirstLetter),
-    typePlaceholder: state.typeFirstLetter
-      ? "Type just the first letter of each word — e.g. “f t h w”. Spacing and punctuation are ignored."
-      : "Type the passage from memory. Punctuation and capitals are ignored.",
+    typePlaceholder: state.typeFirstLetter ? copy.review.typeFirstLetterPlaceholder : copy.review.typePlaceholder,
 
     isScramble: state.mode === "scramble",
     scrambleChunks: shuffled
       .filter((c) => !placed.includes(c.i))
-      .map((c) => ({
+      .map((c, i) => ({
         key: c.i,
         text: c.v,
         onClick: () => actions.placeChunk(c.i),
         style:
-          "cursor:pointer;font-family:var(--font-body);font-size:15px;line-height:1.5;text-align:left;max-width:340px;padding:9px 13px;background:transparent;color:var(--color-text);border:1px solid " +
+          "cursor:pointer;font-family:var(--font-body);font-size:15px;line-height:1.5;text-align:left;max-width:340px;padding:9px 13px;background:transparent;color:var(--color-text);--stagger-i:" +
+          i +
+          ";border:1px solid " +
           (state.scrambleWrong === c.i ? COLOR_ERROR : "var(--color-divider)") +
           ";" +
           (state.scrambleWrong === c.i ? "animation:nudge .25s" : ""),
       })),
     scrambleBuilt: placed.map((i) => chunks[i]).join(" "),
     scrambleEmpty: placed.length === 0,
-    scrambleResult: scrambleDone ? "Complete — in order." : placed.length + " of " + chunks.length + " placed",
-    scrambleMissNote: state.scrambleMisses
-      ? state.scrambleMisses + (state.scrambleMisses === 1 ? " wrong try" : " wrong tries")
-      : "",
+    scrambleResult: scrambleDone
+      ? copy.review.scrambleDone
+      : copy.review.scrambleProgress(placed.length, chunks.length),
+    scrambleMissNote: state.scrambleMisses ? copy.review.scrambleMisses(state.scrambleMisses) : "",
     resetScramble: actions.resetScramble,
     scrambleLevels: levelButtons(SCRAMBLE_LEVELS, state.scrambleLevel, actions.setScrambleLevel),
-    scrambleLevelDesc: "Cutting into " + (SCRAMBLE_LEVELS[state.scrambleLevel] || SCRAMBLE_LEVELS[1]).desc,
+    scrambleLevelDesc: copy.review.scrambleLevelDesc((SCRAMBLE_LEVELS[state.scrambleLevel] || SCRAMBLE_LEVELS[1]).desc),
 
     // ── handing the card in, and walking the queue ──────────────────────────
     // The flashcard has nothing to mark, so it has no Submit: it is recorded on
     // the way out. Every other mode is submitted, once, by the member.
     canSubmit: !isFlip,
     submitDone: !!result,
-    submitLabel: result ? "Submitted" : "Submit",
+    submitLabel: result ? copy.review.submitted : copy.review.submit,
     submit: () => actions.submitCard(score),
     goPrev: actions.prevCard,
     goNext: actions.nextCard,
     canGoBack: state.qi > 0,
-    nextLabel: lastCard ? "Finish session" : "Next passage",
+    nextLabel: lastCard ? copy.review.finish : copy.review.next,
 
     // What the submission was worth. A review card reports it as freshness —
     // the mark, the value before and after, and the two bars the view animates
@@ -315,7 +314,8 @@ export function reviewVals({ state, prog, totals, actions }) {
     resultShown: !!result,
     resultKey: result ? result.id + ":" + result.after : "none",
     resultModeName: result ? modeByKey(result.mode).name : "",
-    resultScoreLabel: result && result.score != null ? points(result.score) + "% right" : "Reviewed",
+    resultScoreLabel:
+      result && result.score != null ? copy.review.resultScore(points(result.score)) : copy.review.resultReviewed,
     resultBeforeLabel: result ? result.before + "%" : "",
     resultAfterLabel: result ? result.after + "%" : "",
     resultBeforeBar: result ? meterBar(result.before) : "",
@@ -326,8 +326,8 @@ export function reviewVals({ state, prog, totals, actions }) {
       (drift > 0 ? "var(--color-accent-700)" : drift < 0 ? COLOR_ERROR : muted(45)),
     resultNote: result
       ? result.peeks
-        ? "After " + result.peeks + (result.peeks === 1 ? " peek." : " peeks.") + " Freshness decays from here."
-        : "Freshness decays from here."
+        ? copy.review.resultDecaysAfterPeeks(result.peeks)
+        : copy.review.resultDecays
       : "",
 
     // The learn card's verdict: did this attempt commit the verse, and if not,
@@ -335,19 +335,19 @@ export function reviewVals({ state, prog, totals, actions }) {
     learnResultHeadline: !result
       ? ""
       : result.committed
-        ? "Committed"
+        ? copy.review.learnCommitted
         : wasAlreadyCommitted
-          ? "Still committed"
-          : "Not committed yet",
+          ? copy.review.learnStillCommitted
+          : copy.review.learnNotYet,
     learnResultNote: !result
       ? ""
       : result.committed
-        ? "You wrote the passage out in full from memory. It moves to your review list from here."
+        ? copy.review.learnCommittedNote
         : wasAlreadyCommitted
-          ? "You already have this one. Keep it in your review list."
+          ? copy.review.learnStillCommittedNote
           : result.mode === "type"
-            ? "A full write-out from memory is what commits it — " + points(COMMIT_SCORE) + "% of the words, unaided."
-            : "Practice recorded. Writing the passage out in full is what commits it.",
+            ? copy.review.learnWriteOutNote(points(COMMIT_SCORE))
+            : copy.review.learnPracticeNote,
     learnResultDone: !!(result && (result.committed || wasAlreadyCommitted)),
 
     // Leaving mid-session keeps what has been handed in; the rest of the queue
@@ -357,44 +357,28 @@ export function reviewVals({ state, prog, totals, actions }) {
     reviewLeaveCancel: actions.cancelLeaveReview,
     reviewLeaveConfirm: actions.leaveReview,
     reviewLeaveNote: !submittedCount
-      ? "Nothing has been submitted yet, so no passage will change."
+      ? copy.review.leaveNothing
       : isLearn
-        ? committedHere +
-          (committedHere === 1 ? " passage stays committed" : " passages stay committed") +
-          " and everything you have submitted is kept. The rest of the queue is dropped."
-        : submittedCount +
-          (submittedCount === 1 ? " passage you have submitted keeps" : " passages you have submitted keep") +
-          " the freshness it earned. The rest of the queue is dropped.",
+        ? copy.review.leaveLearn(committedHere)
+        : copy.review.leaveReview(submittedCount),
 
     // Walking off a card that was never handed in — forwards or back — throws
     // the attempt away, so either direction asks first.
     reviewMoveAsk: !!state.reviewMoveAsk,
-    reviewMoveTitle: state.reviewMoveAsk === "prev" ? "Go back without submitting?" : "Move on without submitting?",
-    reviewMoveConfirmLabel: state.reviewMoveAsk === "prev" ? "Go back" : "Move on",
+    reviewMoveTitle: state.reviewMoveAsk === "prev" ? copy.review.moveBackTitle : copy.review.moveOnTitle,
+    reviewMoveConfirmLabel: state.reviewMoveAsk === "prev" ? copy.review.moveBack : copy.review.moveOn,
     reviewMoveCancel: actions.cancelMoveCard,
     reviewMoveConfirm: actions.confirmMoveCard,
 
-    doneHeadline: isLearn
-      ? committedHere + (committedHere === 1 ? " passage committed" : " passages committed")
-      : state.sessionCount + (state.sessionCount === 1 ? " passage refreshed" : " passages refreshed"),
+    doneHeadline: isLearn ? copy.done.headlineLearn(committedHere) : copy.done.headlineReview(state.sessionCount),
     doneBody:
-      (isLearn
-        ? committedHere
-          ? "Written out in full from memory — that is what commits a passage. "
-          : "Nothing was committed this time. A passage is committed by writing it out in full, so keep at " +
-            "these until you can. "
-        : "Every passage you reviewed is fresh again. ") +
-      totals.memorized +
-      " of " +
-      totals.goal +
-      " are committed, with " +
-      totals.daysLeft +
-      " days to go.",
+      (isLearn ? (committedHere ? copy.done.leadCommitted : copy.done.leadNothingCommitted) : copy.done.leadReviewed) +
+      copy.done.tally(totals.memorized, totals.goal, totals.daysLeft),
     // The obvious next sitting is another of the same; the other one is offered
     // beside it rather than buried back on the board.
-    doneAgainLabel: isLearn ? "Learn more" : "Review more",
+    doneAgainLabel: isLearn ? copy.done.againLearn : copy.done.againReview,
     doneAgain: () => actions.goto(isLearn ? "learn-setup" : "review-setup"),
-    doneOtherLabel: isLearn ? "Review instead" : "Learn instead",
+    doneOtherLabel: isLearn ? copy.done.otherReview : copy.done.otherLearn,
     doneOther: () => actions.goto(isLearn ? "review-setup" : "learn-setup"),
   };
 }
@@ -407,17 +391,17 @@ export function reviewVals({ state, prog, totals, actions }) {
  * manual controls come into play, which reach further up the same committed
  * shelf rather than into uncommitted verses. Learning those is a learn session's
  * job (see viewmodel/learn.js). */
-export function reviewSetupVals({ state, actions }) {
+export function reviewSetupVals({ state, actions, now = Date.now() }) {
   const setup = state.reviewSetup || {};
   const manualSize = setup.manualSize !== undefined ? setup.manualSize : 10;
   const manualFreshness = setup.manualFreshness !== undefined ? setup.manualFreshness : 90;
   const { dueTopX, dueFreshness } = reviewSettings(state.profile);
 
-  const dueNow = reviewPool(state.passages, state.progress, dueFreshness).slice(0, dueTopX);
+  const dueNow = reviewPool(state.passages, state.progress, dueFreshness, now).slice(0, dueTopX);
   const hasDue = dueNow.length > 0;
 
   // Committed verses at or below the chosen ceiling; size 0 = "All".
-  const manualPool = reviewPool(state.passages, state.progress, manualFreshness);
+  const manualPool = reviewPool(state.passages, state.progress, manualFreshness, now);
   const manualVerses = manualSize === 0 ? manualPool : manualPool.slice(0, manualSize);
 
   const versesToReview = hasDue ? dueNow : manualVerses;
@@ -431,7 +415,7 @@ export function reviewSetupVals({ state, actions }) {
 
     reviewSetupSizes: [5, 10, 20, 0].map((n) => ({
       key: String(n),
-      label: n === 0 ? "All" : String(n),
+      label: n === 0 ? copy.common.all : String(n),
       onClick: () => actions.setReviewSetup({ manualSize: n }),
       style: segButton(manualSize === n),
     })),
@@ -440,16 +424,15 @@ export function reviewSetupVals({ state, actions }) {
 
     reviewSetupCanStart: poolSize > 0,
     reviewSetupTarget: hasDue
-      ? "Reviewing the committed verses that have faded to " + dueFreshness + "% or below."
+      ? copy.reviewSetup.targetDue(dueFreshness)
       : committed
-        ? "You're all caught up — nothing you have committed has faded that far. Set up some extra review below."
-        : "You have not committed a verse yet, so there is nothing to review. Start with a learn session instead.",
+        ? copy.reviewSetup.targetCaughtUp
+        : copy.reviewSetup.targetNothingCommitted,
     reviewSetupNote: hasDue
-      ? dueNow.length + (dueNow.length === 1 ? " verse is due right now." : " verses are due right now.")
+      ? copy.reviewSetup.noteDue(dueNow.length)
       : poolSize
-        ? poolSize +
-          (poolSize === 1 ? " committed verse matches these settings." : " committed verses match these settings.")
-        : "No committed verses match these settings.",
+        ? copy.reviewSetup.noteManual(poolSize)
+        : copy.reviewSetup.noteNone,
 
     startReviewSession: () => actions.startReviewSession(versesToReview.map((v) => v.id)),
     cancelReviewSession: () => actions.goto("board"),
