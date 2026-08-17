@@ -100,6 +100,12 @@ test("the empty leaderboard filter shows its empty message", () => {
   assert.match(markup, /No one matches these filters yet\./);
 });
 
+test("a member with nothing committed has no row on the stats board", () => {
+  const s = scenarios.find((x) => x.name === "leaderboard/unfinished-peer");
+  const { markup } = renderScenario(s.state, s.props);
+  assert.doesNotMatch(markup, /Nobody Yet/);
+});
+
 test("list/no-matches renders no rows", () => {
   const s = scenarios.find((x) => x.name === "list/no-matches");
   const { markup } = renderScenario(s.state, s.props);

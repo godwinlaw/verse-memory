@@ -463,6 +463,15 @@ export const scenarios = [
     }),
   },
   { name: "leaderboard/solo", state: baseState({ view: "leaderboard", peers: [] }) },
+  {
+    name: "leaderboard/unfinished-peer",
+    state: baseState({
+      view: "leaderboard",
+      peers: PEERS.concat([
+        { name: "Nobody Yet", count: 0, streak: 0, ministryGroup: "USF", gender: "Female", gradClass: 2025 },
+      ]),
+    }),
+  },
 
   // ── the guide ──────────────────────────────────────────────────────────────
   { name: "guide/default", state: baseState({ view: "guide" }) },
