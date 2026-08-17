@@ -91,9 +91,19 @@ export const copy = {
   /* ── the three gates ────────────────────────────────────────────────────── */
 
   /* The splash the app opens on, while it works out whether the member is
-   * already signed in. It says what is being waited for, since that is what
-   * decides which screen comes next. */
+   * already signed in.
+   *
+   * `steps` are the three lines the registration mark cycles through — they
+   * name the boot rather than measure it, since none of the three has a figure
+   * the member could act on. `note` is the one truthful line underneath, read
+   * aloud but not drawn: the cycle is on a CSS timer, so announcing it would
+   * report a state the app is not actually in. */
   splash: {
+    steps: {
+      indexing: (count) => "Indexing " + count + " passages",
+      restoring: "Restoring your progress",
+      queueing: "Building today's queue",
+    },
     note: "Checking your session…",
   },
 

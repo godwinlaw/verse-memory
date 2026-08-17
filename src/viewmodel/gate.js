@@ -15,12 +15,17 @@ import { SCRAMBLE_LEVELS } from "../blanks.js";
 import { segButton } from "../ui/tokens.js";
 import { PRIMARY_DOMAIN } from "../firebase.js";
 
-/* The splash carries nothing but the app's identity: it is up before there is
- * any progress, profile, or account to show. It wears the sign-in gate's shell
- * on purpose (see views/splash.js), so a member sent there sees one screen
- * settle rather than two unrelated ones. */
-export function splashVals({ groupName, motto }) {
-  return { groupName, motto };
+/* The splash carries nothing but the app's identity and the shape of the wait:
+ * it is up before there is any progress, profile, or account to show. The three
+ * steps are the only thing on it drawn from data, and only just — `count` is
+ * the size of the set, which is known from the passage module at import time
+ * rather than from anything still loading. */
+export function splashVals({ groupName, passageCount }) {
+  return {
+    groupName,
+    steps: [copy.splash.steps.indexing(passageCount), copy.splash.steps.restoring, copy.splash.steps.queueing],
+    note: copy.splash.note,
+  };
 }
 
 export function authGateVals({ auth, groupName, motto, actions }) {
