@@ -15,6 +15,7 @@ const KEYS = {
   blankHint: "mv.blankHint",
   scrambleLevel: "mv.scrambleLevel",
   typeFirstLetter: "mv.typeFirstLetter",
+  voiceEngine: "mv.voiceEngine",
   examSetup: "mv.examSetup",
   reviewSetup: "mv.reviewSetup",
   learnSetup: "mv.learnSetup",
@@ -74,6 +75,9 @@ export const storage = {
   loadScrambleLevel: (fallback, count) => readIndex(KEYS.scrambleLevel, fallback, count),
   loadBlankHint: (fallback) => readBool(KEYS.blankHint, fallback),
   loadTypeFirstLetter: (fallback) => readBool(KEYS.typeFirstLetter, fallback),
+  /* Which engine recites into the box. Returned raw — recognizer.resolveEngine()
+   * is what decides whether this browser can still honour the choice. */
+  loadVoiceEngine: (fallback) => read(KEYS.voiceEngine) || fallback,
   // Hidden by default on a setup screen; left however a member last leaves it.
   loadExplainerOpen: (fallback) => readBool(KEYS.explainerOpen, fallback),
   /* The Test mode setup, as last left. Returned raw — exam.normalizeSetup() is
@@ -99,6 +103,7 @@ export const storage = {
   saveScrambleLevel: (level) => write(KEYS.scrambleLevel, level),
   saveBlankHint: (on) => writeBool(KEYS.blankHint, on),
   saveTypeFirstLetter: (on) => writeBool(KEYS.typeFirstLetter, on),
+  saveVoiceEngine: (engine) => write(KEYS.voiceEngine, engine),
   saveExamSetup: (setup) => write(KEYS.examSetup, JSON.stringify(setup)),
   saveReviewSetup: (setup) => write(KEYS.reviewSetup, JSON.stringify(setup)),
   saveLearnSetup: (setup) => write(KEYS.learnSetup, JSON.stringify(setup)),

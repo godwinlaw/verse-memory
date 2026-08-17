@@ -18,6 +18,8 @@ import { React, html, sx } from "./dom.js";
 import { dayKey } from "./text.js";
 import { commitsVerse, freshness, migrate, nextStability, reviewAward, reviewedLast } from "./srs.js";
 import { BLANK_LEVELS, SCRAMBLE_LEVELS } from "./blanks.js";
+import { clearSpoken, hearFinal, liveChunks, undoPhrase, undoWord } from "./voice.js";
+import { availableEngines, createRecognizer, DEFAULT_ENGINE, resolveEngine } from "./recognizer.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
 import { committedCount, dueOrder, freshnessSum, streakOf } from "./progress.js";
 import { DEFAULT_MODE, LEARN, LEARN_SIZE, REVIEW, SESSION_SIZE } from "./review.js";
@@ -33,6 +35,7 @@ import { appConfig } from "./config.js";
 import { initAuth, signIn, signOutUser, fetchRoster } from "./firebase.js";
 import { passages } from "../data/passages.js";
 import { buildViewModel, authGateVals, profileFormVals, splashVals } from "./viewmodel/index.js";
+import { RECALL_INPUT_ID } from "./viewmodel/review.js";
 import { splashView } from "./views/splash.js";
 import { headerView } from "./views/header.js";
 import { boardView } from "./views/board.js";
@@ -73,6 +76,24 @@ function focusBlank(index) {
   if (el) el.focus();
 }
 
+/* Follow the transcript down as recitation adds to it. Reaches for the DOM, so
+ * it lives beside focusBlank rather than in a view-model. */
+function scrollRecallToEnd() {
+  const el = document.getElementById(RECALL_INPUT_ID);
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+/* The microphone at rest: nothing heard, nothing pending, no complaint. Reset
+ * between cards, since an attempt's transcript belongs to that attempt. */
+const quietVoice = () => ({
+  status: "off",
+  interim: "",
+  chunks: [],
+  loadPct: 0,
+  error: null,
+  command: null,
+});
+
 function initialState() {
   return {
     loaded: false,
@@ -110,6 +131,11 @@ function initialState() {
     typed: "",
     typeGraded: false,
     typeFirstLetter: false,
+    // Reciting the passage aloud into that same box. `engines` is what this
+    // browser can offer, settled once at startup so no view-model ever has to
+    // ask the window a question; the rest is the running microphone. See
+    // voice.js for the transcript model and recognizer.js for the engines.
+    voice: { engines: [], engine: DEFAULT_ENGINE, ...quietVoice() },
     scrambleOrder: [],
     scrambleWrong: -1,
     scrambleMisses: 0, // chunks tried in the wrong place on this card
@@ -171,6 +197,11 @@ export class App extends React.Component {
   componentDidMount() {
     const profile = storage.loadProfile();
     const defaultDiff = profile.defaultDifficulty != null ? Number(profile.defaultDifficulty) : DEFAULT_DIFFICULTY;
+    // Asked once, here, because it is a question about the browser: which
+    // recognition engines exist at all, and whether the one this member last
+    // chose is among them (a device swap can leave a preference nothing honours).
+    const engines = availableEngines();
+    const storedEngine = storage.loadVoiceEngine(DEFAULT_ENGINE);
     this.setState({
       passages,
       progress: storage.loadProgress(),
@@ -179,6 +210,7 @@ export class App extends React.Component {
       blankLevel: storage.loadBlankLevel(defaultDiff, BLANK_LEVELS.length),
       blankHint: storage.loadBlankHint(this.state.blankHint),
       typeFirstLetter: storage.loadTypeFirstLetter(this.state.typeFirstLetter),
+      voice: { ...this.state.voice, engines, engine: resolveEngine(storedEngine, engines) || DEFAULT_ENGINE },
       scrambleLevel: storage.loadScrambleLevel(defaultDiff, SCRAMBLE_LEVELS.length),
       examSetup: normalizeSetup(storage.loadExamSetup()),
       reviewSetup: storage.loadReviewSetup(this.state.reviewSetup),
@@ -213,6 +245,104 @@ export class App extends React.Component {
     clearTimeout(this.ministryTimer);
     clearTimeout(this.splashTimer);
     clearTimeout(this.authWaitTimer);
+    this.stopListening();
+  }
+
+  /* ── reciting aloud ─────────────────────────────────────────────────────── */
+
+  /* Recitation is a second way to fill the recall box, not a second exercise:
+   * what a member says lands in `state.typed`, where grading.js finds it and
+   * srs.js marks it exactly as it marks something typed. So the only state
+   * unique to it is the microphone's — where the engine is, the phrase being
+   * heard right now, and the stack of settled phrases that "undo" walks back
+   * down (see voice.js).
+   *
+   * The recognizer itself is not state. It is a live object holding a
+   * microphone, so it hangs off the instance and is torn down rather than
+   * re-rendered — and it is never started by anything but the member. */
+
+  setVoice(patch) {
+    this.setState((s) => ({ voice: { ...s.voice, ...patch } }));
+  }
+
+  /* Let the microphone go. Always a full teardown rather than a pause: a
+   * recognizer is cheap to rebuild and a half-stopped one holding the mic open
+   * is not something worth being able to reach. */
+  stopListening() {
+    if (this.recognizer) this.recognizer.dispose();
+    this.recognizer = null;
+  }
+
+  /* The four callbacks every engine is driven through (see recognizer.js). */
+  voiceHandlers() {
+    return {
+      onStatus: (status, detail) => this.setVoice(status === "loading" ? { status, loadPct: detail || 0 } : { status }),
+      onPartial: (interim) => this.setVoice({ interim }),
+      onFinal: (text) => this.hearRecitation(text),
+      onError: (error) => {
+        this.stopListening();
+        this.setVoice({ status: "off", interim: "", error });
+      },
+    };
+  }
+
+  startVoice() {
+    this.stopListening();
+    const engine = resolveEngine(this.state.voice.engine, this.state.voice.engines);
+    const recognizer = engine && createRecognizer(engine, this.voiceHandlers());
+    if (!recognizer) return this.setVoice({ status: "off", interim: "", error: "no-engine" });
+    this.recognizer = recognizer;
+    this.setVoice({ status: "starting", interim: "", loadPct: 0, error: null, command: null });
+    recognizer.start();
+  }
+
+  stopVoice() {
+    this.stopListening();
+    this.setVoice({ status: "off", interim: "" });
+  }
+
+  toggleVoice() {
+    if (this.state.voice.status === "off") this.startVoice();
+    else this.stopVoice();
+  }
+
+  /* Switching engine always stops first. The member presses start again rather
+   * than the app restarting a microphone under them — and a Whisper start means
+   * a download, which is not something to trigger by nudging a toggle. */
+  setVoiceEngine(engine) {
+    storage.saveVoiceEngine(engine);
+    this.stopListening();
+    this.setVoice({ engine, status: "off", interim: "", loadPct: 0, error: null });
+  }
+
+  /* A phrase the engine has settled on. It is either an instruction — "scratch
+   * that" — or it is scripture, and voice.hearFinal() is what tells them apart.
+   *
+   * Guarded rather than trusted: an engine can deliver one last phrase after the
+   * member has moved on, submitted, or switched the first-letter scaffold on,
+   * and none of those should take dictation. */
+  hearRecitation(text) {
+    if (this.state.mode !== "type" || this.state.typeFirstLetter || this.cardSubmitted()) return;
+    this.setState(
+      (s) => {
+        const heard = hearFinal(s.typed, s.voice.chunks, text);
+        return {
+          typed: heard.typed,
+          voice: { ...s.voice, chunks: heard.chunks, interim: "", command: heard.command },
+        };
+      },
+      () => scrollRecallToEnd(),
+    );
+  }
+
+  /* One step back down the transcript, by whichever measure the member asked
+   * for (see voice.js — phrase, word, or all of it). */
+  editTranscript(step) {
+    if (this.cardSubmitted()) return;
+    this.setState((s) => {
+      const next = step(s.typed, s.voice.chunks);
+      return { typed: next.typed, voice: { ...s.voice, chunks: next.chunks, command: null } };
+    });
   }
 
   /* ── configuration ──────────────────────────────────────────────────────── */
@@ -421,7 +551,11 @@ export class App extends React.Component {
    * cost, since peeks and wrong tries are per attempt. What a submitted card
    * was worth lives in `results`, keyed by passage, and survives. */
   resetCard() {
-    this.setState({
+    // The microphone belongs to the attempt, not to the session: leaving it hot
+    // across a card change would have the next passage recorded against the one
+    // the member has walked away from.
+    this.stopListening();
+    this.setState((s) => ({
       revealed: false,
       flipLetters: false,
       showHelp: false,
@@ -430,11 +564,12 @@ export class App extends React.Component {
       blanksChecked: false,
       typed: "",
       typeGraded: false,
+      voice: { ...s.voice, ...quietVoice() },
       scrambleOrder: [],
       scrambleWrong: -1,
       scrambleMisses: 0,
       reviewMoveAsk: null,
-    });
+    }));
   }
 
   /* Hand the card in. The view-model grades the attempt for display, so it is
@@ -443,8 +578,14 @@ export class App extends React.Component {
     const id = this.state.queue[this.state.qi];
     if (id == null || this.state.results[id]) return;
     this.record(id, score);
+    // The paper is in, so nothing more can be said into it.
+    this.stopListening();
     // Both panels show their marked state once the paper is in.
-    this.setState({ blanksChecked: true, typeGraded: true });
+    this.setState((s) => ({
+      blanksChecked: true,
+      typeGraded: true,
+      voice: { ...s.voice, status: "off", interim: "" },
+    }));
   }
 
   /* Whether the card in front of us has already been handed in — after which
@@ -480,7 +621,13 @@ export class App extends React.Component {
   /* Leaving part-way through keeps every card already submitted — only the rest
    * of the queue is dropped — which is still worth confirming. */
   leaveReview() {
-    this.setState({ view: "board", reviewLeaveAsk: false, reviewMoveAsk: null });
+    this.stopListening();
+    this.setState((s) => ({
+      view: "board",
+      reviewLeaveAsk: false,
+      reviewMoveAsk: null,
+      voice: { ...s.voice, ...quietVoice() },
+    }));
   }
 
   placeChunk(index) {
@@ -703,17 +850,38 @@ export class App extends React.Component {
         set({ blankHint: on });
       },
 
-      // review — write it out
+      // review — from memory (typed, or recited aloud)
+      // A hand edit can write over words recitation put there, so the phrase
+      // stack is reconciled against the transcript on every keystroke; a chunk
+      // no longer sitting where it left its words stops being undoable.
       setTyped: (typed) => {
-        if (!this.cardSubmitted()) set({ typed });
+        if (this.cardSubmitted()) return;
+        this.setState((s) => ({
+          typed,
+          voice: { ...s.voice, chunks: liveChunks(typed, s.voice.chunks), command: null },
+        }));
       },
       toggleTypeFirstLetter: () => {
         // Switching this changes how the input is graded, so drop any in-progress
-        // answer and fall back to the ungraded state.
+        // answer and fall back to the ungraded state. There is no reciting a
+        // first-letter scaffold, so the microphone goes off with it.
         const on = !this.state.typeFirstLetter;
         storage.saveTypeFirstLetter(on);
-        set({ typeFirstLetter: on, typed: "", typeGraded: false });
+        this.stopListening();
+        this.setState((s) => ({
+          typeFirstLetter: on,
+          typed: "",
+          typeGraded: false,
+          voice: { ...s.voice, ...quietVoice() },
+        }));
       },
+
+      // review — reciting aloud
+      toggleVoice: () => this.toggleVoice(),
+      setVoiceEngine: (engine) => this.setVoiceEngine(engine),
+      undoVoicePhrase: () => this.editTranscript(undoPhrase),
+      undoVoiceWord: () => this.editTranscript(undoWord),
+      clearVoice: () => this.editTranscript(clearSpoken),
 
       // review — order the phrases
       placeChunk: (index) => this.placeChunk(index),

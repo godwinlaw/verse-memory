@@ -210,7 +210,7 @@ test("the setup screen explains what freshness is and what each activity pays, o
   const markup = shown("review-setup/explainer-open");
   assert.match(markup, /How it works/);
   assert.match(markup, /forgetting curve/);
-  assert.match(markup, /Write it out<\/span>/);
+  assert.match(markup, /From memory<\/span>/);
   assert.match(markup, /Up to 100%, on a clean attempt/, "writing it out pays in full");
   assert.match(markup, /Up to 90%, on a clean attempt/, "and ordering the phrases pays the least");
   assert.match(markup, /Each press of Peek costs 5%/);
@@ -229,10 +229,10 @@ test("both setup screens name the explanation 'How it works', hidden until opene
 
   const learnClosed = shown("learn-setup/default");
   assert.match(learnClosed, /How it works/);
-  assert.doesNotMatch(learnClosed, /write the whole thing out from memory/);
+  assert.doesNotMatch(learnClosed, /give the whole thing back from memory/);
 
   const learnOpen = shown("learn-setup/explainer-open");
-  assert.match(learnOpen, /write the whole thing out from memory/);
+  assert.match(learnOpen, /give the whole thing back from memory/);
 });
 
 /* ── the guide ────────────────────────────────────────────────────────────── */
@@ -296,7 +296,7 @@ test("and teaches the two words it does keep, rather than dodging them", () => {
   // "committed" and "freshness" are printed on every other screen, so a synonym
   // here would match nothing the member goes on to see.
   const markup = shown("guide/default");
-  assert.match(markup, /only counts as committed when you can write the whole thing out from memory/);
+  assert.match(markup, /only counts as committed when you can say or write the whole thing from memory/);
   assert.match(markup, /it calls that freshness/);
 });
 
@@ -311,7 +311,7 @@ test("the board splits the set into what to review and what to learn", () => {
   assert.match(markup, /Review today/);
   assert.match(markup, /Learn today/);
   assert.match(markup, /committed · faded to 75% or below/, "and says what each queue is");
-  assert.match(markup, /write one out in full to commit it/);
+  assert.match(markup, /give one back in full to commit it/);
 });
 
 test("each queue says why it is empty, and they say different things", () => {
@@ -331,7 +331,7 @@ test("the learn screen leads with 'How it works', and opening it explains what c
   assert.match(markup, /Start learning/);
 
   const open = shown("learn-setup/explainer-open");
-  assert.match(open, /write the whole thing out from memory/);
+  assert.match(open, /give the whole thing back from memory/);
   assert.match(open, /95% of the words right/, "the bar is quoted from the model, not prose");
   assert.match(open, /Take as many attempts as you like/);
 });
@@ -357,38 +357,38 @@ test("a member with nothing committed is sent to learn, not review", () => {
 
 test("a learn session says what this card would take to commit the verse", () => {
   const writing = shown("learn/writing");
-  assert.match(writing, /Learn · Write it out/, "the session names itself");
+  assert.match(writing, /Learn · From memory/, "the session names itself");
   assert.match(writing, /To commit/);
   assert.match(writing, /95% of the words right, without peeking/);
 
   const practising = shown("learn/practising");
-  assert.match(practising, /Write the passage in full to commit/);
+  assert.match(practising, /Recite or type the passage in full to commit/);
 
   assert.match(
     shown("learn/scaffolded"),
-    /Write the passage in full to commit/,
+    /Recite or type the passage in full to commit/,
     "first letters is a hint, not a write-out",
   );
 });
 
 test("a review session says none of that", () => {
   const markup = shown("review/type-empty");
-  assert.match(markup, /Review · Write it out/);
+  assert.match(markup, /Review · From memory/);
   assert.doesNotMatch(markup, /To commit/, "review is not trying to commit anything");
   assert.doesNotMatch(markup, /Practice counts/);
 });
 
 test("committing a verse is marked on the card that did it", () => {
   const markup = shown("learn/committed");
-  assert.match(markup, /wrote the passage out in full from memory/);
+  assert.match(markup, /gave the passage back in full from memory/);
   assert.match(markup, /moves to your review list/);
 
-  assert.doesNotMatch(shown("learn/writing"), /wrote the passage out in full/, "before it is earned");
+  assert.doesNotMatch(shown("learn/writing"), /gave the passage back in full/, "before it is earned");
 });
 
 test("a verse already committed is shown as such rather than re-explained", () => {
   const markup = shown("learn/already-committed");
-  assert.match(markup, /written this one out in full from memory/);
+  assert.match(markup, /given this one back in full from memory/);
   assert.doesNotMatch(markup, /To commit</);
 });
 
@@ -437,7 +437,7 @@ test("a learn card reports whether it committed, not a freshness delta", () => {
 
   const missed = shown("learn/practising");
   assert.match(shown("learn/writing"), /A peek means this attempt cannot commit/, "and peeks cost a commitment");
-  assert.match(missed, /Write the passage in full to commit/);
+  assert.match(missed, /Recite or type the passage in full to commit/);
 });
 
 test("the learn session's dialogs say what is at stake in its own terms", () => {
@@ -552,4 +552,97 @@ test("the summary shows a mark, the freshness each verse landed on, and the pape
 test("a verse that came out of a test weaker is marked faded", () => {
   assert.match(shown("test/summary-faded"), /faded/);
   assert.doesNotMatch(shown("test/summary"), /faded/, "verses that only gained are not flagged");
+});
+
+/* ── reciting aloud ───────────────────────────────────────────────────────────
+ *
+ * A microphone is offered on exactly one card — the recall activity, with the
+ * first-letter scaffold off and the paper not yet handed in — and it fills the
+ * same box typing fills. These are the states the bar has to be able to be in,
+ * and the two places it must not appear. */
+
+test("the microphone is offered on the recall card, and nowhere else", () => {
+  assert.match(shown("voice/idle"), /Recite aloud/);
+  assert.match(shown("voice/idle"), /Start reciting/);
+  for (const elsewhere of ["review/blanks", "review/scramble", "review/flip-hidden"]) {
+    assert.doesNotMatch(shown(elsewhere), /Recite aloud/, `${elsewhere} has no box to recite into`);
+  }
+});
+
+test("a browser that cannot listen says so rather than showing a dead button", () => {
+  const markup = shown("voice/unsupported");
+  assert.match(markup, /This browser cannot listen/);
+  assert.doesNotMatch(markup, /Start reciting/);
+});
+
+test("the first-letter scaffold turns the microphone off, and says which switch did it", () => {
+  const markup = shown("voice/scaffold-on");
+  assert.match(markup, /Reciting is off while you are typing first letters only/);
+  assert.doesNotMatch(markup, /Start reciting/);
+});
+
+test("a live microphone is visible as live, not only as a label", () => {
+  const idle = shown("voice/idle");
+  const live = shown("voice/hearing");
+  assert.doesNotMatch(idle, /class="mic-dot is-live"/);
+  assert.match(live, /class="mic-dot is-live"/, "the dot beats while the engine is listening");
+  assert.match(live, /class="voice-bar is-live"/, "and the whole bar carries it");
+  assert.match(live, /Stop reciting/, "the one button reads as the way out of listening");
+});
+
+test("the phrase being heard is shown, but is kept out of the graded box", () => {
+  const markup = shown("voice/hearing");
+  assert.match(markup, /Hearing/);
+  assert.match(markup, /and these words that I command you/, "the half-heard phrase is on screen");
+  // It is a ghost tail beside the box, not text inside it — the grader must
+  // never see a word the engine has not settled on.
+  assert.match(markup, /class="voice-interim"/);
+  const box = /<textarea[^>]*>([^<]*)<\/textarea>/.exec(markup);
+  assert.ok(box, "the transcript box is still there while listening");
+  assert.doesNotMatch(box[1], /these words that I command you/);
+  assert.match(box[1], /Hear O Israel/, "what has settled is in it");
+});
+
+test("the way back is three sizes, and disabled while there is nothing to take back", () => {
+  const empty = shown("voice/idle");
+  for (const step of ["Back a word", "Undo last phrase", "Clear"]) assert.match(empty, new RegExp(step));
+  assert.equal((empty.match(/disabled=""/g) || []).length >= 3, true, "nothing said yet, nothing to undo");
+  // Say something and all three become live.
+  const said = shown("voice/hearing");
+  assert.doesNotMatch(said, /disabled="">\s*Back a word/);
+  assert.match(said, /You can also say “scratch that”/, "and the same three can be spoken");
+});
+
+test("obeying a spoken instruction is not silent", () => {
+  assert.match(shown("voice/took-it-back"), /Took back the last phrase/);
+  assert.doesNotMatch(shown("voice/idle"), /Took back/);
+});
+
+test("the engine picker appears only when there is a choice to make", () => {
+  assert.doesNotMatch(shown("voice/idle"), /Heard by/, "one engine is not a choice");
+  const both = shown("voice/loading-model");
+  assert.match(both, /Heard by/);
+  assert.match(both, />Browser</);
+  assert.match(both, />On device</);
+});
+
+test("the model download and the wait after a phrase both explain themselves", () => {
+  assert.match(shown("voice/loading-model"), /Downloading the voice model — 42%\. This happens once\./);
+  assert.match(shown("voice/working"), /Writing down what you said/);
+  assert.match(shown("voice/starting"), /Starting the microphone/);
+});
+
+test("a blocked microphone says what to do about it", () => {
+  const markup = shown("voice/blocked");
+  assert.match(markup, /The microphone was blocked\. Allow it in your browser/);
+  assert.match(markup, /Start reciting/, "and the way to try again is still there");
+});
+
+test("a learn session says reciting commits a verse; a review session does not", () => {
+  assert.match(shown("voice/idle"), /Reciting counts the same as typing/);
+  assert.doesNotMatch(
+    shown("voice/review-session"),
+    /Reciting counts the same as typing/,
+    "review is not playing for a commitment",
+  );
 });

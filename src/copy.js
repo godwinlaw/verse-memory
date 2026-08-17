@@ -153,7 +153,7 @@ export const copy = {
     reviewQueueNote: (dueFreshness) => "committed · faded to " + dueFreshness + "% or below",
     reviewQueueEmpty: "Nothing to review. Every verse you have committed is still fresh.",
     reviewQueueEmptyNoneCommitted: "Nothing to review yet — a verse arrives here once you have committed it.",
-    learnQueueNote: "not committed · write one out in full to commit it",
+    learnQueueNote: "not committed · give one back in full to commit it",
     learnQueueEmpty: "Every passage in the set is committed. Nothing left to learn.",
     /* A verse in the learn queue has no freshness worth quoting yet. */
     freshNew: "new",
@@ -252,7 +252,7 @@ export const copy = {
 
     commitTitle: "How it works",
     commitBody: (bar) =>
-      "A passage is committed when you write the whole thing out from memory — " +
+      "A passage is committed when you give the whole thing back from memory — recited aloud or typed, " +
       bar +
       "% of the words right, with the first-letter scaffold off and without peeking. " +
       "Take as many attempts as you like; only the one you get right counts, and none of them cost you anything.",
@@ -331,14 +331,49 @@ export const copy = {
     blanksResult: (right, total) => right + " of " + total + " right",
     blanksCount: (total) => total + " blanks",
 
-    /* write it out */
+    /* from memory — typed, or recited aloud */
     typeFirstLetterLabel: "First letters only",
     typeFirstLetterNote: "Type just the first letter of each word instead of the whole passage.",
-    typePlaceholder: "Type the passage from memory. Punctuation and capitals are ignored.",
+    typePlaceholder: "Type the passage from memory, or recite it aloud. Punctuation and capitals are ignored.",
     typeFirstLetterPlaceholder:
       "Type just the first letter of each word — e.g. “f t h w”. Spacing and punctuation are ignored.",
     typeRevealed: "words revealed",
     typeMatched: "words matched",
+
+    /* reciting aloud. The transcript is the same box a member could have typed
+     * in, so everything here is about the microphone and the way back from a
+     * misheard word — see voice.js for the three sizes of step. */
+    voiceLabel: "Recite aloud",
+    voiceStart: "Start reciting",
+    voiceStop: "Stop reciting",
+    voiceEngineLabel: "Heard by",
+    voiceHearing: "Hearing",
+    voiceStatusStarting: "Starting the microphone…",
+    voiceStatusListening: "Listening — say the passage.",
+    voiceStatusWorking: "Writing down what you said…",
+    voiceStatusLoading: (pct) =>
+      pct > 0 ? "Downloading the voice model — " + pct + "%. This happens once." : "Loading the voice model…",
+    /* Said once, beside the controls, so the way back is on screen rather than
+     * something a member has to remember. */
+    voiceUndoPhrase: "Undo last phrase",
+    voiceUndoWord: "Back a word",
+    voiceClear: "Clear",
+    voiceCommandHint: "You can also say “scratch that”, “backspace”, or “start over”.",
+    voiceCommandUndo: "Took back the last phrase.",
+    voiceCommandBack: "Took back a word.",
+    voiceCommandClear: "Cleared — start the passage again.",
+    /* Reciting is free recall, so it commits a verse exactly as typing does.
+     * Worth saying out loud, because it is not obvious that talking counts. */
+    voiceCommitNote: "Reciting counts the same as typing — a clean recitation commits the verse.",
+    voiceScaffoldOff: "Reciting is off while you are typing first letters only.",
+    voiceUnsupported: "This browser cannot listen. Type the passage instead.",
+    voiceErrors: {
+      "not-allowed": "The microphone was blocked. Allow it in your browser, then try again.",
+      "no-microphone": "No microphone was found. Type the passage instead.",
+      network: "The voice service could not be reached. Type the passage instead.",
+      "no-engine": "This browser cannot listen. Type the passage instead.",
+      failed: "Something went wrong listening. Try again, or type the passage.",
+    },
 
     /* order the phrases */
     scrambleLabel: "Granularity",
@@ -351,9 +386,9 @@ export const copy = {
     /* what the card is playing for — a learn session's voice */
     commitDoneTag: "Committed",
     commitTodoTag: "To commit",
-    commitDoneNote: "Committed. You have written this one out in full from memory.",
+    commitDoneNote: "Committed. You have given this one back in full from memory.",
     commitWritingNote: (bar) => "Get " + bar + "% of the words right, without peeking, and this verse is committed.",
-    commitOtherNote: "Write the passage in full to commit the verse into your memory bank.",
+    commitOtherNote: "Recite or type the passage in full to commit the verse into your memory bank.",
     peekCostsCommit: "A peek means this attempt cannot commit the verse.",
     peekSpentCommit: "Peeked — this attempt can no longer commit the verse.",
 
@@ -379,10 +414,11 @@ export const copy = {
     learnCommitted: "Committed",
     learnStillCommitted: "Still committed",
     learnNotYet: "Not committed yet",
-    learnCommittedNote: "You wrote the passage out in full from memory. It moves to your review list from here.",
+    learnCommittedNote: "You gave the passage back in full from memory. It moves to your review list from here.",
     learnStillCommittedNote: "You already have this one. Keep it in your review list.",
-    learnWriteOutNote: (bar) => "A full write-out from memory is what commits it — " + bar + "% of the words, unaided.",
-    learnPracticeNote: "Practice recorded. Writing the passage out in full is what commits it.",
+    learnWriteOutNote: (bar) =>
+      "Giving the whole passage back from memory is what commits it — " + bar + "% of the words, unaided.",
+    learnPracticeNote: "Practice recorded. Giving the passage back in full is what commits it.",
 
     /* leaving, and walking off an unsubmitted card */
     leaveTitle: "Leave the session?",
@@ -540,14 +576,15 @@ export const copy = {
     kicker: "The guide",
     title: "How this app works",
     lead:
-      "Two ideas run this whole app. First: a verse only counts as committed when you can write the whole thing " +
-      "out from memory. Second: after you learn a verse, you slowly start to forget it. " +
+      "Two ideas run this whole app. First: a verse only counts as committed when you can say or write the whole " +
+      "thing from memory. Second: after you learn a verse, you slowly start to forget it. " +
       "The app keeps track of how much you still remember — it calls that freshness — and asks for the verse back " +
       "before you lose it.",
 
     commitTitle: "Committing a verse to memory",
     commitBody: (bar) =>
-      "A verse becomes committed when you write the whole thing out from memory. You need " +
+      "A verse becomes committed when you give the whole thing back from memory. Say it out loud into your " +
+      "phone, or type it — either one counts. You need " +
       bar +
       "% of the words right, with the first-letter hints turned off, and no peeking. " +
       "Try as many times as you want. Only the try you get right counts, and the ones you miss cost you nothing.",
@@ -555,7 +592,7 @@ export const copy = {
     commitFromNote: "not committed yet",
     commitTo: "Review",
     commitToNote: "committed — now you keep it fresh",
-    commitStamp: "wrote it out from memory",
+    commitStamp: "gave it back from memory",
     commitFoot:
       "Nothing sends a verse back the other way. Mistakes can cost you freshness, but you won't lose a verse you " +
       "have already committed.",

@@ -1412,6 +1412,45 @@ textarea.input {
   transition: border-color 240ms linear;
 }
 
+/* ── reciting aloud ─────────────────────────────────────────────────────────
+   A microphone is the one control in the app whose state the member cannot see
+   by looking at it, so the fact that it is live has to be the thing that moves.
+   Two parts, and only two: a dot that beats while the engine is listening, and
+   the phrase being heard, which is faint and unsettled until it lands in the
+   box as ordinary text. Everything else about the bar is still. */
+.mic-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  background: currentColor;
+  opacity: 0.4;
+  transition: opacity 200ms linear;
+}
+.mic-dot.is-live {
+  opacity: 1;
+  animation: mic-pulse 1.4s var(--ease-out) infinite;
+}
+@keyframes mic-pulse {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+/* The live border on the whole bar, so the member can tell at a glance across
+   the card, not only at the button. */
+.voice-bar {
+  transition: border-color 240ms linear;
+}
+.voice-bar.is-live {
+  border-color: var(--color-accent);
+}
+/* Words the engine has not committed to yet. They arrive as they are heard and
+   are replaced wholesale on the next partial, so they fade rather than slide —
+   a moving tail under a passage being recited is noise. */
+.voice-interim {
+  animation: fade-in 180ms linear backwards;
+}
+
 /* ── the passage list ───────────────────────────────────────────────────────
    The bar over the ticked rows is not there until something is ticked, so it
    arrives from under the header it pushes down. */
@@ -1479,6 +1518,7 @@ textarea.input {
   .result-strip,
   .reveal-in,
   .chunk,
+  .voice-interim,
   .shell-settle,
   .selection-bar,
   .dialog-backdrop,
@@ -1493,8 +1533,15 @@ textarea.input {
   .chunk,
   .option,
   .tick,
-  .blank-input {
+  .blank-input,
+  .voice-bar,
+  .mic-dot {
     transition: none;
+  }
+  /* The one thing that must still read as live without moving: the dot stays
+     lit rather than beating, so "the microphone is on" survives the setting. */
+  .mic-dot.is-live {
+    animation: none;
   }
   /* Moving under the pointer is the only hover in this block that is motion
      rather than colour, so it is the only one dropped. */

@@ -107,8 +107,86 @@ function blanksPanel(v) {
   </div>`;
 }
 
-/* Write it out: free recall, graded word by word. In first-letter mode it is a
- * live drill — the reveal updates as you type, with no separate grade step. */
+/* Reciting aloud: the microphone, the way back from a misheard word, and the
+ * phrase currently being heard.
+ *
+ * It sits above the box rather than beside it because it is a way of filling
+ * that box — what a member says lands in the same transcript they could have
+ * typed, and everything below the bar is unchanged by which way it arrived.
+ *
+ * The three undo steps are three buttons in one row, biggest step last, because
+ * a member reaches for them in the moment a phrase lands wrong and should not
+ * have to choose from a menu. The same three can be spoken (see voice.js). */
+function voicePanel(v) {
+  return html`<div
+    className=${"voice-bar" + (v.voiceOn ? " is-live" : "")}
+    style=${sx("display:flex;flex-direction:column;gap:10px;padding:12px 14px;border:1px solid var(--color-divider)")}
+  >
+    <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+      <span style=${sx(LABEL_SECTION)}>${v.voiceLabel}</span>
+      ${
+        v.voiceSupported
+          ? html`<${React.Fragment}
+              ><button
+                className=${v.voiceOn ? "btn btn-primary" : "btn btn-secondary"}
+                onClick=${v.voiceToggle}
+                style=${sx("font-size:12px;padding:4px 12px;display:inline-flex;align-items:center;gap:8px")}
+              >
+                <span className=${"mic-dot" + (v.voiceOn ? " is-live" : "")}></span>${v.voiceToggleLabel}
+              </button>
+              ${
+                v.voiceEngines.length > 0 &&
+                html`<${React.Fragment}
+                  ><span style=${sx(`font-size:12px;color:${muted(55)}`)}>${v.voiceEngineLabel}</span>
+                  <div style=${sx("display:flex;gap:6px")}>
+                    ${v.voiceEngines.map((e) => html`<button key=${e.key} className="seg-btn" title=${e.title} onClick=${e.onClick} style=${sx(e.style)}>${e.label}</button>`)}
+                  </div></${React.Fragment}
+                >`
+              }
+              <span aria-live="polite" style=${sx(`font-size:12px;color:${muted(60)}`)}>${v.voiceStatus}</span></${React.Fragment}
+            >`
+          : html`<span style=${sx(`font-size:12px;color:${muted(55)}`)}>${v.voiceUnsupported}</span>`
+      }
+    </div>
+    ${v.voiceError && html`<div style=${sx(v.voiceErrorStyle)}>${v.voiceError}</div>`}
+    ${
+      v.voiceSupported &&
+      html`<div style=${sx("display:flex;align-items:center;gap:8px;flex-wrap:wrap")}>
+        ${[v.voiceUndoWord, v.voiceUndoPhrase, v.voiceClear].map(
+          (step) =>
+            html`<button
+              key=${step.label}
+              className="btn btn-ghost"
+              onClick=${step.onClick}
+              disabled=${step.disabled}
+              style=${sx("font-size:12px;padding:3px 10px")}
+            >
+              ${step.label}
+            </button>`,
+        )}
+        <span style=${sx(`font-size:12px;color:${muted(50)}`)}>${v.voiceCommandHint}</span>
+      </div>`
+    }
+    ${
+      // The phrase being heard right now — deliberately not in the box, since
+      // it is not settled yet and the grader must never see a half-heard word.
+      v.voiceInterim &&
+      html`<div style=${sx("display:flex;align-items:baseline;gap:10px")}>
+        <span style=${sx(LABEL_META)}>${v.voiceHearingLabel}</span>
+        <span className="voice-interim" style=${sx(`font-size:17px;line-height:1.6;color:${muted(45)}`)}
+          >${v.voiceInterim}</span
+        >
+      </div>`
+    }
+    ${v.voiceCommandNote && html`<div className="item-in" style=${sx(`font-size:12px;color:${muted(60)}`)}>${v.voiceCommandNote}</div>`}
+    ${v.voiceCommitNote && html`<div style=${sx(`font-size:12px;color:${muted(55)}`)}>${v.voiceCommitNote}</div>`}
+  </div>`;
+}
+
+/* From memory: free recall, graded word by word, given either by typing or by
+ * reciting into the same box (see voicePanel). In first-letter mode it is a
+ * live drill instead — the reveal updates as you type, with no separate grade
+ * step, and there is nothing to recite. */
 function typePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:18px")}>
     <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
@@ -117,7 +195,9 @@ function typePanel(v) {
         ${v.typeFirstLetterOn ? copy.common.on : copy.common.off}
       </button>
       <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${copy.review.typeFirstLetterNote}</span>
+      ${v.voiceScaffoldNote && html`<span style=${sx(`font-size:12px;color:${muted(45)}`)}>${v.voiceScaffoldNote}</span>`}
     </div>
+    ${v.voiceShown && voicePanel(v)}
     ${
       v.typeLive
         ? html`<${React.Fragment}
@@ -141,7 +221,7 @@ function typePanel(v) {
             </div></${React.Fragment}
           >`
         : html`<${React.Fragment}
-            >${v.typeUngraded && html`<textarea className="input" value=${v.typed} onChange=${v.onTyped} placeholder=${v.typePlaceholder} style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
+            >${v.typeUngraded && html`<textarea id=${v.typeInputId} className="input" value=${v.typed} onChange=${v.onTyped} placeholder=${v.typePlaceholder} style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
             ${
               v.typeGraded &&
               // Nothing grades the attempt until it is submitted, so this is
