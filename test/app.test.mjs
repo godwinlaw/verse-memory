@@ -539,46 +539,42 @@ test("a hand-picked session survives, so the other half can be taken next", () =
 /* ── reciting aloud ───────────────────────────────────────────────────────────
  *
  * Recognition needs a browser, so what is driven here is the seam below it: the
- * four callbacks an engine calls (App.voiceHandlers) and the three undo actions.
- * That is the whole of what the shell does with a voice — the transcript model
- * itself is pure and tested in test/voice.test.mjs. */
+ * phrases the engine hands over (App.hearRecitation) and the one switch. Where
+ * the words go is pure and tested in test/voice.test.mjs. */
 
 /* A learn session on the recall card, as if a microphone were open on it. */
 function reciting(over) {
   const a = learnSession("type", over);
-  a.setVoice({ engines: ["web-speech"], status: "listening" });
+  a.setVoice({ supported: true, status: "listening" });
   return a;
 }
 
-/* Phrases arriving from the engine, one settled utterance at a time. */
-const say = (a, ...phrases) => phrases.forEach((p) => a.voiceHandlers().onFinal(p));
+/* Phrases arriving from the engine. A bare string is a settled one. */
+const say = (a, ...phrases) =>
+  phrases.forEach((p) => (Array.isArray(p) ? a.hearRecitation(p[0], p[1]) : a.hearRecitation(p, true)));
 
-test("a recited phrase lands in the same box typing fills", () => {
+test("a recited phrase lands in the same box typing fills, capitalised", () => {
   const a = reciting();
-  say(a, "Hear O Israel", "the LORD our God");
+  say(a, "hear O Israel", "the LORD our God");
   assert.equal(a.state.typed, "Hear O Israel the LORD our God");
-  assert.equal(a.state.voice.chunks.length, 2, "and each phrase is recorded, so it can be taken back");
 });
 
-test("the phrase being heard is held outside the transcript until it settles", () => {
+test("words appear in the box as they are spoken, without piling up", () => {
   const a = reciting();
-  a.voiceHandlers().onPartial("Hear O Isra");
-  assert.equal(a.state.voice.interim, "Hear O Isra");
-  assert.equal(a.state.typed, "", "nothing half-heard reaches the grader");
-  say(a, "Hear O Israel");
-  assert.equal(a.state.typed, "Hear O Israel");
-  assert.equal(a.state.voice.interim, "", "and the tail is spent once the phrase lands");
+  say(a, ["hear", false], ["hear O", false], ["hear O Israel", false]);
+  assert.equal(a.state.typed, "Hear O Israel", "each revision replaces the last");
+  say(a, ["hear O Israel", true], ["the LORD", false]);
+  assert.equal(a.state.typed, "Hear O Israel the LORD");
 });
 
 test("reciting a passage cleanly commits the verse, exactly as typing it would", () => {
   const a = learnSession("type");
   const verse = a.state.passages.find((p) => p.id === 4);
-  a.setVoice({ engines: ["web-speech"], status: "listening" });
-  // Said in three breaths, as an engine would deliver it.
+  a.setVoice({ supported: true, status: "listening" });
+  // Said in three breaths, as the engine would deliver it.
   const words = verse.text.split(" ");
   const third = Math.ceil(words.length / 3);
   say(a, words.slice(0, third).join(" "), words.slice(third, third * 2).join(" "), words.slice(third * 2).join(" "));
-  assert.equal(a.state.typed, verse.text);
 
   a.actions.submitCard(1);
   assert.equal(a.state.progress[4].status, "memorized");
@@ -586,52 +582,36 @@ test("reciting a passage cleanly commits the verse, exactly as typing it would",
   assert.ok(COMMIT_SCORE <= 1);
 });
 
-test("the three undo steps take back a word, a phrase, and all of it", () => {
+test("correcting by hand settles the box, so the next phrase appends after it", () => {
   const a = reciting();
-  say(a, "Hear O Israel", "the LORD our God");
+  say(a, "hear O Israel", ["the LORD our dog", false]);
+  a.actions.setTyped("Hear O Israel the LORD our God");
+  assert.equal(a.state.voice.tail, a.state.typed.length, "the member has taken it over");
 
-  a.actions.undoVoiceWord();
-  assert.equal(a.state.typed, "Hear O Israel the LORD our");
-
-  a.actions.undoVoicePhrase();
-  assert.equal(a.state.typed, "Hear O Israel the LORD", "the tail was edited, so it falls back to a word");
-
-  a.actions.clearVoice();
-  assert.equal(a.state.typed, "");
-  assert.deepEqual(a.state.voice.chunks, []);
+  say(a, ["the LORD is one", false]);
+  assert.equal(a.state.typed, "Hear O Israel the LORD our God the LORD is one", "their edit is not overwritten");
 });
 
-test("undo takes whole phrases while the transcript is still what was said", () => {
-  const a = reciting();
-  say(a, "Hear O Israel", "the LORD our God", "the LORD is one");
-  a.actions.undoVoicePhrase();
-  assert.equal(a.state.typed, "Hear O Israel the LORD our God");
-  a.actions.undoVoicePhrase();
-  assert.equal(a.state.typed, "Hear O Israel");
-});
+test("the switch turns the microphone on and off, and off keeps what was said", () => {
+  const a = reciting({}, {});
+  a.setVoice({ status: "off" });
+  a.actions.toggleVoice();
+  // Nothing in Node offers recognition, so this is the path a member on Firefox
+  // takes: it reports rather than failing quietly.
+  assert.equal(a.state.voice.status, "off");
+  assert.equal(a.state.voice.error, "failed");
 
-test("a spoken instruction is obeyed rather than written down, and says so", () => {
-  const a = reciting();
-  say(a, "Hear O Israel", "the LORD our dog");
-  say(a, "scratch that");
-  assert.equal(a.state.typed, "Hear O Israel");
-  assert.equal(a.state.voice.command, "undo", "so the card can report what just happened");
-
-  say(a, "the LORD our God");
-  assert.equal(a.state.voice.command, null, "and scripture clears the report");
-  assert.equal(a.state.typed, "Hear O Israel the LORD our God");
-});
-
-test("typing over a recited phrase stops it being undoable as a phrase", () => {
-  const a = reciting();
-  say(a, "Hear O Israel", "the LORD our God");
-  a.actions.setTyped("Hear O Israel the Lord our God");
-  assert.equal(a.state.voice.chunks.length, 1, "the phrase written over no longer counts");
+  const b = reciting();
+  say(b, ["hear O Israel", false]);
+  b.actions.toggleVoice();
+  assert.equal(b.state.voice.status, "off");
+  assert.equal(b.state.typed, "Hear O Israel", "the last thing they said is theirs to keep");
+  assert.equal(b.state.voice.tail, b.state.typed.length);
 });
 
 test("nothing is taken down once the card has been handed in", () => {
   const a = reciting();
-  say(a, "Hear O Israel");
+  say(a, "hear O Israel");
   a.actions.submitCard(0.5);
   say(a, "the LORD our God");
   assert.equal(a.state.typed, "Hear O Israel", "the mark is final, so the transcript is too");
@@ -641,19 +621,19 @@ test("nothing is taken down once the card has been handed in", () => {
 test("a late phrase from another activity, or from the scaffold, is dropped", () => {
   const other = reciting();
   other.actions.setMode("blanks");
-  say(other, "Hear O Israel");
+  say(other, "hear O Israel");
   assert.equal(other.state.typed, "", "there is no recall box to recite into");
 
   const scaffolded = reciting();
   scaffolded.actions.toggleTypeFirstLetter();
-  say(scaffolded, "Hear O Israel");
+  say(scaffolded, "hear O Israel");
   assert.equal(scaffolded.state.typed, "", "and no reciting a first-letter drill");
   assert.equal(scaffolded.state.voice.status, "off");
 });
 
 test("the transcript and the microphone belong to the card, not the session", () => {
   const a = reciting();
-  say(a, "Hear O Israel");
+  say(a, "hear O Israel");
   // An unsubmitted card is confirmed before it is walked off, recited or typed
   // — the attempt is thrown away either way.
   a.actions.nextCard();
@@ -662,24 +642,7 @@ test("the transcript and the microphone belong to the card, not the session", ()
 
   a.actions.confirmMoveCard();
   assert.equal(a.state.typed, "");
-  assert.deepEqual(a.state.voice.chunks, []);
   assert.equal(a.state.voice.status, "off");
-  assert.deepEqual(a.state.voice.engines, ["web-speech"], "but which engines exist is a fact about the browser");
-});
-
-test("the chosen engine is remembered, and switching it stops the microphone", () => {
-  const a = reciting();
-  a.actions.setVoiceEngine("whisper");
-  assert.equal(a.state.voice.engine, "whisper");
-  assert.equal(a.state.voice.status, "off", "a download is not something a toggle should start");
-  assert.equal(saved.get("mv.voiceEngine"), "whisper");
-});
-
-test("a browser with no engine says so instead of failing quietly", () => {
-  const a = reciting();
-  // Nothing in Node offers recognition, so this is the real path a member on
-  // Firefox takes when they press the button.
-  a.startVoice();
-  assert.equal(a.state.voice.status, "off");
-  assert.equal(a.state.voice.error, "no-engine");
+  assert.equal(a.state.voice.tail, 0);
+  assert.equal(a.state.voice.supported, true, "but what the browser can do is not per-card");
 });

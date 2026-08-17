@@ -1413,21 +1413,17 @@ textarea.input {
 }
 
 /* ── reciting aloud ─────────────────────────────────────────────────────────
-   A microphone is the one control in the app whose state the member cannot see
-   by looking at it, so the fact that it is live has to be the thing that moves.
-   Two parts, and only two: a dot that beats while the engine is listening, and
-   the phrase being heard, which is faint and unsettled until it lands in the
-   box as ordinary text. Everything else about the bar is still. */
+   The whole of the voice interface that moves, and the only part that has to:
+   a microphone is the one control here whose state cannot be seen by looking at
+   it, and the switch being on is not the same as the engine listening — there
+   is a permission prompt in between. So the dot is rendered only once it is
+   really listening, and it beats. The words themselves arrive in the box as
+   ordinary text, which needs nothing from this file. */
 .mic-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   flex: none;
   background: currentColor;
-  opacity: 0.4;
-  transition: opacity 200ms linear;
-}
-.mic-dot.is-live {
-  opacity: 1;
   animation: mic-pulse 1.4s var(--ease-out) infinite;
 }
 @keyframes mic-pulse {
@@ -1435,20 +1431,6 @@ textarea.input {
     opacity: 0.25;
     transform: scale(0.7);
   }
-}
-/* The live border on the whole bar, so the member can tell at a glance across
-   the card, not only at the button. */
-.voice-bar {
-  transition: border-color 240ms linear;
-}
-.voice-bar.is-live {
-  border-color: var(--color-accent);
-}
-/* Words the engine has not committed to yet. They arrive as they are heard and
-   are replaced wholesale on the next partial, so they fade rather than slide —
-   a moving tail under a passage being recited is noise. */
-.voice-interim {
-  animation: fade-in 180ms linear backwards;
 }
 
 /* ── the passage list ───────────────────────────────────────────────────────
@@ -1518,7 +1500,6 @@ textarea.input {
   .result-strip,
   .reveal-in,
   .chunk,
-  .voice-interim,
   .shell-settle,
   .selection-bar,
   .dialog-backdrop,
@@ -1533,14 +1514,12 @@ textarea.input {
   .chunk,
   .option,
   .tick,
-  .blank-input,
-  .voice-bar,
-  .mic-dot {
+  .blank-input {
     transition: none;
   }
-  /* The one thing that must still read as live without moving: the dot stays
-     lit rather than beating, so "the microphone is on" survives the setting. */
-  .mic-dot.is-live {
+  /* The dot stays put rather than beating. It is still only rendered while the
+     engine is listening, so "the microphone is open" survives the setting. */
+  .mic-dot {
     animation: none;
   }
   /* Moving under the pointer is the only hover in this block that is motion

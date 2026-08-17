@@ -340,39 +340,17 @@ export const copy = {
     typeRevealed: "words revealed",
     typeMatched: "words matched",
 
-    /* reciting aloud. The transcript is the same box a member could have typed
-     * in, so everything here is about the microphone and the way back from a
-     * misheard word — see voice.js for the three sizes of step. */
-    voiceLabel: "Recite aloud",
-    voiceStart: "Start reciting",
-    voiceStop: "Stop reciting",
-    voiceEngineLabel: "Heard by",
-    voiceHearing: "Hearing",
-    voiceStatusStarting: "Starting the microphone…",
-    voiceStatusListening: "Listening — say the passage.",
-    voiceStatusWorking: "Writing down what you said…",
-    voiceStatusLoading: (pct) =>
-      pct > 0 ? "Downloading the voice model — " + pct + "%. This happens once." : "Loading the voice model…",
-    /* Said once, beside the controls, so the way back is on screen rather than
-     * something a member has to remember. */
-    voiceUndoPhrase: "Undo last phrase",
-    voiceUndoWord: "Back a word",
-    voiceClear: "Clear",
-    voiceCommandHint: "You can also say “scratch that”, “backspace”, or “start over”.",
-    voiceCommandUndo: "Took back the last phrase.",
-    voiceCommandBack: "Took back a word.",
-    voiceCommandClear: "Cleared — start the passage again.",
-    /* Reciting is free recall, so it commits a verse exactly as typing does.
-     * Worth saying out loud, because it is not obvious that talking counts. */
-    voiceCommitNote: "Reciting counts the same as typing — a clean recitation commits the verse.",
-    voiceScaffoldOff: "Reciting is off while you are typing first letters only.",
-    voiceUnsupported: "This browser cannot listen. Type the passage instead.",
+    /* reciting aloud — one toggle beside the scaffold's, and the only two
+     * things worth saying: that this browser cannot listen, and why it stopped
+     * if it did. The words themselves land in the box, which needs no label. */
+    voiceLabel: "Voice",
+    voiceNote: "Say the passage — the words appear as you go.",
+    voiceUnsupported: "Not available in this browser.",
     voiceErrors: {
       "not-allowed": "The microphone was blocked. Allow it in your browser, then try again.",
-      "no-microphone": "No microphone was found. Type the passage instead.",
-      network: "The voice service could not be reached. Type the passage instead.",
-      "no-engine": "This browser cannot listen. Type the passage instead.",
-      failed: "Something went wrong listening. Try again, or type the passage.",
+      "no-microphone": "No microphone was found.",
+      network: "The voice service could not be reached.",
+      failed: "Something went wrong listening. Try again.",
     },
 
     /* order the phrases */

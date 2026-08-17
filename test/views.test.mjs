@@ -556,93 +556,50 @@ test("a verse that came out of a test weaker is marked faded", () => {
 
 /* ── reciting aloud ───────────────────────────────────────────────────────────
  *
- * A microphone is offered on exactly one card — the recall activity, with the
- * first-letter scaffold off and the paper not yet handed in — and it fills the
- * same box typing fills. These are the states the bar has to be able to be in,
- * and the two places it must not appear. */
+ * One switch, in the same row as the first-letter scaffold's, on the one card
+ * that has a box to recite into. The words land in that box; there is nothing
+ * else to draw. */
 
-test("the microphone is offered on the recall card, and nowhere else", () => {
-  assert.match(shown("voice/idle"), /Recite aloud/);
-  assert.match(shown("voice/idle"), /Start reciting/);
+test("voice is one switch beside the scaffold's, on the recall card only", () => {
+  const markup = shown("voice/off");
+  assert.match(markup, />Voice</);
+  // The same On/Off segmented control the rest of the card uses, not a panel.
+  assert.doesNotMatch(markup, /Undo|Back a word|Clear|Hearing|Heard by/);
   for (const elsewhere of ["review/blanks", "review/scramble", "review/flip-hidden"]) {
-    assert.doesNotMatch(shown(elsewhere), /Recite aloud/, `${elsewhere} has no box to recite into`);
+    assert.doesNotMatch(shown(elsewhere), />Voice</, `${elsewhere} has no box to recite into`);
   }
 });
 
-test("a browser that cannot listen says so rather than showing a dead button", () => {
+test("a browser that cannot listen says so, and the switch is dead", () => {
   const markup = shown("voice/unsupported");
-  assert.match(markup, /This browser cannot listen/);
-  assert.doesNotMatch(markup, /Start reciting/);
+  assert.match(markup, /Not available in this browser/);
+  assert.match(markup, /disabled=""/);
 });
 
-test("the first-letter scaffold turns the microphone off, and says which switch did it", () => {
-  const markup = shown("voice/scaffold-on");
-  assert.match(markup, /Reciting is off while you are typing first letters only/);
-  assert.doesNotMatch(markup, /Start reciting/);
+test("the first-letter scaffold takes the switch away — there is nothing to recite", () => {
+  assert.doesNotMatch(shown("voice/scaffold-on"), />Voice</);
 });
 
-test("a live microphone is visible as live, not only as a label", () => {
-  const idle = shown("voice/idle");
-  const live = shown("voice/hearing");
-  assert.doesNotMatch(idle, /class="mic-dot is-live"/);
-  assert.match(live, /class="mic-dot is-live"/, "the dot beats while the engine is listening");
-  assert.match(live, /class="voice-bar is-live"/, "and the whole bar carries it");
-  assert.match(live, /Stop reciting/, "the one button reads as the way out of listening");
+test("the dot beats only once the microphone is really open", () => {
+  assert.doesNotMatch(shown("voice/off"), /class="mic-dot"/, "off");
+  assert.doesNotMatch(shown("voice/starting"), /class="mic-dot"/, "still waiting on permission");
+  assert.match(shown("voice/listening"), /class="mic-dot"/, "listening");
 });
 
-test("the phrase being heard is shown, but is kept out of the graded box", () => {
-  const markup = shown("voice/hearing");
-  assert.match(markup, /Hearing/);
-  assert.match(markup, /and these words that I command you/, "the half-heard phrase is on screen");
-  // It is a ghost tail beside the box, not text inside it — the grader must
-  // never see a word the engine has not settled on.
-  assert.match(markup, /class="voice-interim"/);
+test("the words appear in the box the grader reads, and nowhere else", () => {
+  const markup = shown("voice/listening");
   const box = /<textarea[^>]*>([^<]*)<\/textarea>/.exec(markup);
   assert.ok(box, "the transcript box is still there while listening");
-  assert.doesNotMatch(box[1], /these words that I command you/);
-  assert.match(box[1], /Hear O Israel/, "what has settled is in it");
+  assert.match(box[1], /Hear O Israel the LORD our God the LORD is one/);
+  assert.doesNotMatch(markup, /class="voice-interim"/, "no second surface to keep in step");
 });
 
-test("the way back is three sizes, and disabled while there is nothing to take back", () => {
-  const empty = shown("voice/idle");
-  for (const step of ["Back a word", "Undo last phrase", "Clear"]) assert.match(empty, new RegExp(step));
-  assert.equal((empty.match(/disabled=""/g) || []).length >= 3, true, "nothing said yet, nothing to undo");
-  // Say something and all three become live.
-  const said = shown("voice/hearing");
-  assert.doesNotMatch(said, /disabled="">\s*Back a word/);
-  assert.match(said, /You can also say “scratch that”/, "and the same three can be spoken");
+test("the hint gives way once it is on, and to an error if one lands", () => {
+  assert.match(shown("voice/off"), /Say the passage — the words appear as you go/);
+  assert.doesNotMatch(shown("voice/listening"), /Say the passage/, "not worth repeating while they are");
+  assert.match(shown("voice/blocked"), /The microphone was blocked\. Allow it in your browser/);
 });
 
-test("obeying a spoken instruction is not silent", () => {
-  assert.match(shown("voice/took-it-back"), /Took back the last phrase/);
-  assert.doesNotMatch(shown("voice/idle"), /Took back/);
-});
-
-test("the engine picker appears only when there is a choice to make", () => {
-  assert.doesNotMatch(shown("voice/idle"), /Heard by/, "one engine is not a choice");
-  const both = shown("voice/loading-model");
-  assert.match(both, /Heard by/);
-  assert.match(both, />Browser</);
-  assert.match(both, />On device</);
-});
-
-test("the model download and the wait after a phrase both explain themselves", () => {
-  assert.match(shown("voice/loading-model"), /Downloading the voice model — 42%\. This happens once\./);
-  assert.match(shown("voice/working"), /Writing down what you said/);
-  assert.match(shown("voice/starting"), /Starting the microphone/);
-});
-
-test("a blocked microphone says what to do about it", () => {
-  const markup = shown("voice/blocked");
-  assert.match(markup, /The microphone was blocked\. Allow it in your browser/);
-  assert.match(markup, /Start reciting/, "and the way to try again is still there");
-});
-
-test("a learn session says reciting commits a verse; a review session does not", () => {
-  assert.match(shown("voice/idle"), /Reciting counts the same as typing/);
-  assert.doesNotMatch(
-    shown("voice/review-session"),
-    /Reciting counts the same as typing/,
-    "review is not playing for a commitment",
-  );
+test("a review sitting gets the same one switch", () => {
+  assert.match(shown("voice/review-session"), />Voice</);
 });

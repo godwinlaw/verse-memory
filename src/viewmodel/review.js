@@ -11,10 +11,8 @@ import { gradeWritten, matchesWord, revealFirstLetters } from "../grading.js";
 import { countByStatus, reviewPool } from "../progress.js";
 import { reviewSettings } from "../profile.js";
 import { LEARN, MODES, modeByKey, seededShuffle, scrambleScore } from "../review.js";
-import { ENGINES } from "../recognizer.js";
 import { COMMIT_SCORE, freshColor, PEEK_COST } from "../srs.js";
 import { COLOR_ERROR, muted, WORD_RIGHT, WORD_WRONG, segButton } from "../ui/tokens.js";
-import { canUndo } from "../voice.js";
 
 /* Spreads consecutive passage ids across the shuffle's seed space, so verse 12
  * and verse 13 don't scramble into near-identical orders. */
@@ -146,90 +144,36 @@ function stakeVals({ state, prog, cur, isLearn, result }) {
   };
 }
 
-/* Reciting the passage aloud, as the card offers it.
+/* Reciting the passage aloud, as the card offers it: one switch.
  *
- * Speaking fills the same box as typing, so this adds no exercise and no second
- * grade — everything below is the microphone and the way back from a misheard
- * word. It is offered on exactly one card: the recall activity, with the
- * first-letter scaffold off (there is no reciting a scaffold) and the paper not
- * yet handed in. Which engines exist at all was settled at startup and arrives
- * in `state.voice.engines`, so nothing here asks the browser a question. */
-function voiceVals({ state, actions, isLearn, commitDone, submitted }) {
+ * Speaking fills the same box as typing, so there is no second exercise and no
+ * second grade — and no controls of its own, because correcting a misheard word
+ * is what the textarea was already for. The switch is offered on exactly one
+ * card: the recall activity, with the first-letter scaffold off (there is no
+ * reciting a scaffold) and the paper not yet handed in. Whether this browser
+ * can listen at all was settled at startup and arrives in `state.voice`, so
+ * nothing here asks the window a question. */
+function voiceVals({ state, actions, submitted }) {
   const voice = state.voice || {};
-  const engines = voice.engines || [];
   const status = voice.status || "off";
-  const onRecall = state.mode === "type" && !state.typeFirstLetter;
-  const listening = status !== "off";
+  const on = status !== "off";
   const error = voice.error ? copy.review.voiceErrors[voice.error] || copy.review.voiceErrors.failed : "";
-  const step = (label, onClick) => ({ label, onClick, disabled: !canUndo(state.typed) });
 
   return {
-    // The bar is present wherever recitation is possible; whether this browser
-    // can actually listen is the next question down, so a member on Firefox is
-    // told why rather than shown nothing.
-    voiceShown: onRecall && !submitted,
-    voiceSupported: engines.length > 0,
-    voiceUnsupported: copy.review.voiceUnsupported,
-    // Said beside the scaffold toggle, since that is the switch that turned
-    // recitation off — and it is not obvious that it did.
-    voiceScaffoldNote:
-      engines.length && state.mode === "type" && state.typeFirstLetter ? copy.review.voiceScaffoldOff : "",
-
-    voiceOn: listening,
-    voiceBusy: status === "starting" || status === "loading",
-    voiceToggle: actions.toggleVoice,
-    voiceToggleLabel: listening ? copy.review.voiceStop : copy.review.voiceStart,
+    voiceShown: state.mode === "type" && !state.typeFirstLetter && !submitted,
+    voiceSupported: !!voice.supported,
     voiceLabel: copy.review.voiceLabel,
-    voiceStatus:
-      status === "loading"
-        ? copy.review.voiceStatusLoading(voice.loadPct || 0)
-        : status === "starting"
-          ? copy.review.voiceStatusStarting
-          : status === "working"
-            ? copy.review.voiceStatusWorking
-            : status === "listening"
-              ? copy.review.voiceStatusListening
-              : "",
-    voiceError: error,
-    voiceErrorStyle: `font-size:12px;color:${COLOR_ERROR}`,
-
-    // Only worth a control when there is a choice: most browsers offer one
-    // engine, and a picker with a single option is furniture.
-    voiceEngineLabel: copy.review.voiceEngineLabel,
-    voiceEngines:
-      engines.length > 1
-        ? ENGINES.filter((e) => engines.includes(e.key)).map((e) => ({
-            key: e.key,
-            label: e.name,
-            title: e.note,
-            onClick: () => actions.setVoiceEngine(e.key),
-            style: segButton(voice.engine === e.key),
-          }))
-        : [],
-
-    // The phrase being heard right now, shown as a ghost tail after the
-    // transcript so the passage visibly arrives rather than appearing.
-    voiceHearingLabel: copy.review.voiceHearing,
-    voiceInterim: voice.interim || "",
-    // What a spoken instruction just did, so obeying one is not silent.
-    voiceCommandNote: voice.command
-      ? voice.command === "undo"
-        ? copy.review.voiceCommandUndo
-        : voice.command === "back"
-          ? copy.review.voiceCommandBack
-          : copy.review.voiceCommandClear
-      : "",
-
-    // The way back, in the three sizes voice.js takes it (see there for why a
-    // microphone needs one and a keyboard does not).
-    voiceUndoPhrase: step(copy.review.voiceUndoPhrase, actions.undoVoicePhrase),
-    voiceUndoWord: step(copy.review.voiceUndoWord, actions.undoVoiceWord),
-    voiceClear: step(copy.review.voiceClear, actions.clearVoice),
-    voiceCommandHint: copy.review.voiceCommandHint,
-
-    // Reciting commits a verse exactly as typing does — worth saying in the one
-    // session that is playing for it, and nowhere else.
-    voiceCommitNote: isLearn && !commitDone ? copy.review.voiceCommitNote : "",
+    voiceOn: on,
+    voiceToggle: actions.toggleVoice,
+    // The dot beats only once the engine is actually listening, which is what
+    // separates "switched on" from "the microphone is open" — there is a
+    // permission prompt in between, and it is not instant.
+    voiceListening: status === "listening",
+    voiceStyle: segButton(on) + ";display:inline-flex;align-items:center;gap:7px",
+    // Silent when it is working. A browser that cannot listen says so, and a
+    // microphone that stopped says why; nothing else is worth a line.
+    voiceNote: !voice.supported ? copy.review.voiceUnsupported : error || (on ? "" : copy.review.voiceNote),
+    voiceNoteStyle: `font-size:12px;color:${error ? COLOR_ERROR : muted(55)}`,
   };
 }
 
@@ -283,11 +227,9 @@ export function reviewVals({ state, prog, totals, actions }) {
   const submittedCount = Object.keys(state.results).length;
   const committedHere = Object.values(state.results).filter((r) => r.committed).length;
 
-  const stake = stakeVals({ state, prog, cur, isLearn, result });
-
   return {
-    ...stake,
-    ...voiceVals({ state, actions, isLearn, commitDone: stake.commitDone, submitted: !!result }),
+    ...stakeVals({ state, prog, cur, isLearn, result }),
+    ...voiceVals({ state, actions, submitted: !!result }),
 
     sessionLabel: isLearn ? copy.review.sessionLearn : copy.review.sessionReview,
     // What makes the card a card rather than a redraw: the view keys the panel

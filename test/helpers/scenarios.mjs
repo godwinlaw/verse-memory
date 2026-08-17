@@ -8,7 +8,6 @@
 
 import { passages } from "../../data/passages.js";
 import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "../../src/exam.js";
-import { WEB_SPEECH, WHISPER } from "../../src/recognizer.js";
 
 /* 2026-08-15T12:00:00Z — matches freezeClock()'s default so freshness values are
  * stable. Offsets are expressed in days before that instant. */
@@ -50,19 +49,9 @@ const PEERS = [
   { name: "Katherine Johnson", count: 12, streak: 0, ministryGroup: "ECM", gender: "Female", gradClass: 2024 },
 ];
 
-/* A microphone at rest. `engines` empty is a browser with no recognition at
- * all; the voice scenarios override it with the engines they are testing. */
-const quietVoice = (overrides = {}) => ({
-  engines: [],
-  engine: WEB_SPEECH,
-  status: "off",
-  interim: "",
-  chunks: [],
-  loadPct: 0,
-  error: null,
-  command: null,
-  ...overrides,
-});
+/* A microphone at rest. `supported: false` is a browser with no recognition at
+ * all; the voice scenarios below override it. */
+const quietVoice = (overrides = {}) => ({ supported: false, status: "off", error: null, tail: 0, ...overrides });
 
 export const PROPS = {
   groupName: "Acts 2 Network - Berkeley",
@@ -99,9 +88,9 @@ export function baseState(overrides = {}) {
     typed: "",
     typeGraded: false,
     typeFirstLetter: false,
-    // No microphone in this suite, so the default is a browser that offers no
-    // engine — the state App.js would be in on Firefox. The voice/* scenarios
-    // below are what exercise a browser that does.
+    // No microphone in this suite, so the default is a browser that cannot
+    // listen — the state App.js would be in on Firefox. The voice/* scenarios
+    // below are what exercise one that can.
     voice: quietVoice(),
     scrambleOrder: [],
     scrambleWrong: -1,
@@ -146,9 +135,9 @@ const learning = (overrides) =>
 
 /* Reciting, on a browser that can listen. Set on the recall activity of a learn
  * session, since that is the one sitting where giving the passage back aloud is
- * the whole errand. One engine unless the scenario asks for both. */
+ * the whole errand. */
 const listening = (voice, overrides) =>
-  learning({ mode: "type", voice: quietVoice({ engines: [WEB_SPEECH], ...voice }), ...overrides });
+  learning({ mode: "type", voice: quietVoice({ supported: true, ...voice }), ...overrides });
 
 /* Every passage committed and fully fresh — nothing to review, nothing to
  * learn. Both empty states at once. */
@@ -401,40 +390,23 @@ export const scenarios = [
   },
 
   // ── reciting aloud ─────────────────────────────────────────────────────────
-  // The recall activity is the one place a microphone is offered, so these are
-  // all learn/type cards. Every state the bar can be in, in order: nothing to
-  // listen with, idle, starting, listening with a phrase half-heard, a spoken
-  // instruction just obeyed, an engine downloading itself, and refused.
+  // One switch on the recall card, so these are all learn/type. Every state it
+  // can be in: nothing to listen with, off, waiting on the permission prompt,
+  // listening with words landing in the box, and refused.
   { name: "voice/unsupported", state: learning({ mode: "type" }) },
-  { name: "voice/idle", state: listening() },
+  { name: "voice/off", state: listening() },
   { name: "voice/starting", state: listening({ status: "starting" }) },
   {
-    name: "voice/hearing",
-    state: listening(
-      { status: "listening", interim: "and these words that I command you" },
-      {
-        typed: "Hear O Israel the LORD our God the LORD is one",
-      },
-    ),
+    name: "voice/listening",
+    state: listening({ status: "listening", tail: 46 }, { typed: "Hear O Israel the LORD our God the LORD is one" }),
   },
-  {
-    name: "voice/took-it-back",
-    state: listening({ status: "listening", command: "undo" }, { typed: "Hear O Israel" }),
-  },
-  // Both engines available, so the picker appears — and the on-device one is
-  // mid-download, which is the one wait the bar has to explain.
-  {
-    name: "voice/loading-model",
-    state: listening({ engines: [WEB_SPEECH, WHISPER], engine: WHISPER, status: "loading", loadPct: 42 }),
-  },
-  { name: "voice/working", state: listening({ engines: [WEB_SPEECH, WHISPER], engine: WHISPER, status: "working" }) },
   { name: "voice/blocked", state: listening({ error: "not-allowed" }) },
-  // The scaffold turns the microphone off, and the card says why.
+  // The scaffold has nothing to recite, so the switch is not offered with it on.
   { name: "voice/scaffold-on", state: listening({}, { typeFirstLetter: true, typed: "h o i" }) },
-  // A review sitting recites too — it just never talks about committing.
+  // A review sitting recites too — the same one switch.
   {
     name: "voice/review-session",
-    state: reviewing({ mode: "type", voice: quietVoice({ engines: [WEB_SPEECH], status: "listening" }) }),
+    state: reviewing({ mode: "type", voice: quietVoice({ supported: true, status: "listening" }) }),
   },
 
   // ── test mode: setup, one screen per activity, summary ─────────────────────
