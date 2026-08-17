@@ -49,6 +49,10 @@ const PEERS = [
   { name: "Katherine Johnson", count: 12, streak: 0, ministryGroup: "ECM", gender: "Female", gradClass: 2024 },
 ];
 
+/* A microphone at rest. `supported: false` is a browser with no recognition at
+ * all; the voice scenarios below override it. */
+const quietVoice = (overrides = {}) => ({ supported: false, status: "off", error: null, tail: 0, ...overrides });
+
 export const PROPS = {
   groupName: "Acts 2 Network - Berkeley",
   motto: "Every Member a Self Respecting Christian",
@@ -84,6 +88,10 @@ export function baseState(overrides = {}) {
     typed: "",
     typeGraded: false,
     typeFirstLetter: false,
+    // No microphone in this suite, so the default is a browser that cannot
+    // listen — the state App.js would be in on Firefox. The voice/* scenarios
+    // below are what exercise one that can.
+    voice: quietVoice(),
     scrambleOrder: [],
     scrambleWrong: -1,
     scrambleMisses: 0,
@@ -124,6 +132,12 @@ const reviewing = (overrides) => baseState({ view: "review", queue: [1, 2, 3], q
  * of us, which is what `results` keys on. */
 const learning = (overrides) =>
   baseState({ view: "review", sessionKind: "learn", queue: [4, 5, 6], qi: 1, sessionCount: 1, ...overrides });
+
+/* Reciting, on a browser that can listen. Set on the recall activity of a learn
+ * session, since that is the one sitting where giving the passage back aloud is
+ * the whole errand. */
+const listening = (voice, overrides) =>
+  learning({ mode: "type", voice: quietVoice({ supported: true, ...voice }), ...overrides });
 
 /* Every passage committed and fully fresh — nothing to review, nothing to
  * learn. Both empty states at once. */
@@ -373,6 +387,26 @@ export const scenarios = [
   {
     name: "learn/done-nothing-committed",
     state: baseState({ view: "done", sessionKind: "learn", sessionCount: 2, results: {} }),
+  },
+
+  // ── reciting aloud ─────────────────────────────────────────────────────────
+  // One switch on the recall card, so these are all learn/type. Every state it
+  // can be in: nothing to listen with, off, waiting on the permission prompt,
+  // listening with words landing in the box, and refused.
+  { name: "voice/unsupported", state: learning({ mode: "type" }) },
+  { name: "voice/off", state: listening() },
+  { name: "voice/starting", state: listening({ status: "starting" }) },
+  {
+    name: "voice/listening",
+    state: listening({ status: "listening", tail: 46 }, { typed: "Hear O Israel the LORD our God the LORD is one" }),
+  },
+  { name: "voice/blocked", state: listening({ error: "not-allowed" }) },
+  // The scaffold has nothing to recite, so the switch is not offered with it on.
+  { name: "voice/scaffold-on", state: listening({}, { typeFirstLetter: true, typed: "h o i" }) },
+  // A review sitting recites too — the same one switch.
+  {
+    name: "voice/review-session",
+    state: reviewing({ mode: "type", voice: quietVoice({ supported: true, status: "listening" }) }),
   },
 
   // ── test mode: setup, one screen per activity, summary ─────────────────────

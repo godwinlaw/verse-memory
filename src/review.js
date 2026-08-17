@@ -26,11 +26,17 @@ export const MODES = [
     short: "Blanks",
     desc: "The key words — verbs, actions, and names — are removed. Type what belongs there, and dial how many blanks you get.",
   },
+  // The one activity that can commit a verse (see srs.commitsVerse), and the
+  // only one that takes the passage whole. It is called "From memory" rather
+  // than "Write it out" because there are two ways to give it: typed, or recited
+  // aloud into the same box (see voice.js). The `key` stays "type" — it is
+  // persisted in every progress record and read by srs.nextStability, so it is
+  // data, not wording.
   {
     key: "type",
-    name: "Write it out",
-    short: "Write",
-    desc: "Type the whole passage from memory and get it graded word by word.",
+    name: "From memory",
+    short: "Recall",
+    desc: "Say the passage out loud or type it from memory, and get it graded word by word.",
   },
 ];
 

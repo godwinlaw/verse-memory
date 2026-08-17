@@ -107,8 +107,30 @@ function blanksPanel(v) {
   </div>`;
 }
 
-/* Write it out: free recall, graded word by word. In first-letter mode it is a
- * live drill — the reveal updates as you type, with no separate grade step. */
+/* Reciting aloud is one switch, on a line of its own directly above the box it
+ * fills. It is built like the scaffold's row above it — label, segmented
+ * On/Off, a note — because it is the same kind of thing: a way of working the
+ * card, not a feature of its own. What a member says lands in the box below, so
+ * there is nothing else to draw: no transcript panel, no undo buttons. The box
+ * is a textarea the whole time, and backspace is backspace.
+ *
+ * The dot is the one part that has to move: a microphone is the only control
+ * here whose state cannot be seen by looking at it, and "switched on" is not
+ * the same as "listening" — there is a permission prompt in between. */
+function voiceRow(v) {
+  return html`<div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+    <span style=${sx(LABEL_SECTION)}>${v.voiceLabel}</span>
+    <button className="seg-btn" onClick=${v.voiceToggle} disabled=${!v.voiceSupported} style=${sx(v.voiceStyle)}>
+      ${v.voiceListening && html`<span className="mic-dot"></span>`}${v.voiceOn ? copy.common.on : copy.common.off}
+    </button>
+    ${v.voiceNote && html`<span style=${sx(v.voiceNoteStyle)}>${v.voiceNote}</span>`}
+  </div>`;
+}
+
+/* From memory: free recall, graded word by word, given either by typing or by
+ * reciting into the same box (see voiceRow). In first-letter mode it is a
+ * live drill instead — the reveal updates as you type, with no separate grade
+ * step, and there is nothing to recite. */
 function typePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:18px")}>
     <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
@@ -118,6 +140,7 @@ function typePanel(v) {
       </button>
       <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${copy.review.typeFirstLetterNote}</span>
     </div>
+    ${v.voiceShown && voiceRow(v)}
     ${
       v.typeLive
         ? html`<${React.Fragment}
@@ -141,7 +164,7 @@ function typePanel(v) {
             </div></${React.Fragment}
           >`
         : html`<${React.Fragment}
-            >${v.typeUngraded && html`<textarea className="input" value=${v.typed} onChange=${v.onTyped} placeholder=${v.typePlaceholder} style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
+            >${v.typeUngraded && html`<textarea id=${v.typeInputId} className="input" value=${v.typed} onChange=${v.onTyped} placeholder=${v.typePlaceholder} style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
             ${
               v.typeGraded &&
               // Nothing grades the attempt until it is submitted, so this is

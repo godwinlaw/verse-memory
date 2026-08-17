@@ -1412,6 +1412,27 @@ textarea.input {
   transition: border-color 240ms linear;
 }
 
+/* ── reciting aloud ─────────────────────────────────────────────────────────
+   The whole of the voice interface that moves, and the only part that has to:
+   a microphone is the one control here whose state cannot be seen by looking at
+   it, and the switch being on is not the same as the engine listening — there
+   is a permission prompt in between. So the dot is rendered only once it is
+   really listening, and it beats. The words themselves arrive in the box as
+   ordinary text, which needs nothing from this file. */
+.mic-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  background: currentColor;
+  animation: mic-pulse 1.4s var(--ease-out) infinite;
+}
+@keyframes mic-pulse {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+
 /* ── the passage list ───────────────────────────────────────────────────────
    The bar over the ticked rows is not there until something is ticked, so it
    arrives from under the header it pushes down. */
@@ -1495,6 +1516,11 @@ textarea.input {
   .tick,
   .blank-input {
     transition: none;
+  }
+  /* The dot stays put rather than beating. It is still only rendered while the
+     engine is listening, so "the microphone is open" survives the setting. */
+  .mic-dot {
+    animation: none;
   }
   /* Moving under the pointer is the only hover in this block that is motion
      rather than colour, so it is the only one dropped. */

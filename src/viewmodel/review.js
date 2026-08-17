@@ -18,6 +18,11 @@ import { COLOR_ERROR, muted, WORD_RIGHT, WORD_WRONG, segButton } from "../ui/tok
  * and verse 13 don't scramble into near-identical orders. */
 const SEED_SPREAD = 13;
 
+/* The recall box. Named here because two places need to agree on it: the view,
+ * which labels the element, and App.js, which follows the transcript down as
+ * recitation adds to it (the one thing about the box that needs the DOM). */
+export const RECALL_INPUT_ID = "recall-input";
+
 /* Width of a blank input, in px per character, with a floor so one- and
  * two-letter words still present a usable target. */
 const BLANK_PX_PER_CHAR = 13;
@@ -139,6 +144,39 @@ function stakeVals({ state, prog, cur, isLearn, result }) {
   };
 }
 
+/* Reciting the passage aloud, as the card offers it: one switch.
+ *
+ * Speaking fills the same box as typing, so there is no second exercise and no
+ * second grade — and no controls of its own, because correcting a misheard word
+ * is what the textarea was already for. The switch is offered on exactly one
+ * card: the recall activity, with the first-letter scaffold off (there is no
+ * reciting a scaffold) and the paper not yet handed in. Whether this browser
+ * can listen at all was settled at startup and arrives in `state.voice`, so
+ * nothing here asks the window a question. */
+function voiceVals({ state, actions, submitted }) {
+  const voice = state.voice || {};
+  const status = voice.status || "off";
+  const on = status !== "off";
+  const error = voice.error ? copy.review.voiceErrors[voice.error] || copy.review.voiceErrors.failed : "";
+
+  return {
+    voiceShown: state.mode === "type" && !state.typeFirstLetter && !submitted,
+    voiceSupported: !!voice.supported,
+    voiceLabel: copy.review.voiceLabel,
+    voiceOn: on,
+    voiceToggle: actions.toggleVoice,
+    // The dot beats only once the engine is actually listening, which is what
+    // separates "switched on" from "the microphone is open" — there is a
+    // permission prompt in between, and it is not instant.
+    voiceListening: status === "listening",
+    voiceStyle: segButton(on) + ";display:inline-flex;align-items:center;gap:7px",
+    // Silent when it is working. A browser that cannot listen says so, and a
+    // microphone that stopped says why; nothing else is worth a line.
+    voiceNote: !voice.supported ? copy.review.voiceUnsupported : error || (on ? "" : copy.review.voiceNote),
+    voiceNoteStyle: `font-size:12px;color:${error ? COLOR_ERROR : muted(55)}`,
+  };
+}
+
 export function reviewVals({ state, prog, totals, actions }) {
   const isLearn = state.sessionKind === LEARN;
   const cur = state.passages.find((p) => p.id === state.queue[state.qi]);
@@ -191,6 +229,7 @@ export function reviewVals({ state, prog, totals, actions }) {
 
   return {
     ...stakeVals({ state, prog, cur, isLearn, result }),
+    ...voiceVals({ state, actions, submitted: !!result }),
 
     sessionLabel: isLearn ? copy.review.sessionLearn : copy.review.sessionReview,
     // What makes the card a card rather than a redraw: the view keys the panel
@@ -251,6 +290,7 @@ export function reviewVals({ state, prog, totals, actions }) {
     blankHintStyle: segButton(state.blankHint),
 
     isType: state.mode === "type",
+    typeInputId: RECALL_INPUT_ID,
     typed: state.typed,
     onTyped: (e) => actions.setTyped(e.target.value),
     typeUngraded: state.mode === "type" && !state.typeGraded,
