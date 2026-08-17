@@ -13,6 +13,10 @@ npm run dev            # serve at http://localhost:8080 (must be over HTTP — s
 npm test               # run the node:test suite (test/**/*.test.mjs — one file per module)
 node --test test/grading.test.mjs                       # run one test file
 node --test --test-name-pattern="emailAllowed"         # run tests matching a name
+npm run test:e2e       # Playwright, the app driven in a browser (e2e/*.spec.mjs)
+npm run test:e2e -- e2e/learn.spec.mjs                  # one browser spec
+npx playwright install chromium                         # once per machine, before the above
+npm run test:all       # both suites
 npm run lint           # ESLint (flat config)
 npm run format         # Prettier write   (format:check for CI-style check)
 npm run build          # assemble ./dist (scripts/build.mjs) — the deployable static tree
@@ -55,6 +59,12 @@ Real logic — the part worth unit-testing — lives below `viewmodel/`, in pure
 - `src/text.js` — `norm`, `firstLetters`, `sentences`, `dayKey` (local-day, not UTC — see `progress.streakOf`, which depends on that).
 
 `test/views.test.mjs` renders every screen (via `test/helpers/scenarios.mjs` fixtures, `new App(props)` + assign `state` + `.render()`, no mount) to static markup and asserts zero React console warnings — this is what keeps a view template honest without a browser. `test/app.test.mjs` covers the flows a single render cannot: it drives review and learn sessions card by card — including what does and does not commit a verse — and a whole test session through the `actions` table, giving the unmounted instance a synchronous stand-in for React's update queue.
+
+### The browser suite
+
+`e2e/*.spec.mjs` (Playwright, `npm run test:e2e`) is the complement of the above, and the split is worth keeping: **`test/` asserts a rule, a mark, or a screen's markup; `e2e/` asserts the pressing.** A new test belongs in `test/` whenever it can be written against a view-model or a static render — that suite is a hundred times faster — and in `e2e/` when the thing under test only exists once the app is running: state that survives a reload, a verse committed by typing a passage into the box, a run of rows ticked by shift-click, the CSS the views only name (the count-up figures, the two-sided card, the reduced-motion block), the Firebase seam answering over the wire.
+
+It runs against the shipped tree over `npm run dev`, and takes over exactly two seams, both of them the app's own doors: the CDN scripts `index.html` loads (fulfilled from the dev-only npm copies, as `test/helpers/dom-env.mjs` does) and the Firebase SDK `src/firebase.js` imports from gstatic (answered by `e2e/helpers/firebase-stub.mjs`, so a session, a refused domain, a cloud document and an unreachable network are scenarios). State goes in through `localStorage` and configuration through `config.js`, seeded once per tab so a reload is a real second visit. Records are built by `e2e/helpers/seed.mjs` calling `srs.js` itself, so `committed(0.4)` stays true if the model is retuned. Specs find things by the words in `copy.js` rather than by markup. See `e2e/README.md`.
 
 ### What commits a verse
 

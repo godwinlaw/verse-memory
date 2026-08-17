@@ -5,7 +5,16 @@ export default [
   {
     // Build output, generated data, and the vendored design export are not ours
     // to lint. `dist/` in particular is a copy of src/ and would double-report.
-    ignores: ["dist/**", "data/**", "design/**", "node_modules/**", ".wrangler/**"],
+    ignores: [
+      "dist/**",
+      "data/**",
+      "design/**",
+      "node_modules/**",
+      ".wrangler/**",
+      // Playwright's own output: reports, traces, screenshots.
+      "playwright-report/**",
+      "test-results/**",
+    ],
   },
   js.configs.recommended,
   {
@@ -24,6 +33,17 @@ export default [
       ecmaVersion: 2022,
       sourceType: "module",
       globals: { ...globals.node },
+    },
+  },
+  {
+    // The Playwright suite runs in node, but its page callbacks — everything
+    // passed to evaluate() or addInitScript() — are serialized and run in the
+    // browser, so both sets of globals are in scope in one file.
+    files: ["e2e/**/*.mjs", "playwright.config.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: { ...globals.node, ...globals.browser },
     },
   },
   {
