@@ -14,7 +14,7 @@ import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "
 export const NOW = new Date("2026-08-15T12:00:00.000Z").getTime();
 const daysAgo = (n) => NOW - n * 86400000;
 
-const PROFILE = {
+export const PROFILE = {
   name: "Ada Lovelace",
   ministryGroup: "Kairos",
   gender: "Female",
@@ -63,6 +63,7 @@ export const PROPS = {
  * Individual scenarios override just the keys they care about. */
 export function baseState(overrides = {}) {
   return {
+    isMobile: false, // read on a computer; device/mobile is the scenario that is not
     loaded: true,
     splashHold: false, // the opening splash has had its minimum turn
     passages,
@@ -115,6 +116,8 @@ export function baseState(overrides = {}) {
     profile: PROFILE,
     profileDraft: null,
     editingProfile: false,
+    resetAsk: false,
+    welcomePrompt: false,
     ministryOpen: false,
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
     reviewSetup: { manualSize: 10, manualFreshness: 90 },
@@ -198,6 +201,13 @@ const testing = (kind, overrides) =>
   baseState({ view: "test", exam: EXAM, examIndex: questionAt(kind), examAnswers: EXAM_ANSWERS, ...overrides });
 
 export const scenarios = [
+  // ── the mobile gate ────────────────────────────────────────────────────────
+  // The app on a phone: refused before the splash, whatever else is ready. The
+  // second one is a member who was mid-boot when it was decided, which is what
+  // the ordering in App.render is for.
+  { name: "device/mobile", state: baseState({ isMobile: true }) },
+  { name: "device/mobile-while-loading", state: baseState({ isMobile: true, loaded: false, splashHold: true }) },
+
   // ── the opening splash ─────────────────────────────────────────────────────
   // The two waits it covers, and the floor under both: local data still
   // loading, Firebase yet to say whether there is a session to restore, and
@@ -222,6 +232,20 @@ export const scenarios = [
     state: baseState({ profile: {}, profileDraft: { name: "Ada", ministryGroup: "Ka" }, ministryOpen: true }),
   },
   { name: "profile/edit", state: baseState({ editingProfile: true, profileDraft: { ...PROFILE } }) },
+  // The warning that stands in front of wiping the record, and the same screen
+  // for a member who has nothing to wipe (the button is dead there).
+  {
+    name: "profile/edit-reset-ask",
+    state: baseState({ editingProfile: true, profileDraft: { ...PROFILE }, resetAsk: true }),
+  },
+  {
+    name: "profile/edit-nothing-to-reset",
+    state: baseState({ editingProfile: true, profileDraft: { ...PROFILE }, progress: {}, log: {} }),
+  },
+
+  // ── welcome prompt ─────────────────────────────────────────────────────────
+  // Shown once, right after sign-up completes the profile form.
+  { name: "welcome/after-signup", state: baseState({ welcomePrompt: true }) },
 
   // ── board ──────────────────────────────────────────────────────────────────
   { name: "board/populated", state: baseState() },
@@ -284,6 +308,12 @@ export const scenarios = [
   {
     name: "review/type-graded",
     state: reviewing({ mode: "type", typed: "hear o israel the lord our god", typeGraded: true }),
+  },
+  // "O" is skipped outright and "Lord" is written as "load" — one miss with
+  // nothing typed in its place, one with the wrong word right there.
+  {
+    name: "review/type-graded-mistakes",
+    state: reviewing({ mode: "type", typed: "hear israel the load our god", typeGraded: true }),
   },
   {
     name: "review/type-first-letters",
@@ -350,6 +380,16 @@ export const scenarios = [
       typeGraded: true,
       progress: { ...progressFixture(), 5: { hits: 2, status: "memorized", last: NOW, stability: 4 } },
       results: { 5: { id: 5, mode: "type", score: 1, peeks: 0, before: 37, after: 100, committed: true } },
+    }),
+  },
+  // An attempt that fell short — the retry offered right on the result strip.
+  {
+    name: "learn/not-committed",
+    state: learning({
+      mode: "type",
+      typed: "hear o israel",
+      typeGraded: true,
+      results: { 5: { id: 5, mode: "type", score: 0.4, peeks: 0, before: 0, after: 40, committed: false } },
     }),
   },
   // A verse that has already been committed, met again in a later sitting.

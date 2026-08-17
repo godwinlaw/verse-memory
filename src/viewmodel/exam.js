@@ -10,6 +10,7 @@
 
 import { copy } from "../copy.js";
 import { freshColor } from "../srs.js";
+import { committedCount } from "../progress.js";
 import {
   ACTIVITIES,
   activityByKey,
@@ -108,7 +109,9 @@ function setupVals({ state, actions, now }) {
 
     setupPoolNote: chosen.length
       ? copy.exam.setupPoolNote(chosen.length, pool.length, questions)
-      : copy.exam.setupPoolEmpty,
+      : setup.committedOnly && committedCount(state.progress) === 0
+        ? copy.exam.setupPoolEmptyUncommitted
+        : copy.exam.setupPoolEmpty,
     setupCanStart: chosen.length > 0,
     startExam: actions.startExam,
     cancelExam: () => actions.goto("board"),

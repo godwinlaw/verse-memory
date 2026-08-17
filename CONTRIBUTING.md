@@ -25,7 +25,11 @@ no transpile step. That means:
 npm run format   # Prettier — required; CI runs format:check and will fail otherwise
 npm run lint     # ESLint
 npm test         # node:test — pure modules + view render smoke tests
+npm run test:e2e # Playwright — the app driven in a browser (see e2e/README.md)
 ```
+
+`npm run test:all` runs the last two together. The browser suite needs Chromium
+once per machine: `npx playwright install chromium`.
 
 ## Where a change belongs
 
@@ -74,8 +78,22 @@ client checks.
 
 ## Tests
 
-One `test/<module>.test.mjs` per pure module in `src/`, run via
-`npm test` (`node --test 'test/**/*.test.mjs'`). `test/views.test.mjs` renders
-every screen in `test/helpers/scenarios.mjs` to static markup and asserts it
-throws nothing and logs zero React warnings — add a new fixture there when you
-add a new view state worth covering, rather than a one-off test file.
+Two suites, split by what they can see.
+
+**`npm test` — node:test, no browser.** One `test/<module>.test.mjs` per pure
+module in `src/` (`node --test 'test/**/*.test.mjs'`). `test/views.test.mjs`
+renders every screen in `test/helpers/scenarios.mjs` to static markup and
+asserts it throws nothing and logs zero React warnings — add a new fixture there
+when you add a new view state worth covering, rather than a one-off test file.
+This is where a rule, a mark, or a screen's markup is asserted.
+
+**`npm run test:e2e` — Playwright, a real browser.** `e2e/*.spec.mjs`, one file
+per flow, driving the shipped tree over the dev server. This is where a
+_behaviour_ is asserted: something that survives a reload, a card actually
+committed by typing a passage out, a run of rows ticked by shift-click, the CSS
+the views only name, the Firebase seam answering over the wire. See
+`e2e/README.md` for the harness and the conventions.
+
+The split is worth keeping: if a new test can be written against a view-model or
+a static render, it belongs in `test/`, which is a hundred times faster. Reach
+for `e2e/` when the thing under test is the pressing rather than the result.

@@ -94,6 +94,20 @@ export const storage = {
     remoteSync();
   },
 
+  /* Start the set over: the record of what has been memorized, emptied. Only
+   * progress and the daily log go — the profile and the device-local exercise
+   * preferences are not that record.
+   *
+   * `replace` is the whole reason this is not just saveProgressAndLog({}, {}):
+   * an ordinary push merges into the cloud document, and merging an empty map
+   * into a stored one deletes nothing, so the next sign-in would fold every
+   * wiped verse straight back in (see the seam below). */
+  clearProgressAndLog() {
+    write(KEYS.progress, JSON.stringify({}));
+    write(KEYS.log, JSON.stringify({}));
+    remoteSync({ replace: true });
+  },
+
   // Exercise preferences: local to the device, never synced.
   saveBlankLevel: (level) => write(KEYS.blankLevel, level),
   saveScrambleLevel: (level) => write(KEYS.scrambleLevel, level),
@@ -109,17 +123,26 @@ export const storage = {
 
 /* A no-op until a backend registers itself (see firebase.js). The whole record
  * is pushed on every save, read back out of storage so that saving one slice
- * still pushes the current value of the others in a single document write. */
+ * still pushes the current value of the others in a single document write.
+ *
+ * `replace` says the push is a wipe rather than an edit: the backend must store
+ * exactly what it is handed instead of folding it into what is already there,
+ * because a merge cannot express a deletion. */
 let syncFn = null;
 
 export function registerRemoteSync(fn) {
   syncFn = fn;
 }
 
-function remoteSync() {
+function remoteSync({ replace = false } = {}) {
   if (!syncFn) return;
   try {
-    syncFn({ progress: storage.loadProgress(), log: storage.loadLog(), profile: storage.loadProfile() });
+    syncFn({
+      progress: storage.loadProgress(),
+      log: storage.loadLog(),
+      profile: storage.loadProfile(),
+      replace,
+    });
   } catch {
     /* a broken sync must never break a local save */
   }

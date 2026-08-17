@@ -16,7 +16,7 @@ export const appConfig = {
    * registration mark is worth watching — and so it can be retuned per deploy
    * without a code change. Retune this one; SPLASH_MAX_MS in App.js is the
    * failsafe above it and is not a preference. */
-  splashMinMs: 3000,
+  splashMinMs: 2000,
   ...appOverrides,
 };
 
@@ -34,7 +34,8 @@ const DEFAULT_FIREBASE_CONFIG = {
   appId: "1:223583873519:web:eb490a7c3f51a14897ae1a",
 };
 
-const firebaseOverride = typeof window !== "undefined" ? window.__FIREBASE_CONFIG__ : undefined;
-export const firebaseConfig = firebaseOverride === undefined ? DEFAULT_FIREBASE_CONFIG : firebaseOverride;
+//const firebaseOverride = typeof window !== "undefined" ? window.__FIREBASE_CONFIG__ : undefined;
+//export const firebaseConfig = firebaseOverride === undefined ? DEFAULT_FIREBASE_CONFIG : firebaseOverride;
+export const firebaseConfig = DEFAULT_FIREBASE_CONFIG;
 
 export const isFirebaseConfigured = () => firebaseConfig != null;

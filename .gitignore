@@ -11,6 +11,13 @@ dist/
 # Bulky design export kept locally for provenance, not in the repo
 /design/claude-design/
 
+# Playwright run output: HTML report, traces, screenshots, and the browser cache
+# (the specs themselves live in e2e/ and ARE tracked)
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
 # Firebase CLI local cache / logs (firebase.json and .firebaserc ARE tracked)
 .firebase/
 firebase-debug.log

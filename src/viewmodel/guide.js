@@ -15,8 +15,8 @@
 import { copy } from "../copy.js";
 import { reviewSettings } from "../profile.js";
 import { MODES } from "../review.js";
-import { COMMIT_SCORE, retrievability } from "../srs.js";
-import { modeCeiling, points } from "./explainer.js";
+import { retrievability } from "../srs.js";
+import { modeCeiling } from "./explainer.js";
 
 const DAY_MS = 86400000;
 
@@ -52,7 +52,7 @@ function curvePath(stability) {
 const clampDays = (n) => Math.max(0, Math.min(CURVE.span, Math.round(Number(n) || 0)));
 
 export function guideVals({ state, actions }) {
-  const { dueFreshness } = reviewSettings(state.profile);
+  const { dueFreshness, commitThreshold } = reviewSettings(state.profile);
   const days = clampDays(state.guideDays);
 
   const held = Math.round(rAt(STABILITY.held, days) * 100);
@@ -69,7 +69,7 @@ export function guideVals({ state, actions }) {
 
     // ── what commits a verse ──────────────────────────────────────────────
     guideCommitTitle: copy.guide.commitTitle,
-    guideCommitBody: copy.guide.commitBody(points(COMMIT_SCORE)),
+    guideCommitBody: copy.guide.commitBody(commitThreshold),
     guideCommitFrom: copy.guide.commitFrom,
     guideCommitFromNote: copy.guide.commitFromNote,
     guideCommitTo: copy.guide.commitTo,

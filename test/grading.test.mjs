@@ -34,6 +34,24 @@ test("a transposition outside LOOKAHEAD does not match", () => {
   assert.equal(diff.find((d) => d.word === "seven").hit, false);
 });
 
+test("a miss carries what was typed in its place", () => {
+  const words = ["Trust", "in", "the", "Lord"];
+  // "the" is written as "teh" — a real mistake, not an omission — so the slot
+  // it landed in is worth showing.
+  const { diff } = gradeWritten(words, "Trust in teh Lord");
+  assert.equal(diff.find((d) => d.word === "the").typed, "teh");
+  assert.equal(diff.find((d) => d.word === "Trust").typed, "", "a hit carries nothing — there is no mistake to show");
+});
+
+test("a word never reached carries nothing typed, not the next word's", () => {
+  const words = ["Trust", "in", "the", "Lord"];
+  // Typing runs out after "Trust in" — "the" and "Lord" are both missed with
+  // nothing left to blame them on.
+  const { diff } = gradeWritten(words, "Trust in");
+  assert.equal(diff.find((d) => d.word === "the").typed, "");
+  assert.equal(diff.find((d) => d.word === "Lord").typed, "");
+});
+
 test("punctuation and capitals are ignored", () => {
   const words = ["Trust", "in", "the", "LORD."];
   assert.equal(gradeWritten(words, "trust, IN the lord").score, 1);
@@ -56,6 +74,13 @@ test("revealFirstLetters is strictly positional", () => {
   assert.equal(revealed[1].text, "x", "a wrong letter shows what was typed, not the word");
   assert.equal(revealed[2].state, "hidden");
   assert.equal(revealed[3].state, "hidden");
+});
+
+test("a hidden word's mask does not give away its length", () => {
+  const words = ["I", "wanders", "a", "commandments"];
+  const { words: revealed } = revealFirstLetters(words, "");
+  assert.equal(revealed[0].text, revealed[1].text, "a 1-letter and a 7-letter word mask the same");
+  assert.equal(revealed[2].text, revealed[3].text, "a 1-letter and a 12-letter word mask the same");
 });
 
 test("parseReference keeps a leading numeral with the book", () => {

@@ -1,7 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { MINISTRY_GROUPS, GENDERS, cleanDisplayName, isProfileComplete, mergeProfile } from "../src/profile.js";
+import {
+  DEFAULT_COMMIT_THRESHOLD,
+  MAX_COMMIT_THRESHOLD,
+  MINISTRY_GROUPS,
+  MIN_COMMIT_THRESHOLD,
+  GENDERS,
+  cleanDisplayName,
+  isProfileComplete,
+  mergeProfile,
+  reviewSettings,
+} from "../src/profile.js";
 
 test("isProfileComplete requires name, ministry group, gender, and class", () => {
   assert.equal(isProfileComplete(null), false);
@@ -27,6 +37,21 @@ test("profile option lists are well-formed", () => {
   assert.ok(MINISTRY_GROUPS.includes("Kairos") && MINISTRY_GROUPS.includes("ECM"));
   assert.equal(new Set(MINISTRY_GROUPS).size, MINISTRY_GROUPS.length, "no duplicate groups");
   assert.deepEqual(GENDERS, ["Male", "Female"]);
+});
+
+test("reviewSettings defaults the commit threshold, and keeps it within bounds", () => {
+  assert.equal(reviewSettings({}).commitThreshold, DEFAULT_COMMIT_THRESHOLD, "no override reads the default");
+  assert.equal(reviewSettings({ commitThreshold: 92 }).commitThreshold, 92, "a member's own value is honored");
+  assert.equal(
+    reviewSettings({ commitThreshold: MIN_COMMIT_THRESHOLD - 20 }).commitThreshold,
+    MIN_COMMIT_THRESHOLD,
+    "clamped to the floor, so the bar still means recalling the passage",
+  );
+  assert.equal(
+    reviewSettings({ commitThreshold: MAX_COMMIT_THRESHOLD + 20 }).commitThreshold,
+    MAX_COMMIT_THRESHOLD,
+    "clamped to the ceiling",
+  );
 });
 
 test("mergeProfile keeps the most recently edited profile", () => {

@@ -11,7 +11,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { freezeClock } from "./helpers/dom-env.mjs";
-import { baseState, NOW, PROPS } from "./helpers/scenarios.mjs";
+import { baseState, NOW, PROFILE, PROPS } from "./helpers/scenarios.mjs";
 import { normalizeSetup } from "../src/exam.js";
 import { LEARN } from "../src/review.js";
 import { COMMIT_SCORE } from "../src/srs.js";
@@ -31,9 +31,10 @@ Object.defineProperty(globalThis, "localStorage", {
   },
 });
 
-/* Two actions reach for the DOM on purpose (App.focusBlank, and following the
- * transcript down as a recitation lands). Nothing is mounted here, so there are
- * no elements to find — a document that finds none is exactly right. */
+/* A few actions reach for the DOM on purpose: App.focusBlank, following the
+ * transcript down as a recitation lands, and returning focus to the recall box
+ * after the voice or first-letter toggle steals it. Nothing is mounted here, so
+ * there are no elements to find — a document that finds none is exactly right. */
 Object.defineProperty(globalThis, "document", {
   configurable: true,
   value: { getElementById: () => null },
@@ -59,7 +60,7 @@ function app(state) {
   return instance;
 }
 
-const sitting = (over) => app(baseState({ view: "test-setup", examSetup: normalizeSetup({ size: 5, ...over }) }));
+const sitting = (over) => app(baseState({ view: "test-setup", examSetup: normalizeSetup({ size: 10, ...over }) }));
 
 /* A review session over two passages, in the given mode. */
 function session(mode, over) {
@@ -240,9 +241,11 @@ test("a wrong chunk is refused, counted, and costs the ordering mark", () => {
   assert.deepEqual(a.state.scrambleOrder, [0]);
   assert.equal(a.state.scrambleMisses, 1);
 
-  // Starting over clears the board but not the wrong tries.
+  // Starting over is this ordering attempted again from scratch, so the board
+  // and the tally the mark reads both go back to nothing.
   a.actions.resetScramble();
-  assert.equal(a.state.scrambleMisses, 1);
+  assert.deepEqual(a.state.scrambleOrder, []);
+  assert.equal(a.state.scrambleMisses, 0);
 });
 
 test("a card that has been handed in stops taking answers", () => {
@@ -256,6 +259,56 @@ test("a card that has been handed in stops taking answers", () => {
   assert.equal(a.state.typed, "");
   a.actions.placeChunk(0);
   assert.deepEqual(a.state.scrambleOrder, []);
+});
+
+test("another exercise on a handed-in card is a live exercise", () => {
+  const a = session("blanks");
+  a.actions.setAnswer(0, "hear");
+  a.actions.submitCard(1);
+  const marked = a.state.progress[1];
+
+  // A review card is a committed verse, so its mark stands — but the exercise
+  // switched to has no paper of its own and has to take answers.
+  a.actions.setMode("type");
+  a.actions.setTyped("late words");
+  assert.equal(a.state.typed, "late words", "the exercise switched to is not dead");
+  a.actions.submitCard(1);
+  assert.deepEqual(a.state.progress[1], marked, "and cannot mark the verse a second time");
+
+  // Switching back shows the paper that was marked, rather than a cleared one.
+  a.actions.setMode("blanks");
+  assert.deepEqual(a.state.answers, { 0: "hear" });
+  a.actions.setAnswer(0, "changed");
+  assert.deepEqual(a.state.answers, { 0: "hear" }, "and it is still not editable");
+});
+
+test("switching exercise reopens a learn card that fell short", () => {
+  const a = learnSession("type");
+  a.actions.submitCard(COMMIT_SCORE - 0.01);
+  assert.equal(a.state.progress[4].status, "learning", "the first attempt fell short");
+
+  // What the sitting is for is still open, so the exercise switched to can be
+  // handed in — the same relaxation "Try again" makes.
+  a.actions.setMode("scramble");
+  assert.equal(a.state.results[4], undefined, "the mark is cleared so Submit is live again");
+  a.actions.placeChunk(0);
+  assert.deepEqual(a.state.scrambleOrder, [0]);
+  a.actions.submitCard(1);
+  assert.ok(a.state.results[4], "and the second attempt is marked");
+});
+
+test("a learn card that committed the verse keeps its mark when the exercise changes", () => {
+  const a = learnSession("type");
+  a.actions.submitCard(1);
+  assert.equal(a.state.results[4].committed, true);
+  const marked = a.state.progress[4];
+
+  a.actions.setMode("blanks");
+  assert.equal(a.state.results[4].committed, true, "the commitment it earned is not thrown away");
+  a.actions.setAnswer(0, "practice");
+  assert.deepEqual(a.state.answers, { 0: "practice" }, "and the practice exercise still works");
+  a.actions.submitCard(1);
+  assert.deepEqual(a.state.progress[4], marked, "without marking the verse again");
 });
 
 /* ── learning: what commits a verse ───────────────────────────────────────── */
@@ -285,6 +338,31 @@ test("the bar is a near-perfect write-out, not a passable one", () => {
   assert.equal(half.state.progress[4].status, "learning", "half a passage is half a passage");
 });
 
+test("a member's own commit threshold moves the bar the sitting is held to", () => {
+  const lowered = learnSession("type", { profile: { ...PROFILE, commitThreshold: 90 } });
+  lowered.actions.submitCard(0.9);
+  assert.equal(lowered.state.progress[4].status, "memorized", "90% clears the member's own, lower bar");
+
+  const stillDefault = learnSession("type");
+  stillDefault.actions.submitCard(0.9);
+  assert.equal(stillDefault.state.progress[4].status, "learning", "a profile with no override keeps COMMIT_SCORE");
+});
+
+test("a card that did not commit the verse can be tried again", () => {
+  const a = learnSession("type");
+  a.actions.submitCard(COMMIT_SCORE - 0.01);
+  assert.equal(a.state.progress[4].status, "learning", "the first attempt fell short");
+  assert.ok(a.state.results[4], "and was marked");
+
+  a.actions.retryCard();
+  assert.equal(a.state.results[4], undefined, "the mark is cleared so Submit is live again");
+  assert.equal(a.state.typed, "", "and the card's own answer is cleared with it");
+
+  a.actions.submitCard(1);
+  assert.equal(a.state.progress[4].status, "memorized", "a clean second attempt still commits it");
+  assert.equal(a.state.results[4].committed, true);
+});
+
 test("no other activity commits a verse, however well it goes", () => {
   for (const mode of ["flip", "blanks", "scramble"]) {
     const a = learnSession(mode);
@@ -293,16 +371,19 @@ test("no other activity commits a verse, however well it goes", () => {
   }
 });
 
-test("a passage that was peeked at or scaffolded was not written from memory", () => {
+test("a passage that was peeked at was not written from memory", () => {
   const peeked = learnSession("type");
   peeked.actions.setPeek(true);
   peeked.actions.setPeek(false);
   peeked.actions.submitCard(1);
   assert.equal(peeked.state.progress[4].status, "learning", "a passage read is not a passage recalled");
+});
 
+test("the first-letter scaffold still commits a verse in Learn — that is what Learn is for", () => {
   const scaffolded = learnSession("type", { typeFirstLetter: true });
   scaffolded.actions.submitCard(1);
-  assert.equal(scaffolded.state.progress[4].status, "learning", "first letters is a hint");
+  assert.equal(scaffolded.state.progress[4].status, "memorized");
+  assert.equal(scaffolded.state.results[4].committed, true);
 });
 
 test("repetition alone no longer commits anything", () => {
@@ -369,7 +450,7 @@ test("a test runs from setup to summary and writes what it measured", () => {
   const a = sitting();
   a.actions.startExam();
   assert.equal(a.state.view, "test");
-  assert.equal(a.state.exam.ids.length, 5);
+  assert.equal(a.state.exam.ids.length, 10);
 
   const questions = a.state.exam.questions.length;
   for (let i = 0; i < questions; i++) {
@@ -380,13 +461,13 @@ test("a test runs from setup to summary and writes what it measured", () => {
 
   assert.equal(a.state.view, "test-done");
   assert.equal(a.state.examResult.score, 1, "every question was answered right");
-  assert.equal(a.state.examResult.rows.length, 5);
+  assert.equal(a.state.examResult.rows.length, 10);
   // Every tested verse is now fully fresh and has a clean review to its name.
   for (const id of a.state.exam.ids) {
     assert.equal(a.state.progress[id].hits, 1);
     assert.equal(a.state.progress[id].updatedAt, NOW);
   }
-  assert.equal(a.state.log[dayKey(new Date())], baseState().log[dayKey(new Date())] + 5);
+  assert.equal(a.state.log[dayKey(new Date())], baseState().log[dayKey(new Date())] + 10);
 
   // …and the result reached storage, not just state.
   const stored = JSON.parse(saved.get("mv.progress"));
@@ -451,7 +532,7 @@ test("leaving a test asks first, and marks nothing when confirmed", () => {
 test("matching pairs one reference at a time, and lets a pairing be undone", () => {
   const a = sitting({ activities: ["match"] });
   a.actions.startExam();
-  // Five verses deal into a block of four and a block of one; take the four.
+  // Ten verses deal into blocks of four; take the first.
   const q = a.state.exam.questions.find((x) => x.verses.length > 1);
   const index = a.state.exam.questions.indexOf(q);
   const [first, second] = q.verses;
@@ -645,4 +726,67 @@ test("the transcript and the microphone belong to the card, not the session", ()
   assert.equal(a.state.voice.status, "off");
   assert.equal(a.state.voice.tail, 0);
   assert.equal(a.state.voice.supported, true, "but what the browser can do is not per-card");
+});
+
+/* ── sign-up welcome prompt ───────────────────────────────────────────────── */
+
+test("finishing the profile form for the first time is met with the welcome prompt", () => {
+  const a = app(baseState({ profile: {}, profileDraft: { ...PROFILE } }));
+  a.actions.submitProfile();
+  assert.equal(a.state.welcomePrompt, true);
+});
+
+test("reopening an already-complete profile to edit it never shows the prompt again", () => {
+  const a = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE, ministryGroup: "ECM" } }));
+  a.actions.submitProfile();
+  assert.equal(a.state.welcomePrompt, false);
+});
+
+test("the guide button dismisses the prompt and opens the guide", () => {
+  const a = app(baseState({ welcomePrompt: true }));
+  a.actions.dismissWelcome("guide");
+  assert.equal(a.state.welcomePrompt, false);
+  assert.equal(a.state.view, "guide");
+});
+
+test("the learn button dismisses the prompt and heads straight into learn setup", () => {
+  const a = app(baseState({ welcomePrompt: true }));
+  a.actions.dismissWelcome("learn-setup");
+  assert.equal(a.state.welcomePrompt, false);
+  assert.equal(a.state.view, "learn-setup");
+});
+
+/* ── resetting the record ─────────────────────────────────────────────────── */
+
+test("resetting clears the record — in state and in storage — and only the record", () => {
+  const a = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE }, selection: [1, 2] }));
+  saved.set("mv.progress", JSON.stringify(a.state.progress));
+  saved.set("mv.log", JSON.stringify(a.state.log));
+
+  a.actions.askResetProgress();
+  assert.equal(a.state.resetAsk, true, "the button asks rather than wipes");
+  assert.notDeepEqual(a.state.progress, {}, "and nothing has gone yet");
+
+  a.actions.resetProgress();
+  assert.deepEqual(a.state.progress, {});
+  assert.deepEqual(a.state.log, {});
+  assert.deepEqual(JSON.parse(saved.get("mv.progress")), {}, "the wipe reached storage");
+  assert.deepEqual(JSON.parse(saved.get("mv.log")), {});
+  assert.deepEqual(a.state.selection, [], "ticks picked against the old record go with it");
+  assert.equal(a.state.resetAsk, false);
+
+  // The profile and the settings on the same screen are not the record.
+  assert.deepEqual(a.state.profile, PROFILE);
+  assert.equal(a.state.editingProfile, true);
+});
+
+test("backing out of the warning leaves everything where it was", () => {
+  const a = app(baseState({ editingProfile: true }));
+  const before = a.state.progress;
+
+  a.actions.askResetProgress();
+  a.actions.cancelResetProgress();
+
+  assert.equal(a.state.resetAsk, false);
+  assert.deepEqual(a.state.progress, before);
 });

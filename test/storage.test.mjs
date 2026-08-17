@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 
-import { mergeProgress, mergeLog, storage } from "../src/storage.js";
+import { mergeProgress, mergeLog, registerRemoteSync, storage } from "../src/storage.js";
 
 /* An in-memory stand-in for localStorage. storage.js reads the global lazily
  * inside each guarded access, so installing it after import is enough. */
@@ -90,6 +90,36 @@ test("device-local preferences round-trip through their own keys", () => {
 
   assert.ok(!map.has("undefined"), "a preference was written under a missing KEYS entry");
   for (const key of map.keys()) assert.match(key, /^mv\./, `unexpected storage key ${key}`);
+});
+
+/* A wipe has to be told apart from a save at the seam, because the cloud copy
+ * is written by merging (firebase.js) and merging an empty map deletes nothing:
+ * a wipe pushed as an ordinary save would come straight back on the next
+ * sign-in. */
+test("clearing the record empties both halves and pushes a replacement", () => {
+  const map = stubLocalStorage();
+  const pushes = [];
+  registerRemoteSync((payload) => pushes.push(payload));
+
+  try {
+    storage.saveProgressAndLog({ 1: { hits: 2 } }, { "2026-08-15": 3 });
+    storage.saveProfile({ name: "Ada" });
+    assert.equal(pushes.at(-1).replace, false, "an ordinary save merges");
+
+    storage.clearProgressAndLog();
+    assert.deepEqual(storage.loadProgress(), {});
+    assert.deepEqual(storage.loadLog(), {});
+    assert.deepEqual(storage.loadProfile(), { name: "Ada" }, "the profile is not the record");
+
+    const wipe = pushes.at(-1);
+    assert.equal(wipe.replace, true);
+    assert.deepEqual(wipe.progress, {});
+    assert.deepEqual(wipe.log, {});
+    assert.deepEqual(wipe.profile, { name: "Ada" });
+    assert.ok(!map.has("undefined"), "the wipe was written under a missing KEYS entry");
+  } finally {
+    registerRemoteSync(null);
+  }
 });
 
 test("an unset preference falls back, and a corrupt level does too", () => {

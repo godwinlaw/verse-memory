@@ -152,7 +152,39 @@ test("the bar leaves room for a slip, but not for half a passage", () => {
   assert.ok(COMMIT_SCORE > 0.9, "but most of the passage is not the whole of it");
 });
 
-test("scaffolded or peeked-at recall is not recall", () => {
-  assert.equal(commitsVerse({ mode: "type", score: 1, firstLetters: true }), false, "first letters is a hint");
+test("peeked-at recall is not recall, in Learn or anywhere else", () => {
   assert.equal(commitsVerse({ mode: "type", score: 1, peeks: 1 }), false, "a passage read is not a passage recalled");
+  assert.equal(
+    commitsVerse({ mode: "type", score: 1, peeks: 1, sessionKind: "learn" }),
+    false,
+    "peeking still disqualifies inside Learn",
+  );
+});
+
+test("the first-letter scaffold does not commit outside Learn", () => {
+  assert.equal(commitsVerse({ mode: "type", score: 1, firstLetters: true }), false, "no sessionKind means not Learn");
+  assert.equal(
+    commitsVerse({ mode: "type", score: 1, firstLetters: true, sessionKind: "review" }),
+    false,
+    "Review never offers an uncommitted verse, but the rule holds anyway",
+  );
+});
+
+test("the first-letter scaffold commits a clean write-out in Learn — that is what Learn is for", () => {
+  assert.equal(commitsVerse({ mode: "type", score: 1, firstLetters: true, sessionKind: "learn" }), true);
+  assert.equal(
+    commitsVerse({ mode: "type", score: COMMIT_SCORE - 0.01, firstLetters: true, sessionKind: "learn" }),
+    false,
+    "the scaffold moves nothing about the bar itself",
+  );
+});
+
+test("a member's own threshold moves the bar, but nothing else about the rule", () => {
+  assert.equal(commitsVerse({ mode: "type", score: 0.9 }, 0.9), true, "a lower bar admits a lower score");
+  assert.equal(commitsVerse({ mode: "type", score: 0.9 }), false, "COMMIT_SCORE is still the default");
+  assert.equal(
+    commitsVerse({ mode: "type", score: 0.9, firstLetters: true }, 0.9),
+    false,
+    "a moved bar still only reads a write-out",
+  );
 });

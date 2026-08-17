@@ -51,6 +51,21 @@ for (const s of scenarios) {
   });
 }
 
+test("a phone is turned away before the app, and before the splash", () => {
+  const blocked = shown("device/mobile");
+  assert.match(blocked, /not available on a mobile device/);
+  // Nothing behind the gate leaks past it: no board, no sign-in, no boot.
+  assert.doesNotMatch(blocked, /passages committed/);
+  assert.doesNotMatch(blocked, /Sign in with Google/);
+  assert.doesNotMatch(blocked, /class="splash-mark"/);
+
+  // Still refused mid-boot: the decision does not wait on anything loading,
+  // since none of it changes the answer.
+  const loading = shown("device/mobile-while-loading");
+  assert.match(loading, /not available on a mobile device/);
+  assert.doesNotMatch(loading, /class="splash-mark"/);
+});
+
 test("the splash decides where the member lands, so neither destination shows early", () => {
   // Firebase has not answered yet: no sign-in prompt (a returning member would
   // be asked to sign in when they already are) and no board (they may not be).
@@ -80,6 +95,40 @@ test("the splash names the steps but announces only what is true", () => {
   assert.match(checking, /Indexing \d+ passages/);
   assert.match(checking, /Building today&#x27;s queue/);
   assert.match(checking, /class="splash-cycle" aria-hidden="true"/);
+});
+
+test("the settings form offers a reset, and the setup form does not", () => {
+  const editing = shown("profile/edit");
+  assert.match(editing, /Reset all progress/);
+  // What it would cost, from the fixture: 3 committed, 3 in progress. The
+  // warning itself is behind the button, so none of it is on the form.
+  assert.match(editing, /You have 3 passages committed and 3 passages in progress\./);
+  assert.doesNotMatch(editing, /cannot be undone/);
+
+  // The setup form is a gate with nothing behind it yet — no record to wipe.
+  assert.doesNotMatch(shown("profile/setup-empty"), /Reset all progress/);
+});
+
+test("resetting says what goes, where it goes from, and what stays", () => {
+  const asking = shown("profile/edit-reset-ask");
+  assert.match(asking, /Reset all progress\?/);
+  // The three counts a member would lose, all read off their own record.
+  assert.match(asking, /erases 3 committed passages and 3 passages in progress/);
+  assert.match(asking, /streak of 3 days/);
+  assert.match(asking, /back to Not started/);
+  // That it is not just this device, and that the profile survives it.
+  assert.match(asking, /every device you sign in on/);
+  assert.match(asking, /review settings above are kept\. This cannot be undone\./);
+  // And a way out that is not the destructive one.
+  assert.match(asking, />Keep my progress<\/button>/);
+});
+
+test("a member with nothing recorded has nothing to reset", () => {
+  const empty = shown("profile/edit-nothing-to-reset");
+  assert.match(empty, /not recorded anything yet/);
+  // The button is there, but dead — there is no record behind it.
+  const [button] = empty.match(/<button[^>]*>Reset all progress<\/button>/) || [];
+  assert.match(button || "", /disabled=""/);
 });
 
 test("board shows the committed count", () => {
@@ -116,6 +165,17 @@ test("review/type-graded shows a percentage", () => {
   const s = scenarios.find((x) => x.name === "review/type-graded");
   const { markup } = renderScenario(s.state, s.props);
   assert.match(markup, /\d+%/);
+});
+
+test("a missed recall word shows what was written in its place", () => {
+  const markup = shown("review/type-graded-mistakes");
+  assert.match(markup, />O<\/span>/, "the missed word is still shown in full");
+  assert.match(markup, />israel</, "and what was typed in its place, right there beside it");
+  assert.match(markup, />load</, "a wrong word shows what was actually written, not just that it's wrong");
+  // Once the input runs out there is nothing to show having been typed —
+  // "the", "is", "one" and the rest of the passage past "god" are missed with
+  // no annotation, so exactly the two real mistakes get a strike-through line.
+  assert.equal((markup.match(/text-decoration:line-through/g) || []).length, 2);
 });
 
 test("the flashcard's show and hide are one button in one place", () => {
@@ -381,8 +441,8 @@ test("a learn session says what this card would take to commit the verse", () =>
 
   assert.match(
     shown("learn/scaffolded"),
-    /Recite or type the passage in full to commit/,
-    "first letters is a hint, not a write-out",
+    /95% of the words right, without peeking/,
+    "the first-letter scaffold still commits in Learn",
   );
 });
 
@@ -422,6 +482,7 @@ const LEARN_SCREENS = [
   "learn/practising",
   "learn/scaffolded",
   "learn/committed",
+  "learn/not-committed",
   "learn/already-committed",
   "learn/moving-on-unsubmitted",
   "learn/leaving",
@@ -453,6 +514,16 @@ test("a learn card reports whether it committed, not a freshness delta", () => {
   const missed = shown("learn/practising");
   assert.match(shown("learn/writing"), /A peek means this attempt cannot commit/, "and peeks cost a commitment");
   assert.match(missed, /Recite or type the passage in full to commit/);
+});
+
+test("a card that fell short of committing offers a try again — a done one does not", () => {
+  assert.match(
+    shown("learn/not-committed"),
+    /Try again/,
+    "so a first miss is not the only chance this sitting gives it",
+  );
+  assert.doesNotMatch(shown("learn/committed"), /Try again/, "nothing to retry once the verse is in");
+  assert.doesNotMatch(shown("learn/already-committed"), /Try again/, "or once it already was");
 });
 
 test("the learn session's dialogs say what is at stake in its own terms", () => {
@@ -517,7 +588,7 @@ test("the fixture paper asks every activity", () => {
 test("test/setup-empty-pool says so instead of offering a start", () => {
   const s = scenarios.find((x) => x.name === "test/setup-empty-pool");
   const { markup } = renderScenario(s.state, s.props);
-  assert.match(markup, /No verses match these settings yet/);
+  assert.match(markup, /nothing to test/);
   assert.match(markup, /disabled=""/);
 });
 

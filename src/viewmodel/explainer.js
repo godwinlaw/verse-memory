@@ -15,7 +15,7 @@ import { BLANK_LEVELS, SCRAMBLE_LEVELS } from "../blanks.js";
 import { copy } from "../copy.js";
 import { reviewSettings } from "../profile.js";
 import { MODES } from "../review.js";
-import { awardCeiling, COMMIT_SCORE, freshColor, PEEK_COST } from "../srs.js";
+import { awardCeiling, freshColor, PEEK_COST } from "../srs.js";
 
 export const points = (r) => Math.round(r * 100);
 
@@ -35,7 +35,7 @@ const METER_TRACK = "flex:1;height:9px;background:var(--color-fresh-track);overf
 const meterBar = (pct) => "height:100%;width:" + pct + "%;background:" + freshColor(pct);
 
 export function explainerVals({ state, actions }) {
-  const { dueFreshness } = reviewSettings(state.profile);
+  const { dueFreshness, commitThreshold } = reviewSettings(state.profile);
 
   return {
     // Hidden by default on both setup screens; a member who opens it stays
@@ -62,6 +62,6 @@ export function explainerVals({ state, actions }) {
     // The one rule that decides which half of the set a passage sits in, said
     // the same way wherever it is said.
     commitTitle: copy.explainer.commitTitle,
-    commitBody: copy.explainer.commitBody(points(COMMIT_SCORE)),
+    commitBody: copy.explainer.commitBody(commitThreshold),
   };
 }

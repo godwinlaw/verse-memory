@@ -33,7 +33,7 @@ import { mulberry32 } from "./review.js";
 /* ── setup ────────────────────────────────────────────────────────────────── */
 
 /* How many verses a test can cover. 0 means every eligible verse. */
-export const SIZE_OPTIONS = [5, 10, 20, 30, 0];
+export const SIZE_OPTIONS = [10, 20, 30, 40, 50, 70, 100, 0];
 
 /* Granularity of the freshness ceiling, in points. */
 export const FRESHNESS_STEP = 10;

@@ -1,0 +1,130 @@
+/* The profile: the form that stands between a new member and the app, and the
+ * two settings on it that the rest of the app then reads.
+ *
+ * These boot with the Firebase stub signed in, because the profile is an
+ * account's — the header only carries a name, a settings button and a sign-out
+ * once there is a session behind them.
+ *
+ * The second half is the part worth driving in a browser: the member's own
+ * threshold is what the board's review queue and the guide both quote, so
+ * changing it here has to change both. */
+
+import { test, expect } from "./fixtures.mjs";
+import { MEMBER } from "./helpers/firebase-stub.mjs";
+import { committed, passageById, started } from "./helpers/seed.mjs";
+
+const signedIn = { session: MEMBER };
+
+test("a member with no profile fills one in before the app", async ({ app, page }) => {
+  await app.boot({ profile: null, firebase: signedIn });
+
+  await expect(page.getByText("SET UP YOUR PROFILE")).toBeVisible();
+  await expect(app.board).toHaveCount(0);
+
+  // The name arrives pre-filled from the Google account, campus tag stripped.
+  await expect(page.getByPlaceholder("Your full name")).toHaveValue("Ada Lovelace");
+
+  const save = page.getByRole("button", { name: "Save and continue" });
+  await expect(save).toBeDisabled();
+
+  await page.getByPlaceholder("Your full name").fill("Grace Hopper");
+  await page.getByPlaceholder("Start typing to search…").fill("Kai");
+  await page.getByRole("button", { name: "Kairos" }).click();
+  await page.getByRole("button", { name: "Female" }).click();
+  await page.getByPlaceholder("e.g. 2016").fill("2027");
+
+  await expect(save).toBeEnabled();
+  await save.click();
+
+  await expect(app.board).toBeVisible();
+  await expect(app.header).toContainText("Grace Hopper");
+
+  // Saved, so the form is not asked for again.
+  await app.revisit();
+  await expect(app.board).toBeVisible();
+  expect(await app.stored("mv.profile")).toMatchObject({
+    name: "Grace Hopper",
+    ministryGroup: "Kairos",
+    gender: "Female",
+  });
+});
+
+test("the member's freshness threshold decides what comes back round", async ({ app, page }) => {
+  // Committed at 60%: due at the default 75% mark, but not at 40%.
+  await app.boot({ progress: { 2: committed(0.6) }, firebase: signedIn });
+  await expect(app.queue("Review today")).toContainText(passageById(2).ref);
+
+  await app.header.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByText("EDIT YOUR PROFILE")).toBeVisible();
+  await page.getByLabel("Review a committed verse once it fades to (%)").fill("40");
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(app.board).toBeVisible();
+  // The queue's note sits beside its heading, above the rows themselves.
+  await expect(app.board).toContainText("committed · faded to 40% or below");
+  await expect(app.queue("Review today")).not.toContainText(passageById(2).ref);
+
+  // And the same figure is what the guide teaches.
+  await app.nav("Guide").click();
+  await expect(page.getByText("asks for it back at 40%")).toBeVisible();
+});
+
+test("editing can be backed out of", async ({ app, page }) => {
+  await app.boot({ progress: {}, firebase: signedIn });
+
+  await app.header.getByRole("button", { name: "Settings" }).click();
+  await page.getByPlaceholder("Your full name").fill("Someone Else");
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(app.board).toBeVisible();
+  await expect(app.header).toContainText("Ada Lovelace");
+});
+
+/* Resetting the record. Worth driving in a browser rather than asserting on the
+ * view-model: what makes a wipe a wipe is that it is still gone on the next
+ * visit, and that it went up as a replacement — a merged push would leave every
+ * verse in the cloud copy to come back on the following sign-in. */
+test("resetting all progress empties the board, and stays empty", async ({ app, page }) => {
+  await app.boot({ progress: { 1: committed(1), 2: committed(0.6), 3: started(0.5) }, firebase: signedIn });
+  expect(await app.figure(app.committedFigure)).toBe(2);
+
+  await app.header.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Reset all progress" }).click();
+
+  // The warning stands in front of it, counting what would go.
+  await expect(app.dialog).toContainText("erases 2 committed passages and 1 passage in progress");
+  await expect(app.dialog).toContainText("This cannot be undone.");
+
+  // Backing out changes nothing.
+  await page.getByRole("button", { name: "Keep my progress" }).click();
+  await expect(app.dialog).toHaveCount(0);
+  expect(await app.stored("mv.progress")).toMatchObject({ 1: { status: "memorized" } });
+
+  await page.getByRole("button", { name: "Reset all progress" }).click();
+  await page.getByRole("button", { name: "Yes, reset everything" }).click();
+  await expect(app.dialog).toHaveCount(0);
+
+  // The profile is not the record, so the form is still open on it.
+  await expect(page.getByPlaceholder("Your full name")).toHaveValue("Ada Lovelace");
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(app.board).toBeVisible();
+  expect(await app.figure(app.committedFigure)).toBe(0);
+  expect(await app.stored("mv.progress")).toEqual({});
+
+  // The wipe went up as a whole document — no merge option — since merging an
+  // empty map into the stored one would delete nothing, and every wiped verse
+  // would come back on the next sign-in. (Ordinary saves after it still merge,
+  // so it is the write without options that has to be found.)
+  await expect(async () => {
+    const wipes = (await app.writes()).filter((w) => w.data && w.data.progress && !w.options);
+    expect(wipes).toHaveLength(1);
+    expect(wipes[0].data.progress).toEqual({});
+    expect(wipes[0].data.log).toEqual({});
+    // Written whole, so identity has to be in it or the roster would lose them.
+    expect(wipes[0].data.email).toBe(MEMBER.email);
+  }).toPass();
+
+  await app.revisit();
+  expect(await app.figure(app.committedFigure)).toBe(0);
+});
