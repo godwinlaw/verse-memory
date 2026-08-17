@@ -57,7 +57,12 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   const passes = (row) =>
     FILTERS.every((f) => selected[f.key] === ANY || String(row[f.field]) === String(selected[f.key]));
 
-  const ranked = roster.filter(passes).sort((a, b) => b.freshnessScore - a.freshnessScore || b.count - a.count);
+  // A member with nothing committed yet has no row on the board at all — there
+  // is nothing meaningful to rank or display for them.
+  const ranked = roster
+    .filter(passes)
+    .filter((p) => p.count > 0)
+    .sort((a, b) => b.freshnessScore - a.freshnessScore || b.count - a.count);
   const top = Math.max(1, ranked[0] ? ranked[0].freshnessScore : 1);
 
   return {
@@ -77,7 +82,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
 
     podium: ranked.slice(0, PLACES.length).map((p, i) => ({
       place: PLACES[i],
-      name: p.count > 0 ? p.name : copy.leaderboard.unnamed,
+      name: p.name,
       count: p.count,
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       cardStyle:
@@ -87,7 +92,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
 
     board: ranked.map((p, i) => ({
       rank: i + 1,
-      name: p.count > 0 ? p.name : copy.leaderboard.unnamed,
+      name: p.name,
       count: p.count,
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       streak: copy.leaderboard.streakDays(p.streak),
