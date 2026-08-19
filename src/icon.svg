@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="The Memory Board">
+  <!-- "Marked passage" — the ribbon marker cut from paper on a steel field,
+       rules standing in for the passage it holds. Square-cornered and edge to
+       edge like every other object in the blueprint system.
+
+       The colours are the accent-900 and paper tokens from styles.css written
+       out, because a standalone SVG has no :root to read them from.
+
+       This carries the design's 48px cut, two rules, rather than the three-rule
+       drawing it is shown large as: browsers that take an SVG icon use it at
+       every size, tab included, and the third rule closes up into grey below
+       about 40px. favicon.ico carries the 24px cut for the same reason. See
+       "App Icon.dc.html" (1C) in the design project. -->
+  <rect width="64" height="64" fill="#1d2d3d"/>
+  <polygon points="19,8 45,8 45,56 32,46 19,56" fill="#f2f2f3"/>
+  <g stroke="#1d2d3d" stroke-width="3.2">
+    <path d="M24 21H40"/>
+    <path d="M24 31H36"/>
+  </g>
+</svg>
