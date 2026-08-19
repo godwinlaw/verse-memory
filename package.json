@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "serve -l 8080 .",
     "start": "serve -l 8080 .",
-    "test": "node --test 'test/**/*.test.mjs'",
+    "test": "node --test test/*.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
