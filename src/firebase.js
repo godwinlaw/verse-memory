@@ -10,7 +10,9 @@
  *   • Firestore stores one document per user at
  *     users/{uid} = { name, email, progress, log, profile }.
  *   • On sign-in we pull the remote doc and hand it back for merging.
- *   • Every local save is debounced and pushed to the user's doc.
+ *   • Every local save is debounced and folded into the user's doc — the push
+ *     reads before it writes, using the same merges as the pull, so a device
+ *     holding an older copy of a verse cannot write it over a newer one.
  *
  * The Firebase modular SDK is imported from the gstatic CDN so the app keeps its
  * no-build, ES-module setup. If Firebase is unreachable/misconfigured the app
@@ -28,12 +30,18 @@
  */
 
 import { firebaseConfig, isFirebaseConfigured } from "./config.js";
-import { registerRemoteSync } from "./storage.js";
-import { cleanDisplayName } from "./profile.js";
+import { registerRemoteSync, mergeProgress, mergeLog } from "./storage.js";
+import { cleanDisplayName, mergeProfile } from "./profile.js";
 
 const SDK_VERSION = "11.6.1";
 const SDK = `https://www.gstatic.com/firebasejs/${SDK_VERSION}`;
 const PUSH_DEBOUNCE_MS = 800;
+
+/* A push needs the network — see mergeIntoRemote, which reads before it writes.
+ * Offline that read simply fails, so a save made on a dropped connection is
+ * tried again a few times before the member is told sync is not working. */
+const PUSH_RETRIES = 3;
+const PUSH_RETRY_MS = 4000;
 
 /* Google Workspace domains permitted to sign in (Acts 2 Network).
  *
@@ -213,11 +221,11 @@ function registerPush(s, user) {
   const userDoc = doc(s.db, "users", user.uid);
   const identity = { name: cleanDisplayName(user.displayName), email: user.email || "" };
 
-  /* An ordinary save merges, so a slice left out of the payload is left alone.
-   * A wipe (storage.clearProgressAndLog) cannot: setDoc's merge folds maps
-   * together key by key, so an emptied `progress` would delete nothing and the
-   * next sign-in would pull every wiped verse back. So it writes the document
-   * whole — identity included, since nothing outside this payload survives.
+  /* An ordinary save folds into the stored record (see mergeIntoRemote). A wipe
+   * (storage.clearProgressAndLog) cannot: folding an emptied map into a stored
+   * one deletes nothing, and the next sign-in would pull every wiped verse
+   * back. So it writes the document whole — identity included, since nothing
+   * outside this payload survives.
    *
    * `pendingReplace` is what survives the debounce. Pushes are coalesced, and a
    * wipe followed by any ordinary save within the window would otherwise go up
@@ -225,20 +233,65 @@ function registerPush(s, user) {
    * finally fires is a replacement; the payload is read fresh from storage each
    * time, so it is still the current record that gets written. */
   let pendingReplace = false;
-  const push = debounce(({ progress, log, profile }) => {
-    const record = { progress, log, profile: profile || {}, updatedAt: Date.now() };
-    const write = pendingReplace
-      ? setDoc(userDoc, { ...identity, ...record })
-      : setDoc(userDoc, mergeable(record), { merge: true });
+
+  const send = (payload, attempt) => {
+    const record = { progress: payload.progress, log: payload.log, profile: payload.profile || {} };
+    const replace = pendingReplace;
     pendingReplace = false;
+    const write = replace
+      ? setDoc(userDoc, { ...identity, ...record, updatedAt: Date.now() })
+      : mergeIntoRemote(s, userDoc, record);
     write.catch((e) => {
+      /* A wipe is an ordinary offline-queued write, so only the merging path is
+       * worth retrying: it reads first, and a read is what a dropped connection
+       * refuses. The local save stands either way, and the next visit's pull
+       * folds it back up (App.hydrateRemote saves what it merged). */
+      if (!replace && attempt < PUSH_RETRIES) {
+        setTimeout(() => send(payload, attempt + 1), PUSH_RETRY_MS * (attempt + 1));
+        return;
+      }
       console.warn("Firebase push failed:", e);
       pushError({ status: "error", code: (e && e.code) || "unavailable" });
     });
-  }, PUSH_DEBOUNCE_MS);
+  };
+
+  const push = debounce((payload) => send(payload, 0), PUSH_DEBOUNCE_MS);
   registerRemoteSync((payload) => {
     if (payload.replace) pendingReplace = true;
     push(payload);
+  });
+}
+
+/* An ordinary push: fold this device's record into the stored one, in a
+ * transaction, rather than writing over it.
+ *
+ * A push used to be `setDoc(…, { merge: true })` of whatever this device held.
+ * That merge is per field, not per record: it leaves alone the keys the payload
+ * does not mention, but every key it does mention it overwrites, however old
+ * this device's copy of it is. So a device that still had a verse as `learning`
+ * pushed that over the commit another device had just made — and because
+ * nothing demotes a verse, the two devices then disagreed for good: the one
+ * that committed it kept saying committed (reconcile carries `memorized`
+ * forward on the way in), while every other device pulled the rollback and
+ * pushed it straight back up. A verse committed on one device never reached the
+ * others.
+ *
+ * Reading first is the whole fix, and it uses the same merges the pull does, so
+ * the two directions cannot settle a record differently. A transaction is what
+ * makes read-then-write safe: Firestore reruns it if the document changed
+ * underneath, so two devices saving at once cannot lose one another's work. */
+function mergeIntoRemote(s, userDoc, record) {
+  const { runTransaction } = s.dbMod;
+  return runTransaction(s.db, async (tx) => {
+    const snap = await tx.get(userDoc);
+    const cloud = (snap.exists() && snap.data()) || {};
+    const merged = {
+      progress: mergeProgress(record.progress, cloud.progress),
+      log: mergeLog(record.log, cloud.log),
+      profile: mergeProfile(record.profile, cloud.profile),
+      updatedAt: Date.now(),
+    };
+    tx.set(userDoc, mergeable(merged), { merge: true });
   });
 }
 
@@ -252,7 +305,7 @@ function writeIdentity(s, user) {
   );
 }
 
-/* An ordinary push with the empty slices left out.
+/* The merged record with the empty slices left out.
  *
  * `merge: true` is not "leave everything else alone" — it means "write the
  * fields in this payload". For a map with contents that comes to the same
@@ -260,13 +313,11 @@ function writeIdentity(s, user) {
  * survive. An **empty** map has no leaves, so the mask names the field itself
  * and the stored map is replaced by nothing.
  *
- * That matters because empty is exactly what a device holds before its first
- * pull lands: a member signing in on a new browser has `{}` for progress, log
- * and profile, and any save in that window — the merge that hydration itself
- * writes back, a card finished before the read returned — pushes those empties
- * up. One of them is enough to erase the record the device was in the middle of
- * fetching, and then every other device pulls the erasure. A slice with nothing
- * in it has nothing to say, so it is simply not sent.
+ * Folding into the stored record (mergeIntoRemote) already keeps a device that
+ * has not pulled yet from erasing anything, since `{}` merged into a stored map
+ * is that map. This stays because it is the narrower statement and does not
+ * depend on the read having succeeded: a slice with nothing in it has nothing
+ * to say, so it is simply not sent.
  *
  * The wipe path is untouched: `replace` is a deliberate full write (see
  * storage.clearProgressAndLog), and emptying the record is the whole point of

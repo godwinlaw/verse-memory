@@ -222,4 +222,28 @@ export class AppHarness {
   async writes() {
     return this.page.evaluate(() => window.__E2E_WRITES__ || []);
   }
+
+  /* The member's document as it now stands in the cloud — what another device
+   * signing in would read. */
+  async cloudDoc() {
+    return this.page.evaluate(() => JSON.parse(sessionStorage.getItem("e2e:doc") || "null"));
+  }
+
+  /* Another device, writing while this one is open. The patch is folded into
+   * the stored document the way a push folds into it, so a spec can say "verse
+   * 9 was committed elsewhere" without a second browser. */
+  async cloudWrite(patch) {
+    await this.page.evaluate((p) => {
+      const isMap = (v) => v != null && typeof v === "object" && !Array.isArray(v);
+      const merge = (target, payload) => {
+        const out = { ...(target || {}) };
+        for (const key of Object.keys(payload)) {
+          out[key] = isMap(payload[key]) ? merge(isMap(out[key]) ? out[key] : {}, payload[key]) : payload[key];
+        }
+        return out;
+      };
+      const stored = JSON.parse(sessionStorage.getItem("e2e:doc") || "null");
+      sessionStorage.setItem("e2e:doc", JSON.stringify(merge(stored || {}, p)));
+    }, patch);
+  }
 }
