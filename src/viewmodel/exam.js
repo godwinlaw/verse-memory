@@ -287,6 +287,11 @@ function questionVals({ state, actions }) {
     vals.qTyped = typeof answer === "string" ? answer : "";
     vals.onQTyped = (e) => actions.answerExam(e.target.value);
     vals.qPlaceholder = copy.exam.typePlaceholder;
+    // The only activity that shows the member nothing of the passage: the
+    // others quote it, blank it or cut it up, and the four that ask where a
+    // verse is from would be giving away their own answer. So this one names
+    // the reference, or the question is which passage.
+    vals.qRef = q.ref;
   }
   return vals;
 }
