@@ -56,6 +56,40 @@ export function authGateVals({ auth, groupName, motto, actions }) {
   };
 }
 
+/* The wait between signing in and knowing what the member already has, and the
+ * dead end when that cannot be established. `code` comes straight from the
+ * Firestore error so the sentence can name the likely cause without the view
+ * knowing anything about Firebase. */
+export function syncGateVals({ sync, auth, groupName, busy, actions }) {
+  /* The SDK never loaded, so there was no sign-in and no read to fail — a
+   * different sentence from a read that was refused, and a different thing to
+   * go and check. */
+  const unreachable = (auth || {}).status === "disabled" && auth.reason === "unreachable";
+  const failed = unreachable || sync.status === "error";
+  const detail = unreachable
+    ? copy.syncGate.unreachableDetail
+    : sync.code === "permission-denied"
+      ? copy.syncGate.denied
+      : failed
+        ? copy.syncGate.offline
+        : "";
+  return {
+    groupName,
+    failed,
+    busy,
+    title: unreachable
+      ? copy.syncGate.titleUnreachable
+      : failed
+        ? copy.syncGate.titleError
+        : copy.syncGate.titlePulling,
+    message: unreachable ? copy.syncGate.unreachable : failed ? copy.syncGate.error : copy.syncGate.pulling,
+    detail,
+    retryLabel: busy ? copy.syncGate.retrying : copy.syncGate.retry,
+    onRetry: actions.retrySync,
+    onSignOut: actions.signOut,
+  };
+}
+
 const ministryOptionStyle = (selected) =>
   "display:block;width:100%;text-align:left;padding:8px 12px;border:none;border-bottom:1px solid var(--color-divider);" +
   "cursor:pointer;font-family:var(--font-body);font-size:14px;color:var(--color-text);background:" +

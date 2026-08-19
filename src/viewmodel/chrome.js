@@ -33,6 +33,17 @@ export function chromeVals({ state, groupName, motto, actions }) {
     editProfile: actions.editProfile,
     profileSummary: isProfileComplete(profile) ? profile.name : copy.header.setUpProfile,
 
+    /* Sync trouble, shown as a strip under the header. Only for a member who
+     * got past the sync gate — that is, one whose profile is complete on this
+     * device — so it says "your work is staying here", not "we don't know who
+     * you are". A member who is signed out or running an unconfigured build has
+     * nothing to sync and is told nothing. */
+    syncWarning:
+      (state.auth.status === "signed-in" && (state.sync || {}).status === "error") ||
+      (state.auth.status === "disabled" && state.auth.reason === "unreachable"),
+    syncRetrying: !!state.syncRetrying,
+    onSyncRetry: actions.retrySync,
+
     nav: NAV.map((n) => ({
       key: n.key,
       label: n.label,

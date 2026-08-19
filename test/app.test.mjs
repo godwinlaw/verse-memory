@@ -790,3 +790,47 @@ test("backing out of the warning leaves everything where it was", () => {
   assert.equal(a.state.resetAsk, false);
   assert.deepEqual(a.state.progress, before);
 });
+
+/* ── hydrating the cloud record ─────────────────────────────────────────────
+ *
+ * The pull can land before componentDidMount's setState has flushed, so
+ * `this.state` at that moment is still initialState()'s empty maps. Merging
+ * against those would drop whatever this device already had, and the queued
+ * setState would then overwrite the merge with the local copy alone. So the
+ * merge reads storage, which is the source of truth either way. */
+
+test("a cloud record merges with what is on the device, not with stale state", () => {
+  saved.clear();
+  // What this device has, written down but not yet reflected in state.
+  saved.set("mv.progress", JSON.stringify({ 4: { hits: 2, status: "learning", last: NOW - 1000, stability: 2 } }));
+  saved.set("mv.log", JSON.stringify({ "2026-08-14": 3 }));
+  saved.set("mv.profile", JSON.stringify({ ...PROFILE, name: "Ada on this laptop" }));
+
+  const a = app(baseState({ progress: {}, log: {}, profile: {} })); // state as it is mid-boot
+  a.hydrateRemote({
+    progress: { 1: { hits: 5, status: "memorized", last: NOW - 2000, stability: 9 } },
+    log: { "2026-08-13": 7 },
+    profile: { ...PROFILE, name: "Ada from the cloud", updatedAt: NOW },
+  });
+
+  // Both sides survive: the device's in-progress verse and the cloud's committed one.
+  assert.deepEqual(Object.keys(a.state.progress).sort(), ["1", "4"]);
+  assert.equal(a.state.log["2026-08-14"], 3);
+  assert.equal(a.state.log["2026-08-13"], 7);
+  // The profile is still last-write-wins, and the cloud's is the newer edit.
+  assert.equal(a.state.profile.name, "Ada from the cloud");
+  // And the merge is written back, so the push carries it.
+  assert.deepEqual(Object.keys(JSON.parse(saved.get("mv.progress"))).sort(), ["1", "4"]);
+});
+
+test("an older cloud profile does not displace a newer local one", () => {
+  saved.clear();
+  saved.set("mv.progress", JSON.stringify({}));
+  saved.set("mv.log", JSON.stringify({}));
+  saved.set("mv.profile", JSON.stringify({ ...PROFILE, name: "Newer", updatedAt: NOW }));
+
+  const a = app(baseState({ progress: {}, log: {}, profile: {} }));
+  a.hydrateRemote({ progress: {}, log: {}, profile: { ...PROFILE, name: "Older", updatedAt: NOW - 86400000 } });
+
+  assert.equal(a.state.profile.name, "Newer");
+});

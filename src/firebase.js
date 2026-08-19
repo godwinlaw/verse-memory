@@ -73,22 +73,52 @@ export function emailAllowed(email) {
 /* Begin observing auth state. Drives onChange({ status, user?, reason? }) where
  * status is one of: "signed-in", "signed-out", "denied", "disabled". For an
  * approved user it wires Firestore sync and hydrates remote progress via
- * onRemoteData({ progress, log }). No-op ("disabled") when Firebase is
- * unconfigured or unreachable, so the app can run local-only. */
-export async function initAuth({ onChange = () => {}, onRemoteData } = {}) {
-  if (!isFirebaseConfigured()) return onChange({ status: "disabled" });
+ * onRemoteData({ progress, log, profile }). No-op ("disabled") when Firebase is
+ * unconfigured or unreachable, so the app can run local-only.
+ *
+ * `onSyncChange({ status, code? })` is the second channel, and it exists because
+ * a failed pull used to be indistinguishable from an empty one. Status is
+ * "pulling" while the member's document is being read, "synced" once it has
+ * been, and "error" if the read was refused or unreachable. The app must not
+ * treat a member whose record it could not read as a member with no record —
+ * that is what asks a returning member to sign up again, and what lets the
+ * empty profile they then fill in overwrite the real one (see App.render). */
+export async function initAuth({ onChange = () => {}, onRemoteData, onSyncChange = () => {} } = {}) {
+  /* Two very different situations used to report the same "disabled", and the
+   * app then treated both as "run local-only, and hand this member the sign-up
+   * form". Only one of them is a decision:
+   *
+   *   "unconfigured" — this build has no Firebase (window.__FIREBASE_CONFIG__ =
+   *     null, or a local dev copy). There is no account to sign in to, so a
+   *     private record on this device is exactly right and nothing is said.
+   *   "unreachable"  — there IS a Firebase, but the SDK could not be fetched
+   *     from the gstatic CDN: a blocked network, an extension, a dropped
+   *     connection. The member has an account and a record; the app simply
+   *     could not get to it. Handing them the sign-up form here is how a
+   *     member with 41 committed verses is asked to start over. */
+  if (!isFirebaseConfigured()) return onChange({ status: "disabled", reason: "unconfigured" });
 
   let s;
   try {
     s = await loadServices();
   } catch (e) {
     console.warn("Firebase unavailable (running local-only):", e);
-    return onChange({ status: "disabled" });
+    return onChange({ status: "disabled", reason: "unreachable" });
   }
+
+  /* initAuth is retryable (see App.retryConnection), and loadServices only
+   * memoizes on success — so a retry that gets through must not leave a second
+   * observer behind the first. */
+  if (observing) return;
+  observing = true;
 
   const { onAuthStateChanged, signOut } = s.authMod;
   onAuthStateChanged(s.auth, async (user) => {
-    if (!user) return onChange({ status: "signed-out" });
+    pull = null;
+    if (!user) {
+      onSyncChange({ status: "idle" });
+      return onChange({ status: "signed-out" });
+    }
 
     if (!emailAllowed(user.email)) {
       onChange({ status: "denied", reason: user.email || "" });
@@ -98,16 +128,48 @@ export async function initAuth({ onChange = () => {}, onRemoteData } = {}) {
       return;
     }
 
-    try {
-      await setupSync(s, user, onRemoteData);
-    } catch (e) {
-      console.warn("sync setup failed:", e);
-    }
+    /* The push seam is wired before the pull is attempted and never throws, so a
+     * member whose first read failed still has somewhere for their work to go
+     * once the read is retried. */
+    registerPush(s, user);
+    onSyncChange({ status: "pulling" });
+    // Held so retrySync() can run the same read again without a fresh sign-in.
+    pull = () => pullRemote(s, user, onRemoteData);
     onChange({
       status: "signed-in",
       user: { uid: user.uid, email: user.email, name: cleanDisplayName(user.displayName), photo: user.photoURL },
     });
+    onSyncChange(await runPull(pull));
   });
+}
+
+/* The member's document, read and handed to onRemoteData. Kept apart from the
+ * push wiring above so it can be attempted again on its own. */
+let pull = null;
+
+/* Whether the auth observer is already running, so retrying the SDK load after a
+ * blocked CDN cannot register it twice. */
+let observing = false;
+
+/* Read the record once, reporting what happened rather than throwing. A refused
+ * read ("permission-denied") almost always means the Firestore rules in
+ * deploy/firestore.rules are behind ALLOWED_DOMAINS and need redeploying — the
+ * code is passed through so the app can say so. */
+async function runPull(fn) {
+  try {
+    await fn();
+    return { status: "synced" };
+  } catch (e) {
+    console.warn("Firebase pull failed:", e);
+    return { status: "error", code: (e && e.code) || "unavailable" };
+  }
+}
+
+/* Try the pull again, for a member sitting in front of the "could not reach your
+ * record" screen. Resolves to the same { status, code? } initAuth reports. */
+export async function retrySync() {
+  if (!pull) return { status: "error", code: "signed-out" };
+  return runPull(pull);
 }
 
 /* Start the Google sign-in popup. Google's `hd` hint only accepts a single
@@ -136,8 +198,11 @@ export async function signOutUser() {
   await s.authMod.signOut(s.auth);
 }
 
-async function setupSync(s, user, onRemoteData) {
-  const { doc, getDoc, setDoc } = s.dbMod;
+/* The push half of sync: a debounced write of the whole record, wired into the
+ * storage seam. Never throws — a failed write is reported through onPushError so
+ * the app can say sync is not working, and the local save stands regardless. */
+function registerPush(s, user) {
+  const { doc, setDoc } = s.dbMod;
   const userDoc = doc(s.db, "users", user.uid);
   const identity = { name: cleanDisplayName(user.displayName), email: user.email || "" };
 
@@ -162,20 +227,33 @@ async function setupSync(s, user, onRemoteData) {
       ? setDoc(userDoc, { ...identity, ...record })
       : setDoc(userDoc, record, { merge: true });
     pendingReplace = false;
-    write.catch((e) => console.warn("Firebase push failed:", e));
+    write.catch((e) => {
+      console.warn("Firebase push failed:", e);
+      pushError({ status: "error", code: (e && e.code) || "unavailable" });
+    });
   }, PUSH_DEBOUNCE_MS);
   registerRemoteSync((payload) => {
     if (payload.replace) pendingReplace = true;
     push(payload);
   });
+}
 
-  if (onRemoteData) {
-    const snap = await getDoc(userDoc);
-    if (snap.exists()) {
-      const data = snap.data() || {};
-      onRemoteData({ progress: data.progress || {}, log: data.log || {}, profile: data.profile || {} });
-    }
-  }
+/* Where a failed push is reported. Set by the app so a write the member cannot
+ * see failing does not pass silently. */
+let pushError = () => {};
+
+export function onPushError(fn) {
+  pushError = fn || (() => {});
+}
+
+/* The pull half: read the member's document and hand it over for merging.
+ * Throws on a refused or unreachable read — runPull turns that into a status. */
+async function pullRemote(s, user, onRemoteData) {
+  if (!onRemoteData) return;
+  const { doc, getDoc } = s.dbMod;
+  const snap = await getDoc(doc(s.db, "users", user.uid));
+  const data = snap.exists() ? snap.data() || {} : {};
+  onRemoteData({ progress: data.progress || {}, log: data.log || {}, profile: data.profile || {} });
 }
 
 /* Read every registered member for the leaderboard. Returns one row per user

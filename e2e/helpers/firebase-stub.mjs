@@ -111,6 +111,15 @@ export function setDoc(ref, data, options) {
 }
 
 export function getDoc() {
+  /* A read the rules refuse. This is the case the app must not mistake for a
+   * member with no record — see views/sync-gate.js — so the scenario can ask
+   * for it by name rather than only by taking the whole SDK away. */
+  const refused = scenario().refuseReads;
+  if (refused) {
+    const err = new Error("Missing or insufficient permissions.");
+    err.code = typeof refused === "string" ? refused : "permission-denied";
+    return Promise.reject(err);
+  }
   const remote = scenario().remote || null;
   return Promise.resolve({ exists: () => remote != null, data: () => remote });
 }

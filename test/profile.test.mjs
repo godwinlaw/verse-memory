@@ -63,3 +63,38 @@ test("mergeProfile keeps the most recently edited profile", () => {
   assert.deepEqual(mergeProfile(null, remote), remote);
   assert.deepEqual(mergeProfile(null, undefined), {});
 });
+
+/* ── merging a profile across devices ───────────────────────────────────────
+ *
+ * The rule these pin down is "a real profile is never lost to a lesser one".
+ * An empty object is what both an unseeded device and a cloud document with no
+ * profile field look like, and it is truthy — so it used to survive the merge
+ * against a real profile that happened to tie on `updatedAt`, which reads to
+ * the member as being asked to set up a profile they already have. */
+
+const REAL = { name: "Ada", ministryGroup: "Kairos", gender: "Female", gradClass: 2026 };
+
+test("an empty profile never displaces a real one, in either direction", () => {
+  assert.equal(mergeProfile({}, REAL).name, "Ada");
+  assert.equal(mergeProfile(REAL, {}).name, "Ada");
+  assert.equal(mergeProfile(null, REAL).name, "Ada");
+  assert.equal(mergeProfile(REAL, null).name, "Ada");
+});
+
+test("a complete profile beats an incomplete one, however recently edited", () => {
+  const halfFilled = { name: "Half", ministryGroup: "Kairos", updatedAt: 9_000_000_000_000 };
+  assert.equal(mergeProfile(halfFilled, { ...REAL, updatedAt: 1 }).name, "Ada");
+  assert.equal(mergeProfile({ ...REAL, updatedAt: 1 }, halfFilled).name, "Ada");
+});
+
+test("between two complete profiles the most recent edit wins", () => {
+  const older = { ...REAL, name: "Older", updatedAt: 1 };
+  const newer = { ...REAL, name: "Newer", updatedAt: 2 };
+  assert.equal(mergeProfile(older, newer).name, "Newer");
+  assert.equal(mergeProfile(newer, older).name, "Newer");
+});
+
+test("nothing on either side stays nothing", () => {
+  assert.deepEqual(mergeProfile({}, {}), {});
+  assert.deepEqual(mergeProfile(null, undefined), {});
+});

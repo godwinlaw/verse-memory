@@ -1,0 +1,65 @@
+name: Deploy
+
+# Keeps https://verse-memory.web.app (Firebase Hosting) and
+# https://verse-memory.godwinlaw093.workers.dev (Cloudflare Workers static
+# assets) in sync: whatever lands on main goes to both. Both hosts serve the
+# same build (`npm run build` -> ./dist); config.js is gitignored, so CI's
+# build falls back to config.example.js, same as a machine with no local
+# override (see scripts/build.mjs).
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_VERSE_MEMORY }}
+          projectId: verse-memory
+          channelId: live
+
+      # The Firestore rules are the authoritative half of the access gate, and
+      # the client half (ALLOWED_DOMAINS in src/firebase.js) ships on every
+      # push. Deploying only the client is how the two drift apart, and a rules
+      # file that is behind it refuses every read and write — which the app
+      # cannot tell from a member having no record, so members get asked to set
+      # up a profile on each device and nothing syncs. Ship both together.
+      - name: Deploy Firestore rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/firebase-service-account.json
+        run: |
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT_VERSE_MEMORY }}' > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npx --yes firebase-tools@13 deploy --only firestore:rules --project verse-memory --non-interactive
+          rm -f "$GOOGLE_APPLICATION_CREDENTIALS"

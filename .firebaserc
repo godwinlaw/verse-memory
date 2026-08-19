@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "verse-memory"
-  }
+  },
+  "targets": {
+    "verse-memory": {
+      "hosting": {
+        "versemastery": [
+          "versemastery"
+        ],
+        "verse-memory": [
+          "verse-memory"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

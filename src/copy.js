@@ -125,6 +125,46 @@ export const copy = {
     signIn: "Sign in with Google",
   },
 
+  /* The gate between signing in and the app, for the moment the member's saved
+   * record is being fetched — and for when it cannot be. It is a gate rather
+   * than a banner because the screen it stands in front of is the sign-up form,
+   * and showing that to a member who already has a record is what makes them
+   * fill it in again and overwrite the record they had. */
+  syncGate: {
+    titlePulling: "FINDING YOUR RECORD",
+    pulling: "Checking your account for passages you have already committed…",
+    titleError: "COULD NOT REACH YOUR RECORD",
+    /* Deliberately does not say "you have no progress" — the whole point is
+     * that the app does not know yet. */
+    error:
+      "You are signed in, but your saved passages could not be loaded. Starting now would set up a new record and " +
+      "could overwrite the one you already have, so the app is waiting instead.",
+    /* A refused read means the account is fine and the server said no, which is
+     * a Firestore rules problem rather than anything the member did wrong. */
+    denied: "Your account does not have permission to read its own record. This is a setup problem, not your account.",
+    offline: "Your device could not reach the server. Check your connection and try again.",
+    /* The SDK itself never arrived, so there was no sign-in and no read. Worth
+     * its own sentence because the usual suspects are local and fixable. */
+    titleUnreachable: "COULD NOT REACH YOUR ACCOUNT",
+    unreachable:
+      "The app could not load the service that signs you in, so it cannot tell what you have already committed. " +
+      "Starting now would set up a new record on this device alone.",
+    unreachableDetail:
+      "This is usually a network blocking www.gstatic.com, an ad blocker, or a browser extension. " +
+      "Try again, or open the app on another network.",
+    retry: "Try again",
+    retrying: "Trying…",
+    signOut: "Sign out",
+  },
+
+  /* The same trouble, once the member has a usable profile on this device: the
+   * app works, but nothing they do is leaving the device, and they should know
+   * that before they spend a sitting on it. */
+  syncBanner: {
+    message: "Not syncing — your work is being saved on this device only.",
+    retry: "Retry sync",
+  },
+
   profileForm: {
     titleSetup: "SET UP YOUR PROFILE",
     titleEdit: "EDIT YOUR PROFILE",

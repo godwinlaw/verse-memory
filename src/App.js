@@ -35,7 +35,7 @@ import {
 } from "./profile.js";
 import { appConfig } from "./config.js";
 import { detectMobile } from "./device.js";
-import { initAuth, signIn, signOutUser, fetchRoster } from "./firebase.js";
+import { initAuth, signIn, signOutUser, fetchRoster, retrySync, onPushError } from "./firebase.js";
 import { passages } from "../data/passages.js";
 import {
   buildViewModel,
@@ -43,6 +43,7 @@ import {
   mobileGateVals,
   profileFormVals,
   splashVals,
+  syncGateVals,
   welcomeVals,
 } from "./viewmodel/index.js";
 import { RECALL_INPUT_ID } from "./viewmodel/review.js";
@@ -62,6 +63,7 @@ import { leaderboardView } from "./views/leaderboard.js";
 import { guideView } from "./views/guide.js";
 import { authGateView } from "./views/auth-gate.js";
 import { profileFormView } from "./views/profile-form.js";
+import { syncBannerView, syncGateView } from "./views/sync-gate.js";
 import { welcomeView } from "./views/welcome.js";
 import { footerView } from "./views/footer.js";
 
@@ -190,6 +192,12 @@ function initialState() {
 
     // account, profile, leaderboard
     auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
+    /* How the member's cloud record is doing, kept apart from `auth` because
+     * being signed in and having your record in hand are different things — and
+     * conflating them is what asked a returning member to sign up again on every
+     * device. idle (nothing to sync) | pulling | synced | error. */
+    sync: { status: "idle" },
+    syncRetrying: false, // the retry button's own busy state
     profile: {}, // { name, ministryGroup, gender, gradClass, dueTopX, dueFreshness, commitThreshold, updatedAt }
     profileDraft: null, // in-progress edits for the profile form
     editingProfile: false, // reopen the form for an already-complete profile
@@ -254,7 +262,18 @@ export class App extends React.Component {
     // valid sign-in, remote progress is pulled and reconciled with local, and the
     // leaderboard roster is loaded. If Firebase is unreachable the status becomes
     // "disabled" and the app runs local-only rather than locking members out.
-    initAuth({
+    this.startAuth();
+    // A write the member cannot see fail is a write they will assume happened.
+    onPushError((sync) => this.setState({ sync }));
+  }
+
+  /* Begin (or begin again) the account half of the boot. Separated from
+   * componentDidMount because it is retryable: an SDK that could not be fetched
+   * from the CDN is a network problem, not a verdict on the member, and the one
+   * thing they can usefully do about it is ask the app to try again.
+   * firebase.js only registers its observer once, however often this runs. */
+  startAuth() {
+    return initAuth({
       onChange: (auth) => {
         // Whatever it says, Firebase has answered — the splash can stop waiting.
         clearTimeout(this.authWaitTimer);
@@ -262,6 +281,7 @@ export class App extends React.Component {
         if (auth.status === "signed-in") this.loadRoster();
       },
       onRemoteData: (remote) => this.hydrateRemote(remote),
+      onSyncChange: (sync) => this.setState({ sync }),
     });
   }
 
@@ -368,10 +388,17 @@ export class App extends React.Component {
   }
 
   /* Reconcile cloud state pulled at startup with whatever is on this device,
-   * then persist the result (which pushes the merge back to the cloud). */
+   * then persist the result (which pushes the merge back to the cloud).
+   *
+   * The local side is read from storage rather than from `this.state`, because
+   * the pull can land before componentDidMount's setState has flushed — and
+   * state, at that moment, is still the empty initial map. Merging against it
+   * would drop this device's records, and the queued setState would then
+   * overwrite the merge with the local copy alone. Storage is the source of
+   * truth (see storage.js), so asking it is both correct and race-free. */
   hydrateRemote(remote) {
-    this.save(mergeProgress(this.state.progress, remote.progress), mergeLog(this.state.log, remote.log));
-    this.saveProfile(mergeProfile(this.state.profile, remote.profile));
+    this.save(mergeProgress(storage.loadProgress(), remote.progress), mergeLog(storage.loadLog(), remote.log));
+    this.saveProfile(mergeProfile(storage.loadProfile(), remote.profile));
   }
 
   /* ── account + profile ──────────────────────────────────────────────────── */
@@ -833,6 +860,23 @@ export class App extends React.Component {
       // account + profile
       signIn: () => this.signIn(),
       signOut: () => signOutUser().catch(() => {}),
+      /* Try the cloud again, for a member sitting behind the sync gate or under
+       * its banner. Which half to retry depends on how far the boot got: a
+       * member who is signed in has a document to re-read, while one whose SDK
+       * never arrived has to start the whole account half over.
+       * `syncRetrying` is only the button's own busy state. */
+      retrySync: async () => {
+        if (this.state.syncRetrying) return;
+        this.setState({ syncRetrying: true });
+        if (this.state.auth.status === "signed-in") {
+          const sync = await retrySync();
+          this.setState({ sync, syncRetrying: false });
+          if (sync.status === "synced") this.loadRoster();
+          return;
+        }
+        await this.startAuth();
+        this.setState({ syncRetrying: false });
+      },
       editProfile: () => set({ editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false }),
       cancelEditProfile: () => set({ editingProfile: false, profileDraft: null, resetAsk: false }),
       submitProfile: () => this.submitProfile(),
@@ -1010,7 +1054,7 @@ export class App extends React.Component {
   }
 
   render() {
-    const { isMobile, loaded, splashHold, auth, profile, editingProfile, welcomePrompt } = this.state;
+    const { isMobile, loaded, splashHold, auth, sync, profile, editingProfile, welcomePrompt } = this.state;
 
     // Nothing is offered on a phone or a tablet — and the refusal comes before
     // the splash, since a member who is not getting in should not be made to
@@ -1035,9 +1079,38 @@ export class App extends React.Component {
       );
     }
 
-    // Members give a name, ministry group, gender, and class before the app, so
-    // their stats can be grouped. The same form reopens for later edits.
+    /* Members give a name, ministry group, gender, and class before the app, so
+     * their stats can be grouped. The same form reopens for later edits.
+     *
+     * But an incomplete profile only means "new member" once the cloud record
+     * has actually been read. While the read is in flight, or after it has
+     * failed, the app does not know what this member has — and sending them
+     * through sign-up would stamp a fresh profile that then wins the merge and
+     * replaces the real one. So the sync gate stands in front of the form (and
+     * only of the form: a member whose profile is already complete on this
+     * device goes straight through, with the banner below telling them their
+     * work is staying local). */
     const needsProfile = !isProfileComplete(profile);
+    const syncStatus = (sync || {}).status;
+    /* Three ways the app can fail to know what this member has, and all three
+     * must keep the sign-up form off the screen: the read is still in flight,
+     * the read failed, or the SDK never loaded at all so there was no read.
+     * Only a build with no Firebase configured is genuinely account-less, and
+     * that one says nothing and runs local-only as it always has. */
+    const recordUnknown =
+      (auth.status === "signed-in" && (syncStatus === "pulling" || syncStatus === "error")) ||
+      (auth.status === "disabled" && auth.reason === "unreachable");
+    if (needsProfile && !editingProfile && recordUnknown) {
+      return syncGateView(
+        syncGateVals({
+          sync: sync || {},
+          auth,
+          groupName: this.groupName(),
+          busy: this.state.syncRetrying,
+          actions: this.actions,
+        }),
+      );
+    }
     if (needsProfile || editingProfile) {
       return profileFormView(
         profileFormVals({
@@ -1065,10 +1138,10 @@ export class App extends React.Component {
     return html`<div
       style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)")}
     >
-      ${headerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)} ${v.isReviewSetup && reviewSetupView(v)}
-      ${v.isLearnSetup && learnSetupView(v)} ${v.isReview && reviewView(v)} ${v.isDone && doneView(v)}
-      ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)} ${v.isExam && examView(v)}
-      ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)} ${footerView(v)}
+      ${headerView(v)} ${v.syncWarning && syncBannerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)}
+      ${v.isReviewSetup && reviewSetupView(v)} ${v.isLearnSetup && learnSetupView(v)} ${v.isReview && reviewView(v)}
+      ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)}
+      ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)} ${footerView(v)}
     </div>`;
   }
 }
