@@ -145,9 +145,14 @@ function blanksPanel(v) {
   </div>`;
 }
 
-/* Write it out */
+/* Write it out: the one activity that quotes nothing of the passage, so it has
+ * to say which passage — the reference is the question here, not the answer. */
 function typePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:18px")}>
+    <div style=${sx("display:flex;flex-direction:column;gap:6px")}>
+      <span style=${sx(LABEL_SECTION)}>${copy.exam.typeAsk}</span>
+      <h2 style=${sx("margin:0")}>${v.qRef}</h2>
+    </div>
     <textarea
       className="input"
       value=${v.qTyped}

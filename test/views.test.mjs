@@ -601,6 +601,23 @@ test("each activity renders its own panel", () => {
   assert.match(shown("test/last-question"), /Finish and mark/);
 });
 
+/* Every other activity puts the passage in front of the member — quoted, cut
+ * into phrases, or blanked — and the four that ask where a verse is from must
+ * not. "Write it out" is the one that shows nothing, so it names the reference,
+ * or there is no way to tell which passage is being asked for. */
+test("write it out names the passage it wants, since it quotes none of it", () => {
+  const markup = shown("test/type");
+  assert.ok(markup.includes(EXAM.questions[questionAt("type")].ref), "the reference is the question here");
+  assert.match(markup, /Write out this passage/);
+});
+
+test("an activity that asks for the reference still does not print it", () => {
+  // Nothing answered yet, so anything on screen is the question rather than
+  // what the member typed into it.
+  const markup = shown("test/name-ref-blank");
+  assert.ok(!markup.includes(EXAM.questions[questionAt("name-ref")].ref), "that would be its own answer");
+});
+
 test("questions can be walked back, except the first", () => {
   assert.match(shown("test/first-question"), /Back<\/button>/);
   assert.match(shown("test/first-question"), /disabled="">Back/, "nothing to go back to");

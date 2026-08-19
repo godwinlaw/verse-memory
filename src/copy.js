@@ -578,6 +578,7 @@ export const copy = {
     refPlaceholder: "Book and chapter, verse optional",
     finishHint: "Finish the sentence from memory. Punctuation and capitals are ignored.",
     refHint: "Book and chapter, worth a quarter of the mark.",
+    typeAsk: "Write out this passage",
     typePlaceholder: "Type the passage from memory. Punctuation and capitals are ignored.",
     matchNote: "Click a verse, then its reference. Click a paired verse to undo it.",
     matchPickRef: "Now choose the reference it belongs to.",
