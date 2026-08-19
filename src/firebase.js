@@ -139,7 +139,14 @@ export async function initAuth({ onChange = () => {}, onRemoteData, onSyncChange
       status: "signed-in",
       user: { uid: user.uid, email: user.email, name: cleanDisplayName(user.displayName), photo: user.photoURL },
     });
-    onSyncChange(await runPull(pull));
+    const pulled = await runPull(pull);
+    onSyncChange(pulled);
+    /* Deliberately after the read. It is a pending write until the server
+     * acknowledges it, and a pending write is part of the local view that
+     * pullRemote must not be shown (see there). Nothing depends on it landing
+     * first — it exists so the leaderboard has a name for a member who has not
+     * filled in a profile. */
+    writeIdentity(s, user);
   });
 }
 
@@ -206,9 +213,6 @@ function registerPush(s, user) {
   const userDoc = doc(s.db, "users", user.uid);
   const identity = { name: cleanDisplayName(user.displayName), email: user.email || "" };
 
-  // Record the member's identity so the leaderboard can show a name for them.
-  setDoc(userDoc, identity, { merge: true }).catch((e) => console.warn("Firebase identity write failed:", e));
-
   /* An ordinary save merges, so a slice left out of the payload is left alone.
    * A wipe (storage.clearProgressAndLog) cannot: setDoc's merge folds maps
    * together key by key, so an emptied `progress` would delete nothing and the
@@ -236,6 +240,16 @@ function registerPush(s, user) {
     if (payload.replace) pendingReplace = true;
     push(payload);
   });
+}
+
+/* Record the member's identity so the leaderboard can show a name for them
+ * before they have filled in a profile. Never throws. */
+function writeIdentity(s, user) {
+  const { doc, setDoc } = s.dbMod;
+  const identity = { name: cleanDisplayName(user.displayName), email: user.email || "" };
+  setDoc(doc(s.db, "users", user.uid), identity, { merge: true }).catch((e) =>
+    console.warn("Firebase identity write failed:", e),
+  );
 }
 
 /* An ordinary push with the empty slices left out.
@@ -277,8 +291,22 @@ export function onPushError(fn) {
  * Throws on a refused or unreachable read — runPull turns that into a status. */
 async function pullRemote(s, user, onRemoteData) {
   if (!onRemoteData) return;
-  const { doc, getDoc } = s.dbMod;
-  const snap = await getDoc(doc(s.db, "users", user.uid));
+  const { doc, getDocFromServer } = s.dbMod;
+  /* From the server, deliberately — not getDoc.
+   *
+   * getDoc answers from Firestore's local view when it can, and that view
+   * includes this client's own pending writes. The identity write below is one,
+   * so on a cold client the read could come back as a document holding nothing
+   * but { name, email }: no progress, no profile. Indistinguishable, to
+   * everything downstream, from a member who has never used the app — which is
+   * how a new browser asked for a profile that was sitting on the server, and
+   * then saved that emptiness over the local copy.
+   *
+   * There is no cache fallback on purpose. If the server cannot be reached, the
+   * honest answer is that the record is unknown, which is what the sync gate is
+   * for (see views/sync-gate.js) — an answer read off a half-built local view
+   * is worse than no answer. */
+  const snap = await getDocFromServer(doc(s.db, "users", user.uid));
   const data = snap.exists() ? snap.data() || {} : {};
   onRemoteData({ progress: data.progress || {}, log: data.log || {}, profile: data.profile || {} });
 }

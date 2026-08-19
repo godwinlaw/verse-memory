@@ -9,6 +9,7 @@
  * The stub is only ever as wide as src/firebase.js asks for. Its surface is
  * exactly the imports named there (initializeApp; getAuth, onAuthStateChanged,
  * signOut, GoogleAuthProvider, signInWithPopup; getFirestore, doc, getDoc,
+ * getDocFromServer,
  * setDoc, collection, getDocs) — if that file starts using something else, the
  * stub fails loudly rather than pretending.
  *
@@ -110,16 +111,41 @@ export function setDoc(ref, data, options) {
   return Promise.resolve();
 }
 
+/* The initial pull uses getDocFromServer, never getDoc.
+ *
+ * Firestore's getDoc can answer from the local view, which includes this
+ * client's own pending writes — so on a cold client it can return a document
+ * holding only the identity write, with no progress and no profile. The
+ * scenario's localView is that situation: what getDoc would hand back, as
+ * distinct from what is really stored. A scenario that sets it is asserting
+ * that the app reads the server, because reading the local view is
+ * indistinguishable from being a new member. */
+export function getDocFromServer() {
+  const refused = refusal();
+  if (refused) return Promise.reject(refused);
+  const remote = scenario().remote || null;
+  return Promise.resolve({ exists: () => remote != null, data: () => remote });
+}
+
+/* A read the rules refuse, or the network cannot make. Shared by both readers so
+ * a scenario cannot accidentally refuse one and not the other. */
+function refusal() {
+  const refused = scenario().refuseReads;
+  if (!refused) return null;
+  const err = new Error("Missing or insufficient permissions.");
+  err.code = typeof refused === "string" ? refused : "permission-denied";
+  return err;
+}
+
 export function getDoc() {
+  const stale = scenario().localView;
+  if (stale) return Promise.resolve({ exists: () => true, data: () => stale });
+
   /* A read the rules refuse. This is the case the app must not mistake for a
    * member with no record — see views/sync-gate.js — so the scenario can ask
    * for it by name rather than only by taking the whole SDK away. */
-  const refused = scenario().refuseReads;
-  if (refused) {
-    const err = new Error("Missing or insufficient permissions.");
-    err.code = typeof refused === "string" ? refused : "permission-denied";
-    return Promise.reject(err);
-  }
+  const refused = refusal();
+  if (refused) return Promise.reject(refused);
   const remote = scenario().remote || null;
   return Promise.resolve({ exists: () => remote != null, data: () => remote });
 }
