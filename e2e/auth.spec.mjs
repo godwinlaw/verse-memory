@@ -103,4 +103,7 @@ test("an unreachable Firebase runs local-only rather than locking the member out
   await expect(page.getByRole("button", { name: /Sign in with Google/ })).toHaveCount(0);
   await expect(app.header.getByRole("button", { name: "Sign out" })).toHaveCount(0);
   expect(await app.figure(app.committedFigure)).toBe(1);
+  // Local-only, but not silently so: there is an account this build could not
+  // reach, which is different from a build that has none (see sync.spec.mjs).
+  await expect(page.getByText(/saved on this device only/)).toBeVisible();
 });

@@ -226,10 +226,50 @@ export const scenarios = [
   },
 
   // ── profile form ───────────────────────────────────────────────────────────
-  { name: "profile/setup-empty", state: baseState({ profile: {} }) },
+  // ── the sync gate ──────────────────────────────────────────────────────────
+  // A signed-in member with no profile *on this device* is only a new member
+  // once the cloud record has been read. Until then the gate stands in front of
+  // the sign-up form — see views/sync-gate.js for why that matters.
+  { name: "sync/pulling", state: baseState({ profile: {}, sync: { status: "pulling" } }) },
+  {
+    name: "sync/refused",
+    state: baseState({ profile: {}, sync: { status: "error", code: "permission-denied" } }),
+  },
+  { name: "sync/unreachable", state: baseState({ profile: {}, sync: { status: "error", code: "unavailable" } }) },
+  {
+    name: "sync/retrying",
+    state: baseState({ profile: {}, sync: { status: "error", code: "unavailable" }, syncRetrying: true }),
+  },
+  // Past the gate: a complete profile, so the app is usable and the trouble is
+  // a strip under the header rather than a wall.
+  { name: "sync/banner-on-board", state: baseState({ sync: { status: "error", code: "unavailable" } }) },
+  /* The SDK never loaded. "disabled" skips the sign-in gate by design, so
+   * without a reason on it this member fell straight through to the sign-up
+   * form and a private local record — which is what a blocked gstatic looks
+   * like to someone who already has an account. */
+  {
+    name: "sync/sdk-unreachable",
+    state: baseState({ profile: {}, auth: { status: "disabled", reason: "unreachable" } }),
+  },
+  {
+    name: "sync/sdk-unreachable-with-profile",
+    state: baseState({ auth: { status: "disabled", reason: "unreachable" } }),
+  },
+  // A build with no Firebase at all is a decision, not a fault: local-only, silent.
+  {
+    name: "sync/unconfigured",
+    state: baseState({ profile: {}, auth: { status: "disabled", reason: "unconfigured" } }),
+  },
+
+  { name: "profile/setup-empty", state: baseState({ profile: {}, sync: { status: "synced" } }) },
   {
     name: "profile/setup-partial",
-    state: baseState({ profile: {}, profileDraft: { name: "Ada", ministryGroup: "Ka" }, ministryOpen: true }),
+    state: baseState({
+      profile: {},
+      sync: { status: "synced" },
+      profileDraft: { name: "Ada", ministryGroup: "Ka" },
+      ministryOpen: true,
+    }),
   },
   { name: "profile/edit", state: baseState({ editingProfile: true, profileDraft: { ...PROFILE } }) },
   // The warning that stands in front of wiping the record, and the same screen

@@ -689,3 +689,83 @@ test("the hint gives way once it is on, and to an error if one lands", () => {
 test("a review sitting gets the same one switch", () => {
   assert.match(shown("voice/review-session"), />Voice</);
 });
+
+/* ── the sync gate ──────────────────────────────────────────────────────────
+ *
+ * The bug these guard: a member whose cloud record could not be read looks
+ * exactly like a member who has none, so the app used to show them the sign-up
+ * profile form on every device — and the profile they filled in, being newer,
+ * then won the merge and replaced the real one. */
+
+test("a member whose record is still being read is not asked to sign up", () => {
+  const pulling = shown("sync/pulling");
+  assert.doesNotMatch(pulling, /SET UP YOUR PROFILE/);
+  assert.match(pulling, /FINDING YOUR RECORD/);
+  // Nothing to press while a read is in flight — only the failed state offers a way on.
+  assert.doesNotMatch(pulling, /Try again/);
+});
+
+test("a refused read says so, and offers only the two safe moves", () => {
+  const refused = shown("sync/refused");
+  assert.doesNotMatch(refused, /SET UP YOUR PROFILE/);
+  assert.match(refused, /COULD NOT REACH YOUR RECORD/);
+  // It must not tell the member they have no progress — the app does not know.
+  assert.doesNotMatch(refused, /no progress/i);
+  // A permission-denied read is a rules problem, and the member is told it is not theirs.
+  assert.match(refused, /setup problem, not your account/);
+  assert.match(refused, />Try again<\/button>/);
+  assert.match(refused, />Sign out<\/button>/);
+});
+
+test("an unreachable read blames the connection rather than the account", () => {
+  const offline = shown("sync/unreachable");
+  assert.match(offline, /could not reach the server/);
+  assert.doesNotMatch(offline, /setup problem/);
+});
+
+test("a retry in flight disables its own button", () => {
+  const retrying = shown("sync/retrying");
+  const [button] = retrying.match(/<button[^>]*>Trying…<\/button>/) || [];
+  assert.match(button || "", /disabled=""/);
+});
+
+test("a member with a profile already on this device gets the app and a warning", () => {
+  const board = shown("sync/banner-on-board");
+  // Past the gate: the board is there.
+  assert.match(board, /passages committed/);
+  // But the strip says the work is not leaving the device.
+  assert.match(board, /saved on this device only/);
+  assert.match(board, />Retry sync<\/button>/);
+});
+
+test("a healthy sync shows neither the gate nor the banner", () => {
+  const board = shown("board/populated");
+  assert.doesNotMatch(board, /COULD NOT REACH YOUR RECORD/);
+  assert.doesNotMatch(board, /saved on this device only/);
+  // And a genuinely new member — record read, nothing in it — still gets the form.
+  assert.match(shown("profile/setup-empty"), /SET UP YOUR PROFILE/);
+});
+
+test("an SDK that never loaded does not hand the member a sign-up form", () => {
+  const gone = shown("sync/sdk-unreachable");
+  // The bug: "disabled" skips the sign-in gate, so this fell through to sign-up.
+  assert.doesNotMatch(gone, /SET UP YOUR PROFILE/);
+  assert.match(gone, /COULD NOT REACH YOUR ACCOUNT/);
+  // And it names the things actually worth checking.
+  assert.match(gone, /gstatic\.com/);
+  assert.match(gone, />Try again<\/button>/);
+});
+
+test("an unreachable SDK still lets a member with a profile work, with the warning", () => {
+  const board = shown("sync/sdk-unreachable-with-profile");
+  assert.match(board, /passages committed/);
+  assert.match(board, /saved on this device only/);
+});
+
+test("a build with no Firebase configured is local-only and says nothing", () => {
+  // Not a fault — there is no account to reach, so the form is correct here.
+  const local = shown("sync/unconfigured");
+  assert.match(local, /SET UP YOUR PROFILE/);
+  assert.doesNotMatch(local, /COULD NOT REACH/);
+  assert.doesNotMatch(local, /saved on this device only/);
+});

@@ -36,6 +36,11 @@ test("a member with no profile fills one in before the app", async ({ app, page 
   await expect(save).toBeEnabled();
   await save.click();
 
+  // Finishing the form for the first time lands on the welcome nudge, not the
+  // board — it is shown once, between sign-up and the app (App.submitProfile).
+  await page.getByRole("button", { name: "Start learning right away" }).click();
+  await app.nav("Home").click();
+
   await expect(app.board).toBeVisible();
   await expect(app.header).toContainText("Grace Hopper");
 

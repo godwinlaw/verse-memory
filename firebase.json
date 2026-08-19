@@ -1,5 +1,17 @@
 {
   "firestore": {
     "rules": "deploy/firestore.rules"
-  }
+  },
+  "hosting": [
+    {
+      "target": "verse-memory",
+      "public": "dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    },
+    {
+      "target": "versemastery",
+      "public": "dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    }
+  ]
 }

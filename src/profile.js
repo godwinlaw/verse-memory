@@ -97,13 +97,29 @@ export function isProfileComplete(p) {
   return !!(p && p.name && p.ministryGroup && p.gender && p.gradClass);
 }
 
-/* Reconcile a local and a remote profile: last write wins by `updatedAt`, so
- * the most recently edited profile survives a cross-device merge. A profile with
- * no timestamp is treated as oldest. Returns {} when neither side has data. */
+/* Is there anything here at all? `{}` is what an unsigned device and a document
+ * with no profile field both look like, and it is truthy — which is exactly how
+ * an empty object used to win a merge against a real profile. */
+const hasProfile = (p) => !!p && Object.keys(p).length > 0;
+
+/* Reconcile a local and a remote profile, in three steps, each of which exists
+ * to stop a real profile being lost to a lesser one:
+ *
+ *   1. If only one side has anything, that side — an empty object is not a
+ *      profile that beat the other, it is the absence of one. (`{}` vs a real
+ *      profile carrying no `updatedAt` used to tie at 0 and hand back the
+ *      empty side, which reads to the member as "set up your profile" on a
+ *      device where the cloud plainly had one.)
+ *   2. A complete profile beats an incomplete one regardless of timestamp,
+ *      since a half-filled form is never the answer a member wants back.
+ *   3. Otherwise last write wins by `updatedAt`; no timestamp counts as oldest.
+ *
+ * Returns {} when neither side has data. */
 export function mergeProfile(local, remote) {
-  const a = local || null;
-  const b = remote || null;
+  const a = hasProfile(local) ? local : null;
+  const b = hasProfile(remote) ? remote : null;
   if (!a) return b || {};
-  if (!b) return a || {};
+  if (!b) return a;
+  if (isProfileComplete(a) !== isProfileComplete(b)) return isProfileComplete(a) ? a : b;
   return (b.updatedAt || 0) > (a.updatedAt || 0) ? b : a;
 }
