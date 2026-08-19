@@ -178,3 +178,38 @@ test("the cloud profile survives a fresh device signing in", async ({ app, page 
   await expect(page.getByText("SET UP YOUR PROFILE")).toHaveCount(0);
   expect(await app.stored("mv.profile")).toMatchObject({ name: "Ada Lovelace", ministryGroup: "Kairos" });
 });
+
+/* The incognito bug: a brand-new browser was shown the sign-up form while the
+ * server held a full record. Firestore's getDoc can answer from the local view,
+ * and the identity write the app makes on sign-in is a pending write inside it
+ * — so the read came back as a document with a name and an email and nothing
+ * else, which is exactly what a member who has never used the app looks like.
+ * An established browser has the real document cached, so only a cold one
+ * showed it. `localView` below is that half-built view. */
+
+test("a cold browser reads the server, not its own pending writes", async ({ app, page }) => {
+  const full = {
+    name: "Ada Lovelace",
+    email: MEMBER.email,
+    profile: { name: "Ada Lovelace", ministryGroup: "Kairos", gender: "Female", gradClass: 2026, updatedAt: 1 },
+    progress: { 2: committed(0.6) },
+    log: {},
+  };
+  await app.boot({
+    progress: {},
+    profile: null,
+    firebase: {
+      ...signedIn,
+      remote: full,
+      // What getDoc would hand back before the identity write settles.
+      localView: { name: "Ada Lovelace", email: MEMBER.email },
+    },
+  });
+
+  // The record is on the server, so the member goes straight through.
+  await expect(app.board).toBeVisible();
+  await expect(page.getByText("SET UP YOUR PROFILE")).toHaveCount(0);
+  await expect(app.queue("Review today")).toContainText(passageById(2).ref);
+  // And the half-built view is never saved over the local copy.
+  expect(await app.stored("mv.profile")).toMatchObject({ name: "Ada Lovelace", ministryGroup: "Kairos" });
+});
