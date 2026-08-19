@@ -104,3 +104,77 @@ test("a build with no Firebase configured stays silent and local", async ({ app,
   await expect(page.getByText(/saved on this device only/)).toHaveCount(0);
   await expect(page.getByText("COULD NOT REACH YOUR ACCOUNT")).toHaveCount(0);
 });
+
+/* A merge push is not "leave everything else alone" — it writes the fields in
+ * the payload, and an empty map has no leaves for the mask to reach, so it
+ * replaces the stored one with nothing. A device that has not pulled yet holds
+ * exactly those empties, which is how one browser signing in erased the profile
+ * every other device was reading. See mergeable() in src/firebase.js. */
+
+test("a device that has not pulled yet never pushes an empty slice", async ({ app }) => {
+  const cloudProfile = {
+    name: "Ada Lovelace",
+    ministryGroup: "Kairos",
+    gender: "Female",
+    gradClass: 2026,
+    updatedAt: 1,
+  };
+  // A brand-new browser: nothing local, everything in the cloud.
+  await app.boot({
+    progress: {},
+    profile: null,
+    firebase: {
+      ...signedIn,
+      remote: {
+        name: "Ada Lovelace",
+        email: MEMBER.email,
+        profile: cloudProfile,
+        progress: { 2: committed(0.6) },
+        log: {},
+      },
+    },
+  });
+
+  await expect(app.board).toBeVisible();
+
+  // Let the debounced push (PUSH_DEBOUNCE_MS) land, then read every write made.
+  await expect(async () => {
+    expect((await app.writes()).some((w) => w.data && w.data.progress)).toBe(true);
+  }).toPass();
+
+  for (const w of await app.writes()) {
+    const d = w.data || {};
+    // The identity write carries neither, and is not a merge of the record.
+    for (const slice of ["profile", "progress", "log"]) {
+      if (slice in d) {
+        expect(
+          Object.keys(d[slice]).length,
+          `a merge push carried an empty ${slice}, which erases the stored one`,
+        ).toBeGreaterThan(0);
+      }
+    }
+  }
+});
+
+test("the cloud profile survives a fresh device signing in", async ({ app, page }) => {
+  await app.boot({
+    progress: {},
+    profile: null,
+    firebase: {
+      ...signedIn,
+      remote: {
+        name: "Ada Lovelace",
+        email: MEMBER.email,
+        profile: { name: "Ada Lovelace", ministryGroup: "Kairos", gender: "Female", gradClass: 2026, updatedAt: 1 },
+        progress: { 2: committed(0.6) },
+        log: {},
+      },
+    },
+  });
+
+  // Straight to the board: the pulled profile answered for them, and no write
+  // went up that would have emptied it for the next device.
+  await expect(app.board).toBeVisible();
+  await expect(page.getByText("SET UP YOUR PROFILE")).toHaveCount(0);
+  expect(await app.stored("mv.profile")).toMatchObject({ name: "Ada Lovelace", ministryGroup: "Kairos" });
+});

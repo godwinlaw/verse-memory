@@ -131,3 +131,49 @@ test("an unset preference falls back, and a corrupt level does too", () => {
   storage.saveScrambleLevel(9);
   assert.equal(storage.loadScrambleLevel(1, 4), 1);
 });
+
+/* ── committing is one-way, across devices too ──────────────────────────────
+ *
+ * Nothing in the app demotes a verse: App.record() short-circuits on
+ * `prev.status === "memorized"` and Test mode never touches status. The merge
+ * has to hold the same line, because a newer "learning" record is not a
+ * demotion that happened — it is a device that had not heard about the commit
+ * yet. Taking it wholesale drops the board's committed count with nothing on
+ * screen to explain it. */
+
+const T = 1787000000000;
+const day = 86400000;
+
+test("a later learning record does not un-commit a verse", () => {
+  const local = { 5: { hits: 4, status: "memorized", last: T, stability: 9, updatedAt: T } };
+  const remote = { 5: { hits: 2, status: "learning", last: T + day, stability: 3, updatedAt: T + day } };
+
+  assert.equal(mergeProgress(local, remote)[5].status, "memorized");
+  // Symmetric: which side is "local" is an accident of which device syncs.
+  assert.equal(mergeProgress(remote, local)[5].status, "memorized");
+});
+
+test("the newer record still wins on everything except that status", () => {
+  const older = { 5: { hits: 4, status: "memorized", last: T, stability: 9, updatedAt: T } };
+  const newer = { 5: { hits: 2, status: "learning", last: T + day, stability: 3, updatedAt: T + day } };
+
+  const out = mergeProgress(older, newer)[5];
+  // Freshness and stability are the whole point of taking the newer record.
+  assert.equal(out.stability, 3);
+  assert.equal(out.last, T + day);
+  assert.equal(out.hits, 2);
+});
+
+test("two committed records still resolve by recency", () => {
+  const older = { 5: { status: "memorized", last: T, stability: 9, updatedAt: T } };
+  const newer = { 5: { status: "memorized", last: T + day, stability: 14, updatedAt: T + day } };
+  assert.equal(mergeProgress(older, newer)[5].stability, 14);
+});
+
+test("a verse uncommitted on both sides is left uncommitted", () => {
+  const older = { 5: { status: "learning", last: T, stability: 2, updatedAt: T } };
+  const newer = { 5: { status: "learning", last: T + day, stability: 3, updatedAt: T + day } };
+  const out = mergeProgress(older, newer)[5];
+  assert.equal(out.status, "learning");
+  assert.equal(out.stability, 3);
+});

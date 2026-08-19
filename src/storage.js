@@ -160,9 +160,30 @@ function remoteSync({ replace = false } = {}) {
  * reviewed after a test carries both, so take whichever is later. */
 const stampOf = (rec) => Math.max((rec && rec.updatedAt) || 0, (rec && rec.last) || 0);
 
-/* Reconcile local and remote progress without losing data: per passage, keep the
- * most recently written record. Used on startup to fold the cloud copy into
- * whatever is already on this device. Pure. */
+/* One passage, as two devices last left it. The newer record wins — that is
+ * what carries freshness and stability across devices — with one exception.
+ *
+ * **Committing is one-way.** Nothing in the app demotes a verse: App.record()
+ * short-circuits on `prev.status === "memorized"`, and Test mode moves
+ * freshness without touching status. So a newer record that says "learning" is
+ * never a demotion that happened; it is a device that had not yet heard about
+ * the commit, writing from what it knew. Taking that record wholesale is how a
+ * verse the member committed on one device quietly goes back to uncommitted
+ * when another device syncs — the count on the board dropping with nothing to
+ * explain it. The newer record still wins on every other field; only the
+ * status is carried forward. */
+function reconcile(a, b) {
+  const winner = stampOf(b) > stampOf(a) ? b : a;
+  const other = winner === b ? a : b;
+  if (other && other.status === "memorized" && winner.status !== "memorized") {
+    return { ...winner, status: "memorized" };
+  }
+  return winner;
+}
+
+/* Reconcile local and remote progress without losing data: the union of both
+ * sides, each passage settled by reconcile() above. Used on startup to fold the
+ * cloud copy into whatever is already on this device. Pure. */
 export function mergeProgress(local, remote) {
   const a = local || {};
   const b = remote || {};
@@ -170,7 +191,7 @@ export function mergeProgress(local, remote) {
   for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) {
     if (!a[id]) out[id] = b[id];
     else if (!b[id]) out[id] = a[id];
-    else out[id] = stampOf(b[id]) > stampOf(a[id]) ? b[id] : a[id];
+    else out[id] = reconcile(a[id], b[id]);
   }
   return out;
 }
