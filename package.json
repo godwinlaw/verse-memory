@@ -15,6 +15,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "icons": "bash tools/gen_icons.sh",
     "keywords": "python3 tools/gen_keywords.py",
     "build": "node scripts/build.mjs",
     "cf:dev": "npm run build && wrangler dev",

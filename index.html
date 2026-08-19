@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>The Memory Board · Acts 2 Network - Berkeley</title>
+    <!-- The mark: a ribbon marker on the splash's steel field. SVG for browsers
+       that take one, favicon.ico (cut per size by npm run icons) for the rest.
+       Both live in src/ so the two deploy manifests (scripts/build.mjs,
+       Dockerfile) ship them unchanged. -->
+    <link rel="icon" type="image/svg+xml" href="./src/icon.svg" />
+    <link rel="icon" sizes="48x48" href="./src/favicon.ico" />
     <link rel="stylesheet" href="./src/styles.css" />
     <!-- React + htm, loaded as classic scripts so their globals are ready before the module runs -->
     <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
