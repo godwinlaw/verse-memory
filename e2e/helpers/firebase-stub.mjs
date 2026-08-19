@@ -9,8 +9,7 @@
  * The stub is only ever as wide as src/firebase.js asks for. Its surface is
  * exactly the imports named there (initializeApp; getAuth, onAuthStateChanged,
  * signOut, GoogleAuthProvider, signInWithPopup; getFirestore, doc, getDoc,
- * getDocFromServer,
- * setDoc, collection, getDocs) — if that file starts using something else, the
+ * getDocFromServer, setDoc, runTransaction, collection, getDocs) — if that file starts using something else, the
  * stub fails loudly rather than pretending.
  *
  * The scenario is not baked into the modules: they read window.__E2E_FIREBASE__,
@@ -96,9 +95,14 @@ export function signInWithPopup(a) {
 }
 `;
 
-/* Firestore, as far as one member's document and the roster read go. Writes are
- * recorded rather than stored: what a spec wants to know is that the app pushed,
- * and with what. */
+/* Firestore, as far as one member's document and the roster read go.
+ *
+ * The document is really stored (window.__E2E_DOC__, seeded from the scenario's
+ * `remote`), because the thing under test is now a read-modify-write: an
+ * ordinary push folds this device's record into the stored one. A stub that
+ * only recorded writes could not tell a push that merges from a push that
+ * flattens. Writes are still recorded in window.__E2E_WRITES__ as well, so a
+ * spec can assert what went up and not only what came to rest. */
 const FIRESTORE_MODULE = `
 const scenario = () => (window.__E2E_FIREBASE__ || {});
 
@@ -106,9 +110,84 @@ export const getFirestore = () => ({});
 export const doc = (db, ...path) => ({ path: path.join("/") });
 export const collection = (db, name) => ({ name });
 
-export function setDoc(ref, data, options) {
+const isMap = (v) => v != null && typeof v === "object" && !Array.isArray(v);
+
+/* The stored document, seeded once from the scenario so that a spec setting
+ * only \`remote\` behaves as it always did.
+ *
+ * It lives in sessionStorage rather than on window for the same reason the
+ * seeded localStorage does (see helpers/app.mjs): a reload is a real second
+ * visit, and a cloud that evaporated when the page reloaded could not answer
+ * the question the reload is asking. */
+const DOC_KEY = "e2e:doc";
+
+function store() {
+  const raw = sessionStorage.getItem(DOC_KEY);
+  if (raw != null) return JSON.parse(raw);
+  const seeded = scenario().remote || null;
+  put(seeded);
+  return seeded;
+}
+
+function put(doc) {
+  sessionStorage.setItem(DOC_KEY, JSON.stringify(doc == null ? null : doc));
+}
+
+/* setDoc's merge is a field mask, and modelling it exactly is the point: for a
+ * map with contents the mask reaches the leaves, so keys not mentioned survive;
+ * an empty map has no leaves, so the mask names the field itself and the stored
+ * map is replaced by nothing. That asymmetry is what mergeable() in
+ * src/firebase.js exists for. */
+function applyMerge(target, payload) {
+  const out = { ...(target || {}) };
+  for (const key of Object.keys(payload)) {
+    const value = payload[key];
+    if (isMap(value)) {
+      out[key] = Object.keys(value).length === 0 ? {} : applyMerge(isMap(out[key]) ? out[key] : {}, value);
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
+function commit(ref, data, options) {
   (window.__E2E_WRITES__ = window.__E2E_WRITES__ || []).push({ path: ref.path, data, options });
+  put(options && options.merge ? applyMerge(store(), data) : data);
+}
+
+export function setDoc(ref, data, options) {
+  store();
+  commit(ref, data, options);
   return Promise.resolve();
+}
+
+const snapshot = () => {
+  const doc = store();
+  return { exists: () => doc != null, data: () => doc };
+};
+
+/* A read-modify-write, as the push makes it. The updateFunction runs against
+ * what is stored now, and its writes land only if it resolves — which is what
+ * lets a spec change the document underneath and assert the push folded into
+ * the change rather than over it. */
+export function runTransaction(db, updateFunction) {
+  const pending = [];
+  const tx = {
+    get: (ref) => {
+      const refused = refusal();
+      return refused ? Promise.reject(refused) : Promise.resolve(snapshot());
+    },
+    set: (ref, data, options) => {
+      pending.push({ ref, data, options });
+      return tx;
+    },
+  };
+  return Promise.resolve()
+    .then(() => updateFunction(tx))
+    .then(() => {
+      for (const w of pending) commit(w.ref, w.data, w.options);
+    });
 }
 
 /* The initial pull uses getDocFromServer, never getDoc.
@@ -123,12 +202,11 @@ export function setDoc(ref, data, options) {
 export function getDocFromServer() {
   const refused = refusal();
   if (refused) return Promise.reject(refused);
-  const remote = scenario().remote || null;
-  return Promise.resolve({ exists: () => remote != null, data: () => remote });
+  return Promise.resolve(snapshot());
 }
 
-/* A read the rules refuse, or the network cannot make. Shared by both readers so
- * a scenario cannot accidentally refuse one and not the other. */
+/* A read the rules refuse, or the network cannot make. Shared by every reader
+ * so a scenario cannot accidentally refuse one and not the others. */
 function refusal() {
   const refused = scenario().refuseReads;
   if (!refused) return null;
@@ -141,13 +219,9 @@ export function getDoc() {
   const stale = scenario().localView;
   if (stale) return Promise.resolve({ exists: () => true, data: () => stale });
 
-  /* A read the rules refuse. This is the case the app must not mistake for a
-   * member with no record — see views/sync-gate.js — so the scenario can ask
-   * for it by name rather than only by taking the whole SDK away. */
   const refused = refusal();
   if (refused) return Promise.reject(refused);
-  const remote = scenario().remote || null;
-  return Promise.resolve({ exists: () => remote != null, data: () => remote });
+  return Promise.resolve(snapshot());
 }
 
 export function getDocs() {

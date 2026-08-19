@@ -12,7 +12,7 @@
 
 import { test, expect } from "./fixtures.mjs";
 import { MEMBER } from "./helpers/firebase-stub.mjs";
-import { committed, passageById } from "./helpers/seed.mjs";
+import { PROFILE, committed, passageById, started } from "./helpers/seed.mjs";
 
 const signedIn = { session: MEMBER };
 
@@ -212,4 +212,65 @@ test("a cold browser reads the server, not its own pending writes", async ({ app
   await expect(app.queue("Review today")).toContainText(passageById(2).ref);
   // And the half-built view is never saved over the local copy.
   expect(await app.stored("mv.profile")).toMatchObject({ name: "Ada Lovelace", ministryGroup: "Kairos" });
+});
+
+/* The cross-device rollback: a verse committed on one device stopped reaching
+ * the others, and the two disagreed for good.
+ *
+ * A push used to be a field-mask merge of whatever this device held. The mask
+ * leaves alone the keys the payload does not mention — but every key it does
+ * mention it overwrites, however old this device's copy of it is. So a device
+ * that still had a verse as `learning` wrote that over the commit another
+ * device had just made. It settled into a standoff rather than a race: the
+ * device that committed the verse went on saying committed, because reconcile()
+ * carries `memorized` forward on the way in, while every other device pulled
+ * the rollback and pushed it straight back up.
+ *
+ * The push now reads before it writes, through the same merges as the pull. */
+
+test("a device holding an older copy does not roll back a verse committed elsewhere", async ({ app, page }) => {
+  const then = Date.now() - 60_000;
+  // This device: two verses committed, and a third only started.
+  const here = {
+    1: committed(0.9, { now: then }),
+    2: committed(0.9, { now: then }),
+    3: started(0.5, { now: then }),
+  };
+
+  await app.boot({
+    progress: here,
+    firebase: {
+      ...signedIn,
+      remote: { name: "Ada Lovelace", email: MEMBER.email, profile: PROFILE, progress: here, log: {} },
+    },
+  });
+
+  await expect(app.board).toBeVisible();
+  await expect(async () => {
+    expect(await app.figure(app.committedFigure)).toBe(2);
+  }).toPass();
+
+  // Another device commits the third verse while this one sits open.
+  await app.cloudWrite({ progress: { 3: committed(1) } });
+
+  // Any save here pushes this device's whole record — including its own, older
+  // copy of that verse.
+  const before = (await app.writes()).length;
+  await app.header.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(app.board).toBeVisible();
+
+  // Wait for the push itself to land, or the document would be read back
+  // before the write that could have spoiled it (PUSH_DEBOUNCE_MS).
+  await expect(async () => {
+    expect((await app.writes()).length).toBeGreaterThan(before);
+  }).toPass();
+  const cloud = await app.cloudDoc();
+  expect(cloud.progress["3"].status, "a stale device wrote its own copy over a newer commit").toBe("memorized");
+
+  // And the member sees it here on the next visit, which is the whole point.
+  await app.revisit();
+  await expect(async () => {
+    expect(await app.figure(app.committedFigure)).toBe(3);
+  }).toPass();
 });
