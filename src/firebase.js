@@ -225,7 +225,7 @@ function registerPush(s, user) {
     const record = { progress, log, profile: profile || {}, updatedAt: Date.now() };
     const write = pendingReplace
       ? setDoc(userDoc, { ...identity, ...record })
-      : setDoc(userDoc, record, { merge: true });
+      : setDoc(userDoc, mergeable(record), { merge: true });
     pendingReplace = false;
     write.catch((e) => {
       console.warn("Firebase push failed:", e);
@@ -236,6 +236,33 @@ function registerPush(s, user) {
     if (payload.replace) pendingReplace = true;
     push(payload);
   });
+}
+
+/* An ordinary push with the empty slices left out.
+ *
+ * `merge: true` is not "leave everything else alone" — it means "write the
+ * fields in this payload". For a map with contents that comes to the same
+ * thing, because the mask reaches the leaves and the keys not mentioned
+ * survive. An **empty** map has no leaves, so the mask names the field itself
+ * and the stored map is replaced by nothing.
+ *
+ * That matters because empty is exactly what a device holds before its first
+ * pull lands: a member signing in on a new browser has `{}` for progress, log
+ * and profile, and any save in that window — the merge that hydration itself
+ * writes back, a card finished before the read returned — pushes those empties
+ * up. One of them is enough to erase the record the device was in the middle of
+ * fetching, and then every other device pulls the erasure. A slice with nothing
+ * in it has nothing to say, so it is simply not sent.
+ *
+ * The wipe path is untouched: `replace` is a deliberate full write (see
+ * storage.clearProgressAndLog), and emptying the record is the whole point of
+ * it. */
+function mergeable(record) {
+  const out = { updatedAt: record.updatedAt };
+  for (const key of ["progress", "log", "profile"]) {
+    if (record[key] && Object.keys(record[key]).length > 0) out[key] = record[key];
+  }
+  return out;
 }
 
 /* Where a failed push is reported. Set by the app so a write the member cannot
