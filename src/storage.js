@@ -20,6 +20,7 @@ const KEYS = {
   reviewSetup: "mv.reviewSetup",
   learnSetup: "mv.learnSetup",
   explainerOpen: "mv.explainerOpen",
+  theme: "mv.theme",
 };
 
 /* ── guarded primitives ───────────────────────────────────────────────────── */
@@ -83,6 +84,11 @@ export const storage = {
   loadExamSetup: () => readJSON(KEYS.examSetup, null),
   loadReviewSetup: (fallback) => readJSON(KEYS.reviewSetup, fallback),
   loadLearnSetup: (fallback) => readJSON(KEYS.learnSetup, fallback),
+  /* Which way round the page is printed. Returned raw — theme.normalizeTheme()
+   * is what decides whether a stored value is still one of the choices, the
+   * same division loadExamSetup makes. index.html reads this key directly, one
+   * line before the first paint; see the note there. */
+  loadTheme: () => read(KEYS.theme),
 
   /* Progress and the daily log are written together: they change together on
    * every completed review, and the cloud push carries both. */
@@ -120,6 +126,10 @@ export const storage = {
   saveReviewSetup: (setup) => write(KEYS.reviewSetup, JSON.stringify(setup)),
   saveLearnSetup: (setup) => write(KEYS.learnSetup, JSON.stringify(setup)),
   saveExplainerOpen: (open) => writeBool(KEYS.explainerOpen, open),
+  /* Device-local for the same reason as the preferences above, and a sharper
+   * one: a member reads one screen in a bright room and another at night, so a
+   * choice made here is about this screen and has no business travelling. */
+  saveTheme: (theme) => write(KEYS.theme, theme),
 };
 
 /* ── cloud-sync seam ──────────────────────────────────────────────────────── */

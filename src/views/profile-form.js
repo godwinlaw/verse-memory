@@ -187,6 +187,21 @@ export function profileFormView(v) {
           </div>
         </div>`
       }
+      ${
+        v.showAppearance &&
+        html`<div style=${sx(SECTION + ";gap:12px")}>
+          <div style=${sx(SCREEN_SUBTITLE)}>${copy.profileForm.appearance}</div>
+          <div style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.theme}</span>
+            <div style=${sx("display:flex;gap:8px")}>
+              ${v.themeOptions.map(
+                (t) => html`<button key=${t.key} onClick=${t.onClick} style=${sx(t.style)}>${t.label}</button>`,
+              )}
+            </div>
+          </div>
+          <p style=${sx(`margin:0;font-size:13px;color:${muted(55)}`)}>${v.themeNote}</p>
+        </div>`
+      }
       ${v.isSetup && html`<p style=${sx(SCREEN_BODY)}>${copy.profileForm.settingsLater}</p>`}
       ${v.showReset && resetSection(v)}
 

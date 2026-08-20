@@ -252,6 +252,38 @@ test("and the settings form still carries every one of them", () => {
   assert.doesNotMatch(editing, /You can change how reviews work later/);
 });
 
+/* The appearance switch. The theme itself is a token block in styles.css and a
+ * stamp on the root element — neither of which a static render can see — so what
+ * is asserted here is the part the form owns: that the three choices are offered
+ * where a setting belongs, that the one in force is the one standing selected,
+ * and that the note does not promise the member's other devices anything. */
+test("the settings form offers the three grounds, and says which device they are for", () => {
+  const editing = shown("profile/edit");
+  assert.match(editing, /APPEARANCE/);
+  for (const label of [/>Light</, /Dark</, />System</]) assert.match(editing, label);
+  assert.match(editing, /this device only/);
+
+  // Sign-up asks who the member is and nothing else; the system already answers
+  // this one for a member who has never thought about it.
+  assert.doesNotMatch(shown("profile/setup-empty"), /APPEARANCE/);
+});
+
+test("the ground in force is the one standing selected", () => {
+  // segButton() fills the active choice with the accent and reverses its text,
+  // which is the only difference between the three buttons in the markup.
+  const selected = (markup, label) => {
+    const [button] = markup.match(new RegExp("<button[^>]*>" + label + "</button>")) || [];
+    return /background:var\(--color-accent\)/.test(button || "");
+  };
+  const following = shown("profile/edit");
+  assert.ok(selected(following, "System"));
+  assert.ok(!selected(following, "Dark"));
+
+  const dark = shown("profile/edit-theme-dark");
+  assert.ok(selected(dark, "Dark"));
+  assert.ok(!selected(dark, "System"));
+});
+
 test("resetting says what goes, where it goes from, and what stays", () => {
   const asking = shown("profile/edit-reset-ask");
   assert.match(asking, /Reset all progress\?/);

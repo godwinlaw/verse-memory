@@ -165,6 +165,7 @@ export function baseState(overrides = {}) {
     learnSetup: { size: 5 },
     explainerOpen: false,
     guideDays: 6,
+    theme: "system",
     ...overrides,
   };
 }
@@ -315,6 +316,12 @@ export const scenarios = [
     }),
   },
   { name: "profile/edit", state: baseState({ editingProfile: true, profileDraft: { ...PROFILE } }) },
+  // A member who has overridden their system on this device — the only thing
+  // that changes on the form is which of the three is standing selected.
+  {
+    name: "profile/edit-theme-dark",
+    state: baseState({ editingProfile: true, profileDraft: { ...PROFILE }, theme: "dark" }),
+  },
   // The warning that stands in front of wiping the record, and the same screen
   // for a member who has nothing to wipe (the button is dead there).
   {
