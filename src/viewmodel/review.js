@@ -318,7 +318,9 @@ export function reviewVals({ state, prog, totals, actions }) {
     isType: state.mode === "type",
     typeInputId: RECALL_INPUT_ID,
     typed: state.typed,
-    onTyped: (e) => actions.setTyped(e.target.value),
+    onTyped: (e) => actions.setTyped(e.target.value, e.target.selectionStart),
+    // Where the cursor is left is where the next phrase heard goes in.
+    onCaret: (e) => actions.setCaret(e.target.selectionStart),
     typeUngraded: state.mode === "type" && !state.typeGraded,
     typeGraded: state.mode === "type" && state.typeGraded,
     typeScore: percent(written.score, words.length),

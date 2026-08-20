@@ -6,6 +6,24 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **Reciting a passage now produces the passage.** Four changes to voice mode,
+  all of them about the gap between what a speech engine can hand back — a flat
+  lowercase stream with no punctuation — and what the verse actually reads
+  like. A word recited correctly is shown **as the passage writes it**
+  (`LORD`, `God's`); the punctuation between two words appears once **both** are
+  right, so a full stop arrives with the next word rather than being guessed at;
+  and the words go in **where the cursor is**, so a member who puts the caret
+  back into the middle of the transcript has the next phrase land there instead
+  of at the end. A word got wrong is left exactly as it was heard, and the words
+  after it still line up.
+- **An apostrophe is punctuation like any other.** `text.norm` now keeps only
+  letters and digits, so "eagles", "eagles'" and "eagle's" grade as one word —
+  nobody pronounces an apostrophe, and a member typing from the sound of a verse
+  cannot tell where it belongs. It also closes a straight-vs-curly trap: ESV text
+  carries `’` where a keyboard produces `'`, and the old rule kept one and
+  stripped the other, so the two graded as different words.
+  ([#11](https://github.com/godwinlaw/verse-memory/issues/11))
+
 - **Fill the blanks has an alternating level.** A fourth setting beside Light,
   Medium and Full that ignores which words matter and blanks every other one,
   function words included — and a switch, offered only there, for which half of

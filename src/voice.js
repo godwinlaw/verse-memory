@@ -19,22 +19,105 @@
  * because the box is an ordinary textarea the whole time. Backspace is
  * backspace. */
 
+import { norm } from "./text.js";
+
 /* The engine hands back lowercase; a passage starts with a capital. Only ever
  * applied to the first word in the box, so a member who typed the opening and
  * recited the rest is not second-guessed mid-sentence. */
 const capitalized = (s) => s.replace(/^[a-z]/, (c) => c.toUpperCase());
 
+const wordsOf = (s) =>
+  String(s || "")
+    .split(/\s+/)
+    .filter(Boolean);
+
+/* A word with its trailing punctuation taken off: "one.” " -> "one". Leading
+ * punctuation is deliberately kept, since an opening quote belongs to the word
+ * it opens and there is never a question of having earned it. */
+const unpunctuated = (w) => w.replace(/[^\p{L}\p{N}]+$/u, "");
+
+/* Whether a word that was heard is the word the passage wanted. Compared
+ * through norm(), so neither punctuation nor an apostrophe nobody pronounces
+ * can separate "eagles", "eagles'" and "eagle's". */
+const same = (heard, want) => !!want && !!heard && norm(heard) === norm(want);
+
+/* Fitting what was heard back onto the passage.
+ *
+ * Two things the engine cannot know and the passage can. It hands back a flat
+ * lowercase stream with no punctuation at all — "the lord our god the lord is
+ * one you shall love" — so a member reciting perfectly watched their verse come
+ * out looking nothing like the verse.
+ *
+ * A word that matches is therefore shown as the passage writes it: "LORD" for
+ * lord, "God's" for gods. And the punctuation between two words is only earned
+ * once both of them are right — a full stop after "one" is a claim about where
+ * the sentence ended, and until the next word is in there is nothing to make
+ * that claim about. So the stop arrives with "You", one word late, which is
+ * also when a reader would want it.
+ *
+ * The alignment is positional: the Nth word said is the Nth word of the
+ * passage, the same assumption the first-letter drill makes. A member reciting
+ * says the words in order or they are not reciting; a word they get wrong is
+ * left exactly as it was heard, and the words after it still line up. */
+function fitToPassage(heard, target, from) {
+  return heard.map((w, i) => {
+    const at = from + i;
+    const want = target[at];
+    if (!same(w, want)) return w;
+    return same(heard[i + 1], target[at + 1]) ? want : unpunctuated(want);
+  });
+}
+
 /* The transcript once `text` takes the place of whatever was provisional.
  *
  * `settled` is the browser saying it will not revise this phrase again, which
  * moves the tail past it — everything before the tail is the member's, and
- * everything after it is still being heard. */
-export function transcribe(typed, tail, text, settled = false) {
-  const before = String(typed || "")
-    .slice(0, Math.max(0, tail || 0))
-    .replace(/\s+$/, "");
+ * everything after it is still being heard.
+ *
+ * `passage` is what is being recited, and is optional: without it the words go
+ * in exactly as they were heard, which is what the box did before it was ever
+ * given the verse to compare against.
+ *
+ * `rest` is how many characters at the end of the box sit *after* the point
+ * words are going in — nothing at all in the ordinary case, where the member is
+ * reciting onto the end of what they have said so far. It is what makes the
+ * words land where the cursor is: put the caret back into the middle of the
+ * transcript and everything from there on is held aside, the phrase goes in at
+ * the caret, and the held part is put back after it. Counted from the end
+ * rather than held as an index because the phrase in the middle is still being
+ * revised, and every revision changes its length. */
+export function transcribe(typed, tail, text, settled = false, passage = "", rest = 0) {
+  const box = String(typed || "");
+  const held = rest > 0 ? box.slice(Math.max(0, box.length - rest)).replace(/^\s+/, "") : "";
+  const before = box.slice(0, Math.max(0, Math.min(tail || 0, box.length - held.length))).replace(/\s+$/, "");
   const spoken = String(text || "").trim();
-  if (!spoken) return { typed: before, tail: before.length };
-  const joined = before ? before + " " + spoken : capitalized(spoken);
-  return { typed: joined, tail: settled ? joined.length : before.length };
+  if (!spoken) {
+    const emptied = held ? (before ? before + " " + held : held) : before;
+    return { typed: emptied, tail: before.length, rest: held.length };
+  }
+
+  const target = wordsOf(passage);
+  const kept = wordsOf(before);
+  const heard = wordsOf(spoken);
+
+  const fitted = target.length ? fitToPassage(heard, target, kept.length) : heard;
+
+  // The word on the other side of the join is in the same position: it could
+  // not earn its punctuation when it was heard, because the word after it had
+  // not been said yet. Now it has. Only ever adds — a word the member typed
+  // themselves, or one that already carries punctuation, is left alone.
+  const last = kept[kept.length - 1];
+  const wantLast = target[kept.length - 1];
+  const bridge =
+    last && unpunctuated(last) === last && same(last, wantLast) && same(heard[0], target[kept.length])
+      ? before.slice(0, before.length - last.length) + wantLast
+      : before;
+
+  const said = fitted.join(" ");
+  const joined = bridge ? bridge + " " + said : capitalized(said);
+  return {
+    typed: held ? joined + " " + held : joined,
+    tail: settled ? joined.length : bridge.length,
+    rest: held.length,
+  };
 }

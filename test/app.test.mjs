@@ -733,6 +733,62 @@ test("correcting by hand settles the box, so the next phrase appends after it", 
   assert.equal(a.state.typed, "Hear O Israel the LORD our God the LORD is one", "their edit is not overwritten");
 });
 
+test("the verse is handed over, so what is recited comes out as the verse reads", () => {
+  // The fitting itself is pure and tested in test/voice.test.mjs; what is
+  // asserted here is that the card actually knows which passage it is on.
+  const a = reciting();
+  const verse = a.state.passages.find((p) => p.id === a.state.queue[a.state.qi]);
+  const spoken = verse.text
+    .split(" ")
+    .map((w) => w.replace(/[^A-Za-z0-9']/g, "").toLowerCase())
+    .join(" ");
+
+  say(a, spoken);
+  // Every word was right, so the box holds the verse itself — bar the closing
+  // punctuation, which has no following word to earn it.
+  assert.equal(a.state.typed, verse.text.replace(/[^\p{L}\p{N}]+$/u, ""));
+});
+
+test("the cursor is where the next phrase goes in", () => {
+  const a = reciting();
+  say(a, "hear O Israel");
+  const at = "Hear,".length;
+
+  // The member puts the caret back into the middle of what they have said.
+  a.actions.setCaret(at);
+  assert.equal(a.state.voice.tail, at);
+  assert.equal(a.state.voice.rest, a.state.typed.length - at);
+
+  // And the next phrase lands there, with what followed put back after it.
+  const before = a.state.typed;
+  say(a, "the LORD");
+  assert.ok(a.state.typed.startsWith(before.slice(0, at)), "what was before the caret is untouched");
+  assert.ok(a.state.typed.endsWith(before.slice(at).trim()), "and what was after it is still there");
+});
+
+test("a hand edit settles the box at the caret, not past the end of it", () => {
+  const a = reciting();
+  say(a, "hear O Israel");
+  a.actions.setTyped("Hear, O Israel: one.", "Hear, O Israel:".length);
+  assert.equal(a.state.voice.tail, "Hear, O Israel:".length);
+  assert.equal(a.state.voice.rest, " one.".length);
+
+  // No caret given is the old behaviour: the whole box is the member's.
+  a.actions.setTyped("Hear, O Israel: one.");
+  assert.equal(a.state.voice.tail, "Hear, O Israel: one.".length);
+  assert.equal(a.state.voice.rest, 0);
+});
+
+test("the caret is only tracked while the microphone is open", () => {
+  // Nothing else in the app reads it, and a member who is only typing should
+  // not pay for a setState per keystroke.
+  const a = learnSession("type");
+  a.setVoice({ status: "off" });
+  a.actions.setCaret(3);
+  assert.equal(a.state.voice.tail, 0);
+  assert.equal(a.state.voice.rest, 0);
+});
+
 test("the switch turns the microphone on and off, and off keeps what was said", () => {
   const a = reciting({}, {});
   a.setVoice({ status: "off" });

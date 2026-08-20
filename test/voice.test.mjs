@@ -9,6 +9,16 @@ function recite(...steps) {
   return steps.reduce((s, [text, settled]) => transcribe(s.typed, s.tail, text, settled), { typed: "", tail: 0 });
 }
 
+/* The same, against a passage the words can be fitted back onto. */
+const SHEMA = "Hear, O Israel: The LORD our God, the LORD is one. You shall love the LORD your God.";
+function reciteInto(passage, ...steps) {
+  return steps.reduce((s, [text, settled]) => transcribe(s.typed, s.tail, text, settled, passage, s.rest), {
+    typed: "",
+    tail: 0,
+    rest: 0,
+  });
+}
+
 test("settled phrases join into one transcript, separated by single spaces", () => {
   const { typed } = recite(["hear O Israel", true], ["the LORD our God", true], ["the LORD is one", true]);
   assert.equal(typed, "Hear O Israel the LORD our God the LORD is one");
@@ -90,7 +100,94 @@ test("a missing or negative tail is treated as the start of the box", () => {
 });
 
 test("empty input never throws and never invents words", () => {
-  assert.deepEqual(transcribe("", 0, "", true), { typed: "", tail: 0 });
-  assert.deepEqual(transcribe(undefined, undefined, undefined), { typed: "", tail: 0 });
-  assert.deepEqual(transcribe("Trust in the Lord", 17, "   ", true), { typed: "Trust in the Lord", tail: 17 });
+  assert.deepEqual(transcribe("", 0, "", true), { typed: "", tail: 0, rest: 0 });
+  assert.deepEqual(transcribe(undefined, undefined, undefined), { typed: "", tail: 0, rest: 0 });
+  assert.deepEqual(transcribe("Trust in the Lord", 17, "   ", true), {
+    typed: "Trust in the Lord",
+    tail: 17,
+    rest: 0,
+  });
+});
+
+/* ── fitting what was heard back onto the passage ─────────────────────────── */
+
+test("a word that was right is shown the way the passage writes it", () => {
+  // The engine hands back a flat lowercase stream. The verse knows better.
+  const { typed } = reciteInto(SHEMA, ["hear o israel", true], ["the lord our god", true]);
+  assert.match(typed, /O Israel/, "capitals the engine never sends");
+  assert.match(typed, /The LORD our God/, "including the ones only this verse uses");
+});
+
+test("punctuation arrives once the word after it is right too", () => {
+  // A full stop after "one" is a claim about where the sentence ended, and
+  // until the next word is in there is nothing to make that claim about.
+  const mid = reciteInto(SHEMA, ["hear o israel", true], ["the lord our god", true], ["the lord is one", true]);
+  assert.match(mid.typed, /is one$/, "nothing yet after the last word heard");
+
+  const on = transcribe(mid.typed, mid.tail, "you shall love", true, SHEMA, mid.rest);
+  assert.match(on.typed, /is one\. You shall love/, "and now the stop is earned");
+});
+
+test("the whole thing comes out as the verse reads", () => {
+  const { typed } = reciteInto(
+    SHEMA,
+    ["hear o israel", true],
+    ["the lord our god", true],
+    ["the lord is one", true],
+    ["you shall love the lord your god", true],
+  );
+  assert.equal(typed, "Hear, O Israel: The LORD our God, the LORD is one. You shall love the LORD your God");
+});
+
+test("a word that was wrong is left exactly as it was heard", () => {
+  const { typed } = reciteInto(SHEMA, ["hear o israel", true], ["the lord our dog", true], ["the lord is one", true]);
+  assert.match(typed, /our dog the LORD/, "what they said, not what was wanted");
+  assert.doesNotMatch(typed, /dog,/, "and no punctuation it did not earn");
+  assert.match(typed, /the LORD is one/, "the words after it still line up");
+});
+
+test("an apostrophe nobody pronounced is put back", () => {
+  const passage = "He bore us on eagles’ wings";
+  const { typed } = reciteInto(passage, ["he bore us on eagles wings", true]);
+  assert.equal(typed, "He bore us on eagles’ wings");
+});
+
+test("with no passage to compare against, the words go in as they were heard", () => {
+  // The box worked this way before it was ever handed the verse, and a card
+  // with nothing on it must not start throwing.
+  const { typed } = recite(["hear o israel", true], ["the lord our god", true]);
+  assert.equal(typed, "Hear o israel the lord our god");
+});
+
+/* ── the words go in where the cursor is ──────────────────────────────────── */
+
+test("what sits after the cursor is held aside and put back", () => {
+  // The member has parked the caret before a phrase they already have.
+  const box = "Hear, O Israel: is one.";
+  const at = "Hear, O Israel:".length;
+  const next = transcribe(box, at, "the lord our god the lord", true, SHEMA, box.length - at);
+  assert.equal(next.typed, "Hear, O Israel: The LORD our God, the LORD is one.");
+  assert.equal(next.rest, "is one.".length, "and it is still held, for the next phrase");
+});
+
+test("nothing after the cursor is the ordinary case, and is untouched", () => {
+  const { typed, rest } = reciteInto(SHEMA, ["hear o israel", true]);
+  assert.equal(typed, "Hear, O Israel");
+  assert.equal(rest, 0);
+});
+
+test("a held tail survives a phrase being revised in place", () => {
+  const box = "Hear, O Israel: is one.";
+  const at = "Hear, O Israel:".length;
+  let s = transcribe(box, at, "the lord", false, SHEMA, box.length - at);
+  assert.equal(s.typed, "Hear, O Israel: The LORD is one.");
+  s = transcribe(s.typed, s.tail, "the lord our god", false, SHEMA, s.rest);
+  assert.equal(s.typed, "Hear, O Israel: The LORD our God is one.", "the guess is replaced, the tail stays put");
+});
+
+test("a held tail is kept even when the phrase heard is nothing at all", () => {
+  const box = "Hear, O Israel: is one.";
+  const at = "Hear, O Israel:".length;
+  const s = transcribe(box, at, "   ", true, SHEMA, box.length - at);
+  assert.equal(s.typed, "Hear, O Israel: is one.");
 });
