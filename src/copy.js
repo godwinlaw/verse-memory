@@ -466,7 +466,7 @@ export const copy = {
     commitTodoTag: "To commit",
     commitDoneNote: "Committed. You have given this one back in full from memory.",
     commitWritingNote: (bar) => "Get " + bar + "% of the words right, without peeking, and this verse is committed.",
-    commitOtherNote: "Recite or type the passage in full to commit the verse into your memory bank.",
+    commitOtherNote: "Head over to the Recall tab to commit it into your memory bank.",
     peekCostsCommit: "A peek means this attempt cannot commit the verse.",
     peekSpentCommit: "Peeked — this attempt can no longer commit the verse.",
 
