@@ -103,6 +103,13 @@ function scrollRecallToEnd() {
   if (el) el.scrollTop = el.scrollHeight;
 }
 
+/* A session opens at the top of the page, so the mode switch — all four
+ * activities — is on screen from the first card rather than scrolled past
+ * from wherever the board or setup screen left off. */
+function scrollToTop() {
+  if (typeof window.scrollTo === "function") window.scrollTo(0, 0);
+}
+
 /* Send focus back to the recall box after a control beside it is pressed. The
  * voice switch and the first-letter toggle are both buttons, so clicking
  * either steals focus from the box the member was just writing or reciting
@@ -597,6 +604,7 @@ export class App extends React.Component {
       reviewLeaveAsk: false,
     });
     this.resetCard();
+    scrollToTop();
   }
 
   /* Clear everything that belongs to the card being left — including what it

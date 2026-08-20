@@ -477,7 +477,7 @@ test("a learn session says what this card would take to commit the verse", () =>
   assert.match(writing, /95% of the words right, without peeking/);
 
   const practising = shown("learn/practising");
-  assert.match(practising, /Recite or type the passage in full to commit/);
+  assert.match(practising, /Head over to the Recall tab to commit/);
 
   assert.match(
     shown("learn/scaffolded"),
@@ -553,7 +553,7 @@ test("a learn card reports whether it committed, not a freshness delta", () => {
 
   const missed = shown("learn/practising");
   assert.match(shown("learn/writing"), /A peek means this attempt cannot commit/, "and peeks cost a commitment");
-  assert.match(missed, /Recite or type the passage in full to commit/);
+  assert.match(missed, /Head over to the Recall tab to commit/);
 });
 
 test("a card that fell short of committing offers a try again — a done one does not", () => {

@@ -111,9 +111,7 @@ test("any other activity is practice, and the card says so", async ({ app, page 
   await startLearning(app);
 
   await page.getByRole("button", { name: "Blanks", exact: true }).click();
-  await expect(
-    page.getByText("Recite or type the passage in full to commit the verse into your memory bank."),
-  ).toBeVisible();
+  await expect(page.getByText("Head over to the Recall tab to commit it into your memory bank.")).toBeVisible();
   // Reciting is offered on the recall card and nowhere else — it is a second way
   // to fill that one box, not an activity of its own.
   await expect(page.getByText("Voice", { exact: true })).toHaveCount(0);
