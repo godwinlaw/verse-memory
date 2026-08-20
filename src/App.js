@@ -16,7 +16,7 @@
 import { copy } from "./copy.js";
 import { React, html, sx } from "./dom.js";
 import { dayKey } from "./text.js";
-import { commitsVerse, freshness, migrate, nextStability, reviewAward, reviewedLast } from "./srs.js";
+import { commitsVerse, freshness, migrate, nextStep, reviewAward, reviewedLast, stabilityFor } from "./srs.js";
 import { BLANK_LEVELS, SCRAMBLE_LEVELS } from "./blanks.js";
 import { transcribe } from "./voice.js";
 import { createRecognizer, voiceSupported } from "./recognizer.js";
@@ -136,7 +136,7 @@ function initialState() {
     // board | list | review-setup | learn-setup | review | done | leaderboard
     // | test-setup | test | test-done | guide
     view: "board",
-    progress: {}, // { [passageId]: { hits, status, last, stability } }
+    progress: {}, // { [passageId]: { hits, status, last, step, stability } }
     log: {}, // { [YYYY-MM-DD]: reviews that day }
 
     // running session — review keeps committed verses fresh, learn commits new
@@ -512,21 +512,23 @@ export class App extends React.Component {
   }
 
   /* Record a completed card. There is still no self-report: the activity, the
-   * mark the attempt earned, and the peeks it took decide both the stability
-   * gained (srs.nextStability) and the freshness the verse is left at
-   * (srs.reviewAward). The result is kept for the session so the card can show
-   * what it was worth, and so a verse walked back to is not marked twice.
+   * mark the attempt earned, and the peeks it took decide one figure
+   * (srs.reviewAward), and that figure does both jobs — it moves the verse
+   * along the interval ladder (srs.nextStep) and it is the freshness the verse
+   * is dated to. The result is kept for the session so the card can show what it
+   * was worth, and so a verse walked back to is not marked twice.
    *
    * This is also the one place a verse becomes committed, and only by the one
    * thing that commits it: writing the passage out in full from memory
-   * (srs.commitsVerse). Nothing demotes a verse — a bad morning costs freshness,
-   * never the status the member has already earned. */
+   * (srs.commitsVerse). Nothing demotes a verse — a bad morning costs freshness
+   * and a rung, never the status the member has already earned. */
   record(id, score) {
     const now = Date.now();
     const prev = migrate(this.state.progress[id]);
     const ctx = this.reviewContext(score);
-    const stability = nextStability(prev, ctx, now);
     const award = reviewAward(ctx);
+    const step = nextStep(prev, award, ctx.mode);
+    const stability = stabilityFor(step);
     const progress = { ...this.state.progress };
     const cur = progress[id] || { hits: 0, status: "new" };
     const { commitThreshold } = reviewSettings(this.state.profile);
@@ -538,6 +540,7 @@ export class App extends React.Component {
       // the moment of writing — hence updatedAt (see storage.mergeProgress).
       last: reviewedLast(stability, award, now),
       updatedAt: now,
+      step,
       stability,
       status: committed ? "memorized" : "learning",
     };

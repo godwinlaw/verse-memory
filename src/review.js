@@ -4,9 +4,10 @@
  * what has been typed) belongs to the component. */
 
 /* The four ways to review a passage, in the order the board presents them.
- * `key` is persisted in state and read by srs.nextStability() to decide how much
- * stability a completed review earns, so these keys are part of the data model —
- * renaming one changes how reviews are scored. */
+ * `key` is persisted in state and read by srs.reviewAward() / srs.nextStep() to
+ * decide what a completed review is worth and whether it lengthens the verse's
+ * interval, so these keys are part of the data model — renaming one changes how
+ * reviews are scored. */
 export const MODES = [
   {
     key: "flip",
@@ -30,7 +31,7 @@ export const MODES = [
   // only one that takes the passage whole. It is called "From memory" rather
   // than "Write it out" because there are two ways to give it: typed, or recited
   // aloud into the same box (see voice.js). The `key` stays "type" — it is
-  // persisted in every progress record and read by srs.nextStability, so it is
+  // persisted in every progress record and read by srs.reviewAward, so it is
   // data, not wording.
   {
     key: "type",

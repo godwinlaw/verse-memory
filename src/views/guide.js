@@ -1,8 +1,9 @@
 /* The guide — the app explained, drawn rather than listed.
  *
- * Three things are shown here rather than described: a passage crossing from
- * the learn half of the set to the review half, the real forgetting curve under
- * a slider, and a small looping demonstration of each of the four activities.
+ * Four things are shown here rather than described: a passage crossing from the
+ * learn half of the set to the review half, the real forgetting curve under a
+ * slider, the interval ladder with a marker climbing it, and a small looping
+ * demonstration of each of the four activities.
  * The drawings are SVG and CSS keyframes (see the guide block in styles.css) —
  * no canvas, no library, and every animation is dropped under
  * prefers-reduced-motion. */
@@ -163,6 +164,44 @@ function curvePanel(v) {
   </div>`;
 }
 
+/* ── the schedule ─────────────────────────────────────────────────────────── */
+
+/* srs.INTERVALS drawn as what it is: a ladder, one rung per gap, each rung's bar
+ * as long as the gap it stands for. A marker climbs it on a loop, which is the
+ * only thing here that moves — the rungs themselves are the model's own list, so
+ * retuning INTERVALS redraws this without anyone editing it. */
+function ladderPanel(v) {
+  return html`<div className="guide-ladder" role="img" aria-label=${v.guideRungsAria}>
+    ${v.guideRungs.map(
+      (r) =>
+        html`<div key=${r.key} className="guide-rung" style=${sx("--rung-i:" + r.index)}>
+          <span className="guide-rung-label">${r.label}</span>
+          <i className="guide-rung-bar" style=${sx("width:" + r.weight + "%")}></i>
+        </div>`,
+    )}
+  </div>`;
+}
+
+/* The four bands of srs.nextStep. The arrow is decorative — each row says in
+ * words which way the verse moves — so it is hidden from a screen reader. */
+const RULE_GLYPH = { up: "↑", same: "=", down: "↓", reset: "↧" };
+
+function ladderRules(v) {
+  return html`<div style=${sx("display:flex;flex-direction:column;gap:2px")}>
+    ${v.guideLadderRules.map(
+      (r) =>
+        html`<div
+          key=${r.key}
+          style=${sx("display:flex;align-items:baseline;gap:13px;padding:10px 2px;border-bottom:1px solid var(--color-divider)")}
+        >
+          <span aria-hidden="true" className=${"guide-rule-dir is-" + r.dir}>${RULE_GLYPH[r.dir]}</span>
+          <span style=${sx("flex:none;width:16ch;font-size:13px;font-weight:600;line-height:1.5")}>${r.when}</span>
+          <span style=${sx(`font-size:13px;line-height:1.5;color:${muted(65)}`)}>${r.then}</span>
+        </div>`,
+    )}
+  </div>`;
+}
+
 /* ── the four activities ──────────────────────────────────────────────────── */
 
 /* One looping demonstration per activity, keyed by the same mode key the model
@@ -261,6 +300,20 @@ export function guideView(v) {
       </div>
       <p style=${sx(`margin:0;font-size:13px;line-height:1.7;color:${muted(55)};max-width:78ch`)}>
         ${v.guideFreshFoot}
+      </p>
+    </div>
+
+    <div style=${sx("display:flex;flex-direction:column;gap:18px")}>
+      ${sectionHead(v.guideLadderTitle, v.guideLadderNote)}
+      <p style=${sx(`margin:0;font-size:14px;line-height:1.75;color:${muted(70)};max-width:78ch`)}>
+        ${v.guideLadderBody}
+      </p>
+      <div className="guide-split">
+        <div className="blueprint" style=${sx("padding:22px 26px")}>${corners()} ${ladderPanel(v)}</div>
+        ${ladderRules(v)}
+      </div>
+      <p style=${sx(`margin:0;font-size:13px;line-height:1.7;color:${muted(55)};max-width:78ch`)}>
+        ${v.guideLadderFoot}
       </p>
     </div>
 

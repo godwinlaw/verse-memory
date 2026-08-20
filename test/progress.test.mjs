@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { streakOf, dueOrder, committedCount, learnPool, reviewPool, selectionPools } from "../src/progress.js";
+import { stepNear } from "../src/srs.js";
 import { dayKey } from "../src/text.js";
 
 const dayBefore = (d, n) => {
@@ -48,7 +49,7 @@ test("streakOf is 0 for an empty log", () => {
 test("dueOrder puts never-reviewed passages first", () => {
   const passages = [{ id: 1 }, { id: 2 }, { id: 3 }];
   const now = Date.now();
-  const progress = { 2: { hits: 3, status: "memorized", last: now, stability: 12 } };
+  const progress = { 2: { hits: 3, status: "memorized", last: now, step: 2, stability: 12 } };
   const order = dueOrder(passages, progress, now).map((p) => p.id);
   assert.equal(order[order.length - 1], 2, "the just-reviewed, high-retrievability passage sorts last");
   assert.ok(order.indexOf(1) < order.indexOf(2));
@@ -67,8 +68,14 @@ test("committedCount migrates legacy records (no stability)", () => {
 
 const NOW = new Date("2026-08-15T12:00:00.000Z").getTime();
 const daysAgo = (n) => NOW - n * 86400000;
-const committed = (days) => ({ hits: 4, status: "memorized", last: daysAgo(days), stability: 20 });
-const learning = (days, stability = 5) => ({ hits: 2, status: "learning", last: daysAgo(days), stability });
+const committed = (days) => ({ hits: 4, status: "memorized", last: daysAgo(days), step: 5, stability: 20 });
+const learning = (days, stability = 5) => ({
+  hits: 2,
+  status: "learning",
+  last: daysAgo(days),
+  step: stepNear(stability),
+  stability,
+});
 
 test("the two pools divide the set between them, with no overlap", () => {
   const passages = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];

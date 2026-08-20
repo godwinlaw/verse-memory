@@ -16,7 +16,7 @@ import {
   plannedQuestions,
   scoreExam,
 } from "../src/exam.js";
-import { freshness, migrate, TEST_PASS } from "../src/srs.js";
+import { freshness, migrate, stabilityFor, TEST_PASS } from "../src/srs.js";
 import { mergeProgress } from "../src/storage.js";
 import { passages } from "../data/passages.js";
 
@@ -26,11 +26,11 @@ const daysAgo = (n) => NOW - n * 86400000;
 /* Three committed verses at descending freshness, two in progress, the rest
  * untouched — enough to exercise every setup filter. */
 const progress = {
-  1: { hits: 5, status: "memorized", last: daysAgo(0.2), stability: 12 }, // ~98%
-  2: { hits: 4, status: "memorized", last: daysAgo(9), stability: 8 }, // ~32%
-  3: { hits: 3, status: "memorized", last: daysAgo(40), stability: 6 }, // ~0%
-  4: { hits: 2, status: "learning", last: daysAgo(3), stability: 2.2 },
-  5: { hits: 1, status: "learning", last: daysAgo(1), stability: 1 },
+  1: { hits: 5, status: "memorized", last: daysAgo(0.2), step: 2, stability: 12 }, // ~98%
+  2: { hits: 4, status: "memorized", last: daysAgo(9), step: 1, stability: 8 }, // ~32%
+  3: { hits: 3, status: "memorized", last: daysAgo(40), step: 1, stability: 6 }, // ~0%
+  4: { hits: 2, status: "learning", last: daysAgo(3), step: 0, stability: 2.2 },
+  5: { hits: 1, status: "learning", last: daysAgo(1), step: 0, stability: 1 },
 };
 
 const setup = (over) => normalizeSetup({ ...DEFAULT_SETUP, ...over });
@@ -259,9 +259,14 @@ test("a poor test leaves the verse at the freshness it was worth, and shortens t
   assert.equal(next[1].hits, progress[1].hits, "a failure is not a clean review");
 });
 
-test("the pass mark is the hinge: at it a verse holds its stability", () => {
+test("the pass mark is the hinge: at it a verse holds the rung it is on", () => {
+  // Above the mark a paper moves the verse up the interval ladder and below it
+  // moves it down, so exactly at the mark it stays where it was. The stability
+  // it comes back with is the rung's own (srs.stabilityFor), which is how a
+  // record written by the old multiplicative model settles onto the ladder.
   const { progress: next } = applyExam({ progress, results: [{ id: 2, score: TEST_PASS }], now: NOW });
-  assert.ok(Math.abs(next[2].stability - progress[2].stability) < 1e-9);
+  assert.equal(next[2].step, progress[2].step);
+  assert.equal(next[2].stability, stabilityFor(progress[2].step));
 });
 
 test("one bad test never demotes a committed verse", () => {
@@ -274,7 +279,7 @@ test("a test never commits a verse, however well it goes", () => {
   // Only writing the passage out in full does that (srs.commitsVerse), and a
   // paper of multiple choice and matching is not that — however many perfect
   // papers are sat.
-  let uncommitted = { 9: { hits: 2, status: "learning", last: daysAgo(5), stability: 3 } };
+  let uncommitted = { 9: { hits: 2, status: "learning", last: daysAgo(5), step: 0, stability: 3 } };
   for (let i = 0; i < 5; i++) {
     uncommitted = applyExam({ progress: uncommitted, results: [{ id: 9, score: 1 }], now: NOW }).progress;
   }

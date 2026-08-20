@@ -3,8 +3,9 @@
  * The two setup screens carry a short explanation each (see explainer.js); this
  * is the long form, and the one screen a member can be pointed at when they ask
  * "what am I looking at". It says the same things in the same words — the
- * ceilings, the commit bar, and the peek cost are read off srs.js here too, and
- * the freshness demonstration runs the real curve rather than a drawn one, so a
+ * ceilings, the commit bar, and the peek cost are read off srs.js here too, the
+ * freshness demonstration runs the real curve rather than a drawn one, and the
+ * schedule is srs.INTERVALS itself rather than a list typed out again, so a
  * retune of the model retunes the guide with it.
  *
  * The wording itself lives in copy.guide (src/copy.js), including the labels
@@ -15,8 +16,8 @@
 import { copy } from "../copy.js";
 import { reviewSettings } from "../profile.js";
 import { MODES } from "../review.js";
-import { retrievability } from "../srs.js";
-import { modeCeiling } from "./explainer.js";
+import { ADVANCE_R, HOLD_R, INTERVALS, LAPSE_R, PEEK_COST, retrievability, stabilityFor } from "../srs.js";
+import { modeCeiling, points } from "./explainer.js";
 
 const DAY_MS = 86400000;
 
@@ -27,8 +28,15 @@ const CURVE = { left: 46, right: 502, top: 18, bottom: 132, span: 30, steps: 60 
 
 /* Two verses at the same moment: one just learned, one practised a few times.
  * The point of the picture is the gap between them — reviewing does not top a
- * verse up, it flattens the curve the verse falls along. */
-const STABILITY = { fresh: 4, held: 20 };
+ * verse up, it flattens the curve the verse falls along.
+ *
+ * Both are rungs of the real ladder rather than chosen stabilities: the first
+ * one (a day) and the one a member reaches after seven clean reviews (a
+ * fortnight). The fortnight is picked because it crosses the due mark inside the
+ * thirty days the plot spans, so dragging the slider actually flips the verdict
+ * under it. */
+const RUNG = { fresh: 0, held: 7 };
+const STABILITY = { fresh: stabilityFor(RUNG.fresh), held: stabilityFor(RUNG.held) };
 
 const curveX = (days) => CURVE.left + (days / CURVE.span) * (CURVE.right - CURVE.left);
 const curveY = (r) => CURVE.bottom - r * (CURVE.bottom - CURVE.top);
@@ -117,6 +125,48 @@ export function guideVals({ state, actions }) {
     guideCurveAria: copy.guide.curveAria(dayLabel, held, fresh),
     guideFreshVerdict: held > dueFreshness ? copy.guide.freshVerdictAbove : copy.guide.freshVerdictBelow,
     guideFreshFoot: copy.guide.freshFoot(holdsFor),
+
+    // ── the schedule ──────────────────────────────────────────────────────
+    guideLadderTitle: copy.guide.ladderTitle,
+    guideLadderNote: copy.guide.ladderNote,
+    guideLadderBody: copy.guide.ladderBody(INTERVALS[0], INTERVALS[1]),
+    // The ladder itself, not a list typed out beside it — retune INTERVALS and
+    // this drawing retunes with it.
+    // `weight` is the gap drawn to scale, compressed by a power so a year and a
+    // day fit the same strip and no two rungs read as the same length. The point
+    // is that the steps widen, not their exact ratio — a plain log flattens the
+    // top half into seven bars of one size, which reads as a fault.
+    guideRungs: INTERVALS.map((days, i) => ({
+      key: i,
+      index: i,
+      label: copy.guide.rungLabel(days),
+      weight: Math.round(Math.pow(days / INTERVALS[INTERVALS.length - 1], 0.35) * 100),
+    })),
+    guideRungsAria: copy.guide.rungsAria(INTERVALS.length, copy.guide.rungLabel(INTERVALS[INTERVALS.length - 1])),
+    // The four bands of srs.nextStep, in the member's terms. The bands are read
+    // off the model rather than written out, so moving a hinge moves the words.
+    guideLadderRules: [
+      {
+        key: "advance",
+        dir: "up",
+        when: copy.guide.ruleAdvanceWhen(points(ADVANCE_R)),
+        then: copy.guide.ruleAdvanceThen,
+      },
+      {
+        key: "hold",
+        dir: "same",
+        when: copy.guide.ruleHoldWhen(points(HOLD_R), points(ADVANCE_R) - 1),
+        then: copy.guide.ruleHoldThen,
+      },
+      {
+        key: "back",
+        dir: "down",
+        when: copy.guide.ruleBackWhen(points(LAPSE_R), points(HOLD_R) - 1),
+        then: copy.guide.ruleBackThen,
+      },
+      { key: "reset", dir: "reset", when: copy.guide.ruleResetWhen(points(LAPSE_R)), then: copy.guide.ruleResetThen },
+    ],
+    guideLadderFoot: copy.guide.ladderFoot(points(PEEK_COST)),
 
     // ── the four activities ───────────────────────────────────────────────
     guideActivityTitle: copy.guide.activityTitle,

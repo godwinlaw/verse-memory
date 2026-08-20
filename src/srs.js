@@ -2,32 +2,68 @@
  *
  * Each verse has a "freshness" = retrievability R = e^(−t/S), the Ebbinghaus
  * forgetting curve: t is days since the last review, S is the memory's stability
- * (in days). Reviewing raises S (FSRS/DSR model) so the curve decays more slowly
- * afterward. Different activities raise S by different amounts — free recall
- * (writing it all out) builds more durable memory than cued recall (fill the
- * blanks) than recognition (reorder / flashcard).
+ * (in days). Reviewing raises S, so the curve decays more slowly afterward.
  *
- * The same hierarchy decides where on the curve a finished card lands: an
- * activity pays a ceiling of freshness, the attempt's mark and every peek take
- * from it, and the verse is dated back to what is left (see reviewAward and
- * backdatedLast). All constants are tunable starting points informed by the
- * spaced-repetition literature, not fitted data.
+ * What is *not* a free-running product is how much S rises. S is read off a
+ * fixed ladder of intervals — a day, two days, three, … a week, a fortnight, a
+ * month, and on out to a year — and a review moves the verse one rung along it.
+ * That is deliberate, and it replaced a multiplicative (FSRS-shaped) model that
+ * compounded about 3.9× a review: three good reviews put a verse out of sight
+ * for a month and five put it away for a year and a half, so the app never
+ * asked for the next-day review that is what actually makes a verse stick.
+ *
+ * The same hierarchy that decides how much a card is worth decides whether it
+ * moves the verse along: an activity pays a ceiling of freshness, the attempt's
+ * mark and every peek take from it, and that one figure is both the freshness
+ * the verse is dated to (see reviewAward and backdatedLast) and the evidence
+ * the ladder is moved on (see nextStep). All constants are tunable starting
+ * points informed by the spaced-repetition literature, not fitted data.
  *
  * Everything here is a pure function of a progress record + the current time, so
  * it is trivial to unit-test and reason about independently of React state. */
 
 const DAY_MS = 86400000;
 
-export const S0 = 1.0; // initial stability (days) after the first clean review
-export const GROWTH_BASE = 2.2; // baseline stability growth per success (~SM-2/FSRS 2–2.5x)
-export const TARGET_R = 0.9; // a verse is "due" once retrievability falls to this
-export const FADING_R = 0.6; // a committed verse shows the "Fading" tag below this
-export const SPACING_MAX = 1.0; // max extra stability gain from the spacing effect (R low)
+/* ── the ladder ───────────────────────────────────────────────────────────── */
 
-// Testing effect: free recall > cued recall > recognition.
-export const ACTIVITY_MULT = { type: 1.3, blanks: 1.0, scramble: 0.8, flip: 0.8 };
-export const BLANK_MULT = { 0: 0.85, 1: 1.0, 2: 1.15 }; // light / medium / full blanks
-export const SCRAMBLE_MULT = { 0: 0.85, 1: 1.0, 2: 1.15 }; // coarse / medium / fine phrases
+/* Days between reviews, rung by rung: daily, out to a week a day at a time,
+ * then a fortnight, three weeks, a month, and month by month to a year. A verse
+ * advances one rung per clean review and falls back on a poor one, so the gap
+ * widens quickly at the start — where forgetting is steepest — and then more and
+ * more slowly, which is the whole shape the model is trying to have. */
+export const INTERVALS = [1, 2, 3, 4, 5, 6, 7, 14, 21, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 365];
+
+export const MAX_STEP = INTERVALS.length - 1;
+export const clampStep = (step) => Math.max(0, Math.min(MAX_STEP, Math.round(Number(step) || 0)));
+
+/* The freshness a verse is meant to read at when its interval runs out — the
+ * point the app asks for it back. It is `profile.DEFAULT_DUE_FRESHNESS` written
+ * as a ratio, and it is deliberately the default rather than the member's own
+ * setting: srs.js knows nothing about a profile, and a member who moves their
+ * threshold is scaling the whole ladder, which is a coherent thing for that
+ * knob to mean. */
+export const DUE_R = 0.75;
+const LADDER_K = Math.log(1 / DUE_R); // ≈ 0.2877
+
+/* Days a verse on this rung is left alone for. */
+export const intervalFor = (step) => INTERVALS[clampStep(step)];
+
+/* Stability for a rung: chosen so the verse reads exactly at DUE_R when the
+ * interval runs out. Rung 0 is a day, so a verse committed today is at 75%
+ * tomorrow and back on the review list; rung 6 is a week, reading 96% the next
+ * day and 75% on the seventh. */
+export const stabilityFor = (step) => intervalFor(step) / LADDER_K;
+
+/* The rung whose interval is nearest a loose stability — how a record written
+ * by the old multiplicative model finds its place on the ladder. */
+export function stepNear(stability) {
+  const days = (Number(stability) || 0) * LADDER_K;
+  let best = 0;
+  for (let i = 1; i < INTERVALS.length; i++) {
+    if (Math.abs(INTERVALS[i] - days) < Math.abs(INTERVALS[best] - days)) best = i;
+  }
+  return best;
+}
 
 /* Floor on the freshness a graded attempt can leave behind, so a zero score
  * backdates a verse by a finite amount rather than by ln(1/0) days. */
@@ -35,13 +71,22 @@ export const R_FLOOR = 0.05;
 
 const clampR = (r) => Math.max(R_FLOOR, Math.min(1, r));
 
-/* Normalize a stored progress record, back-filling a stability for legacy
- * records (hits/status/last only) consistent with how many clean reviews the
- * verse already had. Returns a fresh default for an unseen verse. */
+/* Normalize a stored progress record, placing a legacy one (hits/status/last,
+ * with or without a loose stability) on the ladder. Returns a fresh default for
+ * an unseen verse.
+ *
+ * The rung is the nearer of two readings: where the record's own stability puts
+ * it, and how many reviews it has actually had. The second is the cap that
+ * matters — the model this replaced let stability run away, so a verse reviewed
+ * three times could be carrying a hundred-day interval it never earned, and
+ * taking `hits` as the ceiling walks those back onto the ladder. That is a
+ * one-time correction rather than a preservation: a member with verses parked on
+ * long intervals will see a batch of them come due, which is the point. */
 export function migrate(raw) {
-  if (!raw) return { hits: 0, status: "new", last: null, stability: 0 };
-  if (raw.stability == null) return { ...raw, stability: raw.hits > 0 ? S0 * Math.pow(GROWTH_BASE, raw.hits - 1) : 0 };
-  return raw;
+  if (!raw) return { hits: 0, status: "new", last: null, stability: 0, step: 0 };
+  if (raw.step != null) return raw;
+  const step = Math.min(stepNear(raw.stability), Math.max(0, (raw.hits || 1) - 1));
+  return { ...raw, step, stability: raw.last ? stabilityFor(step) : 0 };
 }
 
 /* Retrievability R ∈ [0, 1] — the Ebbinghaus curve for a (migrated) record. */
@@ -55,25 +100,45 @@ export function freshness(rec, now = Date.now()) {
   return Math.round(retrievability(rec, now) * 100);
 }
 
-/* A verse is due if it has never been reviewed or has decayed past TARGET_R. */
-export function isDue(rec, now = Date.now()) {
-  return !rec.last || retrievability(rec, now) < TARGET_R;
-}
+/* ── moving along the ladder ──────────────────────────────────────────────── */
 
-/* Stability after a completed review. Driven by what the member did — no
- * self-report. The activity, its difficulty setting, and the mark the attempt
- * earned decide how much stability is gained, and a spacing bonus rewards
- * reviewing when nearly forgotten. `ctx` is a review context (see below). */
-export function nextStability(prev, ctx, now = Date.now()) {
-  const c = ctx || {};
-  const R = retrievability(prev, now);
-  const spacingBoost = 1 + SPACING_MAX * (1 - R); // bigger gain when nearly forgotten
-  let act = ACTIVITY_MULT[c.mode] || 1.0; // testing-effect hierarchy
-  if (c.mode === "blanks") act *= BLANK_MULT[c.blankLevel] != null ? BLANK_MULT[c.blankLevel] : 1.0;
-  if (c.mode === "scramble") act *= SCRAMBLE_MULT[c.scrambleLevel] != null ? SCRAMBLE_MULT[c.scrambleLevel] : 1.0;
-  if (typeof c.score === "number") act *= 0.5 + Math.max(0, Math.min(1, c.score)); // 100% → ×1.5
-  const base = prev.stability > 0 ? prev.stability : S0;
-  return base * (1 + (GROWTH_BASE - 1) * act * spacingBoost);
+/* The three hinges. A card is worth what reviewAward() says it is worth — the
+ * activity's ceiling, its difficulty setting and the mark, less a peek's cost —
+ * and that one figure decides which way the verse moves.
+ *
+ * They are set where they are so that the hierarchy already in MODE_AWARD does
+ * the work without a second table beside it: a perfect write-out advances, and
+ * still advances through two peeks but not three; blanks at medium (0.95 × 0.96)
+ * advances; order-the-phrases at its coarsest (0.9 × 0.92) holds the rung it has
+ * but can never lengthen it. Peeking buys freshness and costs the rung, which is
+ * the honest reading of a peek. */
+export const ADVANCE_R = 0.9; // clean enough to earn a longer interval
+export const HOLD_R = 0.6; // good enough to keep the interval it has
+export const LAPSE_R = 0.3; // below this the verse was not recalled at all
+
+/* Activities that measure nothing. The flashcard is the only one, and it is why
+ * nextStep takes a mode at all: turning a card over says the member reviewed the
+ * verse and nothing more, so it pays a full freshness award (MODE_AWARD.flip)
+ * but can never be the evidence that earns a longer interval. Without this a
+ * member could click through flashcards until a verse was on a two-month rung.
+ * It is the same argument that already gives the flashcard no Submit button. */
+export const UNMARKED_MODES = new Set(["flip"]);
+
+/* The rung a verse lands on after a graded card.
+ *
+ * `award` is what the attempt was worth: reviewAward() for a session card, the
+ * mark itself for a test paper — a test is marked throughout, so it has no
+ * unmarked mode to pass. A verse that has never been reviewed starts at the
+ * first rung whatever it scored, because there is no interval yet to lengthen
+ * or lose. */
+export function nextStep(prev, award, mode) {
+  if (!prev.last) return 0;
+  const step = clampStep(prev.step);
+  if (UNMARKED_MODES.has(mode)) return step;
+  if (award >= ADVANCE_R) return clampStep(step + 1);
+  if (award >= HOLD_R) return step;
+  if (award >= LAPSE_R) return clampStep(step - 1);
+  return 0; // forgotten outright — the schedule starts again
 }
 
 /* ── what a card is worth ─────────────────────────────────────────────────── */
@@ -82,15 +147,16 @@ export function nextStability(prev, ctx, now = Date.now()) {
  * ceiling of freshness — writing the passage out from memory can leave it fully
  * fresh, putting shuffled phrases back cannot — and the attempt's own mark, its
  * difficulty setting, and every peek move the award below that ceiling. The
- * award is the freshness the verse is then dated to (see reviewedLast), so what
- * the member demonstrated is what the board shows.
+ * award is the freshness the verse is then dated to (see reviewedLast) and the
+ * figure the ladder moves on (see nextStep), so what the member demonstrated is
+ * both what the board shows and when they will see the verse again.
  *
  * A review context is `{ mode, blankLevel, scrambleLevel, firstLetters, score,
- * peeks }` — the same object nextStability() reads. */
+ * peeks }` — the same object nextStep() is handed the mode from. */
 
 /* Ceiling per mode: free recall > cued recall > recognition. The flashcard is
  * unmarked — there is nothing to measure — so it stays the plain "I reviewed
- * it" stamp it has always been. */
+ * it" stamp it has always been, and holds its rung (see UNMARKED_MODES). */
 export const MODE_AWARD = { type: 1.0, blanks: 0.95, scramble: 0.9, flip: 1.0 };
 
 /* Difficulty setting, indexed like BLANK_LEVELS / SCRAMBLE_LEVELS: the finer the
@@ -151,42 +217,26 @@ export function commitsVerse(ctx = {}, threshold = COMMIT_SCORE) {
 
 /* ── tests ────────────────────────────────────────────────────────────────── */
 
-/* Self study is ungraded — the act of reviewing is the whole signal, so every
- * mode can only ever raise stability. A test is graded, so it can go badly, and
- * these three constants are what let it. */
-
-/* Score at which a tested verse holds its ground: above it stability grows, and
- * the better the score the more; below it stability shrinks. */
-export const TEST_PASS = 0.6;
-
-/* Fraction of stability a wholly blank answer leaves behind. A lapse costs
- * most of the interval but not all of it — the verse was learned once. */
-export const TEST_LAPSE_KEEP = 0.35;
+/* Self study is ungraded in the sense that the member never says how it went —
+ * but every card is marked, so a session can send a verse backwards down the
+ * ladder just as a test can. What separates a test is only that its paper is
+ * marked as a whole, and that a pass is named: `TEST_PASS` is the same hinge as
+ * HOLD_R, so "did well enough to keep the interval" and "passed" are one bar
+ * rather than two that could drift apart. */
+export const TEST_PASS = HOLD_R;
 
 /* Floor on the freshness a test result can leave. Kept as its own name because
  * exam.js reasons in test terms; it is the shared R_FLOOR. */
 export const TEST_R_FLOOR = R_FLOOR;
-
-/* Stability after a graded test, continuous through TEST_PASS: exactly at the
- * pass mark the verse keeps the stability it had, a perfect score compounds it
- * like a strong free-recall review (with the same spacing bonus), and a blank
- * one leaves TEST_LAPSE_KEEP of it. */
-export function testStability(prev, score, now = Date.now()) {
-  const s = Math.max(0, Math.min(1, score));
-  const base = prev.stability > 0 ? prev.stability : S0;
-  if (s < TEST_PASS) return base * (TEST_LAPSE_KEEP + (1 - TEST_LAPSE_KEEP) * (s / TEST_PASS));
-  const spacingBoost = 1 + SPACING_MAX * (1 - retrievability(prev, now));
-  // 0 at the pass mark, 1 at a perfect score, scaled by the free-recall multiplier.
-  const act = ACTIVITY_MULT.type * ((s - TEST_PASS) / (1 - TEST_PASS));
-  return base * (1 + (GROWTH_BASE - 1) * act * spacingBoost);
-}
 
 /* When a graded verse should read as last reviewed.
  *
  * A verse is dated back to the point on its new forgetting curve that matches
  * what the member demonstrated: 55% leaves it reading 55% fresh, and it decays
  * on from there. Only a mode that pays a full award (the flashcard, and a
- * flawless unaided write-out) lands on `now` itself.
+ * flawless unaided write-out) lands on `now` itself — so an attempt that just
+ * clears the bar earns the longer interval and still starts a little way down
+ * it, and comes back sooner than a flawless one would.
  *
  * These are the writes where `last` is not the moment of writing, which is why
  * such a record also carries an `updatedAt` — see the stamp
@@ -200,6 +250,9 @@ export const testedLast = backdatedLast;
 
 /* …and after a self-study card, which is dated to the award it earned. */
 export const reviewedLast = backdatedLast;
+
+/* A committed verse shows the "Fading" tag below this. */
+export const FADING_R = 0.6;
 
 /* Continuous freshness colour: red (0%) → amber → green (100%), per the design. */
 const freshHue = (pct) => Math.round(pct * 1.3); // 0 → hue 0 (red), 100 → hue 130 (green)

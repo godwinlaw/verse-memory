@@ -5,30 +5,47 @@ import {
   migrate,
   retrievability,
   freshness,
-  isDue,
-  nextStability,
+  nextStep,
+  intervalFor,
+  stabilityFor,
+  stepNear,
   reviewAward,
   awardCeiling,
   reviewedLast,
   commitsVerse,
+  ADVANCE_R,
   COMMIT_SCORE,
-  GROWTH_BASE,
+  DUE_R,
+  HOLD_R,
+  INTERVALS,
+  LAPSE_R,
+  MAX_STEP,
   PEEK_COST,
   R_FLOOR,
 } from "../src/srs.js";
 
 test("migrate returns defaults for unseen verse", () => {
   const rec = migrate(undefined);
-  assert.deepEqual(rec, { hits: 0, status: "new", last: null, stability: 0 });
+  assert.deepEqual(rec, { hits: 0, status: "new", last: null, stability: 0, step: 0 });
 });
 
-test("migrate back-fills stability for legacy records", () => {
+test("migrate places a legacy record on the ladder", () => {
   const rec = migrate({ hits: 2, status: "learning", last: Date.now() });
-  assert.ok(rec.stability > 0, "legacy record should get a stability");
+  assert.equal(rec.step, 0, "one clean review is one rung");
+  assert.equal(rec.stability, stabilityFor(0));
 });
 
-test("migrate leaves records that already have a stability untouched", () => {
-  const rec = { hits: 2, status: "learning", last: Date.now(), stability: 4 };
+test("migrate caps a run-away legacy stability by the reviews that earned it", () => {
+  // The multiplicative model this replaced compounded about 3.9x a review, so a
+  // verse reviewed three times could be carrying a hundred-day interval. `hits`
+  // is the ceiling that walks those back onto the ladder.
+  const rec = migrate({ hits: 3, status: "memorized", last: Date.now(), stability: 143 });
+  assert.equal(rec.step, 2, "three reviews is three rungs, whatever the record claims");
+  assert.equal(intervalFor(rec.step), 3);
+});
+
+test("migrate leaves a record that is already on the ladder untouched", () => {
+  const rec = { hits: 2, status: "learning", last: Date.now(), step: 3, stability: 4 };
   assert.equal(migrate(rec), rec);
 });
 
@@ -39,32 +56,90 @@ test("retrievability and freshness bounds", () => {
   assert.equal(freshness({ hits: 0, status: "new", last: null, stability: 0 }), 0);
 });
 
-test("never-reviewed verse is due; very fresh verse is not", () => {
-  assert.equal(isDue(migrate(undefined)), true);
-  assert.equal(isDue({ hits: 1, status: "learning", last: Date.now(), stability: 5 }), false);
+/* ── the ladder ───────────────────────────────────────────────────────────── */
+
+test("the ladder starts at a day and widens all the way out", () => {
+  assert.deepEqual(INTERVALS.slice(0, 7), [1, 2, 3, 4, 5, 6, 7], "a day at a time out to a week");
+  assert.equal(INTERVALS[INTERVALS.length - 1], 365);
+  for (let i = 1; i < INTERVALS.length; i++) {
+    assert.ok(INTERVALS[i] > INTERVALS[i - 1], `rung ${i} should be longer than the one below it`);
+  }
 });
 
-test("nextStability grows and rewards free recall over recognition", () => {
-  const prev = { hits: 1, status: "learning", last: Date.now(), stability: 2 };
-  const write = nextStability(prev, { mode: "type", score: 1 });
-  const flip = nextStability(prev, { mode: "flip" });
-  assert.ok(write > prev.stability, "review should increase stability");
-  assert.ok(write > flip, "writing it out should build more stability than a flashcard");
-  assert.ok(GROWTH_BASE > 1);
+// Dated from a non-zero instant: retrievability() reads a falsy `last` as
+// "never reviewed" and answers 0 for it.
+const DAY = 86400000;
+const at = (step, last = DAY) => ({ last, stability: stabilityFor(step), step });
+
+test("a rung's stability is the one that reads at the due mark when its interval runs out", () => {
+  for (const step of [0, 3, 6, 9, MAX_STEP]) {
+    const atDue = retrievability(at(step), DAY + intervalFor(step) * DAY);
+    assert.ok(Math.abs(atDue - DUE_R) < 1e-9, `rung ${step} should read ${DUE_R} after ${intervalFor(step)} days`);
+  }
 });
 
-test("nextStability rewards a fuller blanks level more than a lighter one", () => {
-  const prev = { hits: 1, status: "learning", last: Date.now(), stability: 2 };
-  const full = nextStability(prev, { mode: "blanks", blankLevel: 2 });
-  const light = nextStability(prev, { mode: "blanks", blankLevel: 0 });
-  assert.ok(full > light);
+test("a verse on the first rung is asked for the next day, and one higher up is not", () => {
+  assert.equal(freshness(at(0), 2 * DAY), 75, "a day after learning it, and back on the list");
+  assert.equal(freshness(at(6), 2 * DAY), 96, "the same day for a verse on the week rung, and left alone");
+  assert.equal(freshness(at(6), 8 * DAY), 75, "which comes back a week later instead");
 });
 
-test("nextStability rewards a finer scramble level more than a coarser one", () => {
-  const prev = { hits: 1, status: "learning", last: Date.now(), stability: 2 };
-  const fine = nextStability(prev, { mode: "scramble", scrambleLevel: 2 });
-  const coarse = nextStability(prev, { mode: "scramble", scrambleLevel: 0 });
-  assert.ok(fine > coarse);
+test("stepNear finds a loose stability's place on the ladder", () => {
+  assert.equal(stepNear(stabilityFor(4)), 4, "a stability already on the ladder stays put");
+  assert.equal(stepNear(0), 0);
+  assert.equal(stepNear(1e9), MAX_STEP, "and nothing runs off the top");
+});
+
+/* ── moving along it ──────────────────────────────────────────────────────── */
+
+const on = (step) => ({ hits: 2, status: "memorized", last: Date.now(), step, stability: stabilityFor(step) });
+
+test("the first review of a verse puts it on the first rung, whatever it scored", () => {
+  const unseen = migrate(undefined);
+  assert.equal(nextStep(unseen, 1, "type"), 0);
+  assert.equal(nextStep(unseen, 0, "type"), 0, "there is no interval yet to lose");
+});
+
+test("a clean card moves the verse up one rung, a middling one holds it", () => {
+  assert.equal(nextStep(on(3), reviewAward({ mode: "type", score: 1 }), "type"), 4);
+  assert.equal(nextStep(on(3), reviewAward({ mode: "blanks", blankLevel: 1, score: 1 }), "blanks"), 4);
+  assert.equal(
+    nextStep(on(3), reviewAward({ mode: "scramble", scrambleLevel: 0, score: 1 }), "scramble"),
+    3,
+    "the coarsest ordering is worth keeping the interval, never lengthening it",
+  );
+});
+
+test("a poor card costs a rung, and forgetting it outright starts the ladder again", () => {
+  assert.equal(nextStep(on(5), reviewAward({ mode: "type", score: 0.5 }), "type"), 4);
+  assert.equal(nextStep(on(5), reviewAward({ mode: "type", score: 0.1 }), "type"), 0);
+});
+
+test("peeking buys freshness and costs the rung", () => {
+  const two = { mode: "type", score: 1, peeks: 2 };
+  const three = { mode: "type", score: 1, peeks: 3 };
+  assert.equal(nextStep(on(2), reviewAward(two), "type"), 3, "two peeks still just clears the bar");
+  assert.equal(nextStep(on(2), reviewAward(three), "type"), 2, "a third does not");
+});
+
+test("a flashcard holds the rung it is on and can never lengthen it", () => {
+  // Nothing measures a flashcard, so it pays a full freshness award and is no
+  // evidence at all — otherwise a member could click a verse onto a year.
+  assert.equal(reviewAward({ mode: "flip" }), 1, "still worth a full review in freshness");
+  for (const step of [0, 4, MAX_STEP]) assert.equal(nextStep(on(step), reviewAward({ mode: "flip" }), "flip"), step);
+});
+
+test("the ladder has a floor and a ceiling", () => {
+  assert.equal(nextStep(on(0), 0, "type"), 0);
+  assert.equal(nextStep(on(MAX_STEP), 1, "type"), MAX_STEP);
+});
+
+test("the three hinges are in order, and sit where the award table can reach them", () => {
+  assert.ok(ADVANCE_R > HOLD_R && HOLD_R > LAPSE_R);
+  assert.ok(
+    awardCeiling({ mode: "blanks", blankLevel: 1 }) >= ADVANCE_R,
+    "filling the blanks at its middle setting must be able to earn a longer interval",
+  );
 });
 
 /* ── what a card awards ─────────────────────────────────────────────────── */

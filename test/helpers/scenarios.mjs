@@ -26,11 +26,11 @@ export const PROFILE = {
  * board's colour/fade logic and the list's "Fading" tag both get exercised. */
 function progressFixture() {
   return {
-    1: { hits: 5, status: "memorized", last: daysAgo(0.2), stability: 12 }, // very fresh
-    2: { hits: 4, status: "memorized", last: daysAgo(9), stability: 8 }, // fading
-    3: { hits: 3, status: "memorized", last: daysAgo(40), stability: 6 }, // stale
-    4: { hits: 2, status: "learning", last: daysAgo(3), stability: 2.2 },
-    5: { hits: 1, status: "learning", last: daysAgo(1), stability: 1 },
+    1: { hits: 5, status: "memorized", last: daysAgo(0.2), step: 2, stability: 12 }, // very fresh
+    2: { hits: 4, status: "memorized", last: daysAgo(9), step: 1, stability: 8 }, // fading
+    3: { hits: 3, status: "memorized", last: daysAgo(40), step: 1, stability: 6 }, // stale
+    4: { hits: 2, status: "learning", last: daysAgo(3), step: 0, stability: 2.2 },
+    5: { hits: 1, status: "learning", last: daysAgo(1), step: 0, stability: 1 },
     6: { hits: 2, status: "learning", last: daysAgo(0.5) }, // legacy: no stability
   };
 }
@@ -145,7 +145,9 @@ const listening = (voice, overrides) =>
 /* Every passage committed and fully fresh — nothing to review, nothing to
  * learn. Both empty states at once. */
 const allCommitted = () =>
-  Object.fromEntries(passages.map((p) => [p.id, { hits: 5, status: "memorized", last: daysAgo(0), stability: 30 }]));
+  Object.fromEntries(
+    passages.map((p) => [p.id, { hits: 5, status: "memorized", last: daysAgo(0), step: 6, stability: 30 }]),
+  );
 
 /* One fixed paper, covering all four activities (ten verses dealt round-robin
  * over four activities reaches every one). The seed is fixed, so the questions —
@@ -421,7 +423,7 @@ export const scenarios = [
       mode: "type",
       typed: "hear o israel the lord our god",
       typeGraded: true,
-      progress: { ...progressFixture(), 5: { hits: 2, status: "memorized", last: NOW, stability: 4 } },
+      progress: { ...progressFixture(), 5: { hits: 2, status: "memorized", last: NOW, step: 0, stability: 4 } },
       results: { 5: { id: 5, mode: "type", score: 1, peeks: 0, before: 37, after: 100, committed: true } },
     }),
   },
@@ -440,7 +442,7 @@ export const scenarios = [
     name: "learn/already-committed",
     state: learning({
       mode: "type",
-      progress: { ...progressFixture(), 5: { hits: 6, status: "memorized", last: daysAgo(2), stability: 9 } },
+      progress: { ...progressFixture(), 5: { hits: 6, status: "memorized", last: daysAgo(2), step: 2, stability: 9 } },
     }),
   },
   // The two dialogs, which are where a review session talks about freshness
