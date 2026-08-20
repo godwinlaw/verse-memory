@@ -175,6 +175,14 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
       };
     }),
 
+    // How reviews behave is not asked for at sign-up. A member meeting the app
+    // for the first time has no way to judge how many verses a sitting should
+    // hold or how far one may fade before it comes back — the questions only
+    // mean something once they have used it. Nothing is lost by leaving them:
+    // submitProfile writes the same defaults either way, and Settings is where
+    // they are changed afterwards.
+    showReviewSettings: !isSetup,
+
     // Resetting the record. Offered only to a member who already has a profile
     // — the setup form is a gate, and there is nothing behind it yet to clear.
     showReset: !isSetup,

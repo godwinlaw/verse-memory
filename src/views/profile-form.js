@@ -138,53 +138,56 @@ export function profileFormView(v) {
         />
       </label>
 
-      <div style=${sx(SECTION + ";gap:20px")}>
-        <div style=${sx(SCREEN_SUBTITLE)}>${copy.profileForm.reviewSettings}</div>
-        <label style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>${copy.profileForm.dueTopX}</span>
-          <input
-            className="input"
-            type="number"
-            min="1"
-            value=${v.dueTopX}
-            onChange=${v.onDueTopX}
-            ...${NUMERIC_KEYBOARD}
-          />
-        </label>
-        <label style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>${copy.profileForm.dueFreshness}</span>
-          <input
-            className="input"
-            type="number"
-            min="0"
-            max="100"
-            value=${v.dueFreshness}
-            onChange=${v.onDueFreshness}
-            ...${NUMERIC_KEYBOARD}
-          />
-        </label>
-        <label style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>${copy.profileForm.commitThreshold}</span>
-          <input
-            className="input"
-            type="number"
-            min=${v.commitThresholdMin}
-            max=${v.commitThresholdMax}
-            value=${v.commitThreshold}
-            onChange=${v.onCommitThreshold}
-            ...${NUMERIC_KEYBOARD}
-          />
-        </label>
-        <div style=${sx(FIELD)}>
-          <span style=${sx(LABEL_SECTION)}>${copy.profileForm.difficulty}</span>
-          <div style=${sx("display:flex;gap:8px")}>
-            ${v.defaultDifficultyLevels.map(
-              (lv) => html`<button key=${lv.key} onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`,
-            )}
+      ${
+        v.showReviewSettings &&
+        html`<div style=${sx(SECTION + ";gap:20px")}>
+          <div style=${sx(SCREEN_SUBTITLE)}>${copy.profileForm.reviewSettings}</div>
+          <label style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.dueTopX}</span>
+            <input
+              className="input"
+              type="number"
+              min="1"
+              value=${v.dueTopX}
+              onChange=${v.onDueTopX}
+              ...${NUMERIC_KEYBOARD}
+            />
+          </label>
+          <label style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.dueFreshness}</span>
+            <input
+              className="input"
+              type="number"
+              min="0"
+              max="100"
+              value=${v.dueFreshness}
+              onChange=${v.onDueFreshness}
+              ...${NUMERIC_KEYBOARD}
+            />
+          </label>
+          <label style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.commitThreshold}</span>
+            <input
+              className="input"
+              type="number"
+              min=${v.commitThresholdMin}
+              max=${v.commitThresholdMax}
+              value=${v.commitThreshold}
+              onChange=${v.onCommitThreshold}
+              ...${NUMERIC_KEYBOARD}
+            />
+          </label>
+          <div style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.difficulty}</span>
+            <div style=${sx("display:flex;gap:8px")}>
+              ${v.defaultDifficultyLevels.map(
+                (lv) => html`<button key=${lv.key} onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`,
+              )}
+            </div>
           </div>
-        </div>
-      </div>
-
+        </div>`
+      }
+      ${v.isSetup && html`<p style=${sx(SCREEN_BODY)}>${copy.profileForm.settingsLater}</p>`}
       ${v.showReset && resetSection(v)}
 
       <div style=${sx("display:flex;gap:10px;margin-top:4px")}>

@@ -6,6 +6,16 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **Signing up asks who you are, and nothing else.** The four review settings —
+  how many verses a sitting holds, how far a verse may fade before it comes
+  back, the commit threshold, the default difficulty — are no longer on the
+  form standing between a new member and the app. They are questions nobody can
+  answer before they have used it, and a gate is a bad place to ask them.
+  Nothing is lost by waiting: `submitProfile` writes the same defaults either
+  way, so the questions were skipped rather than the answers, and Settings
+  carries all four unchanged. The setup form says where they went.
+  ([#43](https://github.com/godwinlaw/verse-memory/issues/43))
+
 - **Reciting a passage now produces the passage.** Four changes to voice mode,
   all of them about the gap between what a speech engine can hand back — a flat
   lowercase stream with no punctuation — and what the verse actually reads
