@@ -318,14 +318,21 @@ export function reviewVals({ state, prog, totals, actions }) {
     typeGraded: state.mode === "type" && state.typeGraded,
     typeScore: percent(written.score, words.length),
     // A missed word carries what was written in its place, so the mistake is
-    // legible rather than just flagged (see grading.gradeWritten).
-    typeDiff: written.diff.map((d) => ({ word: d.word, style: d.hit ? WORD_RIGHT : WORD_WRONG, typed: d.typed })),
+    // legible rather than just flagged (see grading.gradeWritten). The live
+    // reveal below hands back the same shape — { text, style, typed } — because
+    // the view draws both with one helper.
+    typeDiff: written.diff.map((d) => ({ text: d.word, style: d.hit ? WORD_RIGHT : WORD_WRONG, typed: d.typed })),
     // First-letter mode is a live drill: the reveal updates as you type and
     // there is no separate "Grade it" step.
     typeLive: state.mode === "type" && state.typeFirstLetter,
+    // A wrong initial reveals the word itself, marked wrong, with the letter
+    // that was typed struck through beneath it — the drill teaches at the one
+    // moment the member has shown they need it. It is honest only because the
+    // box is forward-only (grading.lockedInput, wired in App.setTyped).
     typeReveal: (live ? live.words : []).map((w) => ({
       text: w.text,
       style: w.state === "right" ? WORD_RIGHT : w.state === "wrong" ? WORD_WRONG : "color:var(--color-neutral-400)",
+      typed: w.typed || "",
     })),
     typeRevealScore: percent(live ? live.score : 0, words.length),
     typeFirstLetterOn: state.typeFirstLetter,

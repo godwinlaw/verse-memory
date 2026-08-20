@@ -106,6 +106,48 @@ test("the first-letter scaffold still commits — that is what Learn is for", as
   await expect(page.locator(".result-strip")).toContainText("Committed");
 });
 
+/* The drill is forward-only, and it has to be: the reveal is live, so a member
+ * who can backspace is being shown the answer to the question they are being
+ * asked. The rule is pure (grading.lockedInput) and wired in App.setTyped —
+ * what only a browser can show is the Backspace key itself not taking. */
+test("a wrong first letter gives up the word, and cannot be taken back", async ({ app, page }) => {
+  await app.boot({ progress: {} });
+  await startLearning(app);
+  await recallCard(page);
+  await page.getByRole("button", { name: "Off", exact: true }).first().click();
+
+  const drill = page.getByPlaceholder(/Type just the first letter of each word/);
+  const words = fullText(FIRST.id).split(" ");
+  const initial = (w) => (w.replace(/[^A-Za-z]/g, "")[0] || "").toLowerCase();
+  // Wrong for the second word whatever the pool dealt, and never a real initial.
+  const wrong = ["q", "z", "x"].find((c) => c !== initial(words[1]));
+
+  await drill.pressSequentially(initial(words[0]) + wrong);
+  await expect(drill).toHaveValue(initial(words[0]) + wrong);
+
+  // The word the member missed is now on screen — that is the teaching — with
+  // what they typed struck through beneath it.
+  await expect(page.getByText(words[1], { exact: true })).toBeVisible();
+  await expect(page.getByText(wrong, { exact: true })).toBeVisible();
+
+  // And none of it can be undone.
+  await drill.press("Backspace");
+  await drill.press("Backspace");
+  await expect(drill).toHaveValue(initial(words[0]) + wrong, "backspace does not take");
+  await expect(page.getByText(words[1], { exact: true })).toBeVisible("nor does the reveal roll back");
+
+  await page.keyboard.down("Meta");
+  await page.keyboard.press("a");
+  await page.keyboard.up("Meta");
+  await drill.press("Backspace");
+  await expect(drill).toHaveValue(initial(words[0]) + wrong, "and neither does selecting the lot");
+
+  // Typing forwards is the one thing that still works.
+  await drill.pressSequentially(initial(words[2]));
+  await expect(drill).toHaveValue(initial(words[0]) + wrong + initial(words[2]));
+  await expect(page.getByText(words[2], { exact: true })).toBeVisible();
+});
+
 test("any other activity is practice, and the card says so", async ({ app, page }) => {
   await app.boot({ progress: {} });
   await startLearning(app);

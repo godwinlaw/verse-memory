@@ -130,6 +130,27 @@ function voiceRow(v) {
   </div>`;
 }
 
+/* One word of a marked attempt. A word that came out right (or has not been
+ * reached yet) is just itself; a word the member missed carries what they wrote
+ * in its place, struck through beneath it, so the mistake is legible rather
+ * than merely flagged.
+ *
+ * Shared by the marked paper and the live first-letter reveal on purpose: both
+ * are saying the same thing — here is the word, here is what you put — so they
+ * should not say it two different ways. */
+const attemptWord = (key, w) =>
+  w.typed
+    ? html`<span
+        key=${key}
+        style=${sx("display:inline-flex;flex-direction:column;align-items:center;line-height:1.25")}
+      >
+        <span style=${sx(w.style)}>${w.text}</span>
+        <span style=${sx(`font-size:11px;font-weight:400;text-decoration:line-through;color:${muted(55)}`)}
+          >${w.typed}</span
+        >
+      </span>`
+    : html`<span key=${key} style=${sx(w.style)}>${w.text}</span>`;
+
 /* From memory: free recall, graded word by word, given either by typing or by
  * reciting into the same box (see voiceRow). In first-letter mode it is a
  * live drill instead — the reveal updates as you type, with no separate grade
@@ -164,7 +185,7 @@ function typePanel(v) {
               </div>
             </div>
             <div style=${sx("font-size:21px;line-height:2;max-width:74ch;display:flex;flex-wrap:wrap;gap:0 8px")}>
-              ${v.typeReveal.map((r, i) => html`<span key=${i} style=${sx(r.style)}>${r.text}</span>`)}
+              ${v.typeReveal.map((r, i) => attemptWord(i, r))}
             </div></${React.Fragment}
           >`
         : html`<${React.Fragment}
@@ -189,20 +210,7 @@ function typePanel(v) {
                     "font-size:19px;line-height:1.8;max-width:74ch;display:flex;flex-wrap:wrap;align-items:flex-end;gap:2px 7px",
                   )}
                 >
-                  ${v.typeDiff.map((d, i) =>
-                    d.typed
-                      ? html`<span
-                          key=${i}
-                          style=${sx("display:inline-flex;flex-direction:column;align-items:center;line-height:1.25")}
-                        >
-                          <span style=${sx(d.style)}>${d.word}</span>
-                          <span
-                            style=${sx(`font-size:11px;font-weight:400;text-decoration:line-through;color:${muted(55)}`)}
-                            >${d.typed}</span
-                          >
-                        </span>`
-                      : html`<span key=${i} style=${sx(d.style)}>${d.word}</span>`,
-                  )}
+                  ${v.typeDiff.map((d, i) => attemptWord(i, d))}
                 </div>
               </div>`
             }</${React.Fragment}

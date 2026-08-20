@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { gradeWritten, gradeReference, parseReference, revealFirstLetters } from "../src/grading.js";
+import { gradeWritten, gradeReference, lockedInput, parseReference, revealFirstLetters } from "../src/grading.js";
 
 test("gradeWritten scores an exact match 1.0", () => {
   const words = ["Trust", "in", "the", "Lord"];
@@ -71,9 +71,52 @@ test("revealFirstLetters is strictly positional", () => {
   assert.equal(revealed[0].state, "right");
   assert.equal(revealed[0].text, "Trust");
   assert.equal(revealed[1].state, "wrong");
-  assert.equal(revealed[1].text, "x", "a wrong letter shows what was typed, not the word");
+  assert.equal(revealed[1].text, "in", "a wrong letter gives up the word it missed");
+  assert.equal(revealed[1].typed, "x", "and says what was written in its place");
   assert.equal(revealed[2].state, "hidden");
   assert.equal(revealed[3].state, "hidden");
+});
+
+test("a missed word does not count towards the score it reveals", () => {
+  // The word appears, but the member did not produce it, so the drill is not
+  // paying for what it just taught.
+  const words = ["Trust", "in", "the", "Lord"];
+  const { hits, score } = revealFirstLetters(words, "t x t l");
+  assert.equal(hits, 3);
+  assert.equal(score, 0.75);
+});
+
+test("a wrong letter moves the drill on rather than derailing it", () => {
+  // Positional: the letters after a miss still line up with their own words,
+  // so one slip costs one word and not the rest of the passage.
+  const words = ["Trust", "in", "the", "Lord"];
+  const { words: revealed } = revealFirstLetters(words, "t x t l");
+  assert.deepEqual(
+    revealed.map((r) => r.state),
+    ["right", "wrong", "right", "right"],
+  );
+});
+
+test("the first-letter box only ever grows", () => {
+  // Backspace, select-all-and-retype, and an edit dropped into the middle are
+  // all the same refusal: what is not an append keeps what was there.
+  assert.equal(lockedInput("tit", "ti"), "tit", "backspace");
+  assert.equal(lockedInput("tit", ""), "tit", "select all and delete");
+  assert.equal(lockedInput("tit", "taa"), "tit", "select all and retype");
+  assert.equal(lockedInput("tit", "tXit"), "tit", "cursor put back into the middle");
+});
+
+test("but typing forwards is exactly what it lets through", () => {
+  assert.equal(lockedInput("tit", "titl"), "titl");
+  assert.equal(lockedInput("tit", "tit "), "tit ", "including the spaces between letters");
+  assert.equal(lockedInput("", "t"), "t", "and the first letter of a fresh box");
+  assert.equal(lockedInput("tit", "tit"), "tit", "an event that changed nothing changes nothing");
+});
+
+test("lockedInput copes with nothing on either side", () => {
+  assert.equal(lockedInput(undefined, undefined), "");
+  assert.equal(lockedInput(null, "t"), "t");
+  assert.equal(lockedInput("tit", null), "tit", "a cleared box is a deletion like any other");
 });
 
 test("a hidden word's mask does not give away its length", () => {
