@@ -144,9 +144,10 @@ test("and it is the same drawing as the favicon, not a second one", () => {
     assert.ok(inline.includes(rule), `the favicon's rule ${rule} is missing from the inline mark`);
   }
   // The one thing the file cannot do is read the palette: it writes the steel
-  // longhand where the inline mark names the token.
+  // longhand where the inline mark names the reversed-plate token, which is
+  // also what lifts the mark off a dark page instead of sinking it in.
   assert.match(file, /#1d2d3d/);
-  assert.match(inline, /var\(--color-accent-900\)/);
+  assert.match(inline, /var\(--color-reverse-bg\)/);
 });
 
 test("and it is drawn, not announced", () => {

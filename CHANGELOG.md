@@ -6,6 +6,24 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **The app follows the reader into dark.** `prefers-color-scheme` and nothing
+  else: no switch anywhere, nothing persisted, because a member who wants dark
+  has already said so once to their operating system. It is one block of token
+  overrides in `styles.css` and no rules of its own — the whole app turns over
+  together. Two ideas carry it. The neutral and accent **ramps invert**, because
+  their steps mean distance from the page's ground rather than lightness, so
+  "the strongest state" is the darkest step on paper and the lightest on ink and
+  the board's map needs no change. The **reversed plate does not invert**, which
+  is why it gained its own `--color-reverse-bg` / `--color-reverse-text` pair:
+  it is a plate printed the other way round from the page, so on a dark ground
+  it lifts off rather than sinking in. `--color-error` and the freshness
+  gradient's lightness (`--fresh-l`, which `srs.freshColor` now defers to) are
+  tokens for the same reason — both were mixed for paper. The favicon carries
+  its own media query, so the browser tab turns over too. The light theme is
+  **pixel-identical**: verified by diffing full-page screenshots of the board,
+  the guide and a review card against `main`.
+  ([#13](https://github.com/godwinlaw/verse-memory/issues/13))
+
 - **The app's mark now stands beside its name.** The "marked passage" ribbon —
   already the favicon, `src/icon.svg` — is drawn inline on the sign-in gate and
   in the header, so the app looks like itself in a browser tab, on the way in,

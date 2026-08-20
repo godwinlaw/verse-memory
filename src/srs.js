@@ -262,9 +262,15 @@ export const reviewedLast = backdatedLast;
 /* A committed verse shows the "Fading" tag below this. */
 export const FADING_R = 0.6;
 
-/* Continuous freshness colour: red (0%) → amber → green (100%), per the design. */
+/* Continuous freshness colour: red (0%) → amber → green (100%), per the design.
+ *
+ * The hue is the figure and belongs here; the lightness is the theme's and does
+ * not. 45% is mixed for paper and goes muddy on a dark ground, so it is handed
+ * to `--fresh-l`, which styles.css sets per theme — the one way a colour built
+ * in JS can answer a media query it cannot see. The fallback keeps the paper
+ * value, so a stylesheet that never defines it is unchanged. */
 const freshHue = (pct) => Math.round(pct * 1.3); // 0 → hue 0 (red), 100 → hue 130 (green)
-export const freshColor = (pct) => "hsl(" + freshHue(pct) + ",55%,45%)";
+export const freshColor = (pct) => "hsl(" + freshHue(pct) + ",55%,var(--fresh-l,45%))";
 export const freshBar = (pct) =>
   "height:6px;border-radius:3px;background:var(--color-fresh-track);" +
   "background-image:linear-gradient(90deg," +

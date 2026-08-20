@@ -12,7 +12,7 @@ import { muted, statusTag } from "../ui/tokens.js";
 /* One cell of the 2×2 hero stat grid; the outer edges drop their rules. */
 const HERO_CELL =
   "padding:22px 24px;display:flex;flex-direction:column;gap:6px;" +
-  "border-bottom:1px solid rgba(242,242,243,.25);border-right:1px solid rgba(242,242,243,.25)";
+  "border-bottom:1px solid color-mix(in srgb, var(--color-reverse-text) 25%, transparent);border-right:1px solid color-mix(in srgb, var(--color-reverse-text) 25%, transparent)";
 
 /* Floor for the activity chart's y-axis, so a couple of reviews on a quiet week
  * don't render as a full-height bar. */
@@ -79,7 +79,7 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
 
   return {
     deadlineLabel: deadline.toLocaleDateString("en-GB", { day: "numeric", month: "long" }),
-    barStyle: "position:absolute;inset:0 auto 0 0;width:" + pct + "%;background:#f2f2f3",
+    barStyle: "position:absolute;inset:0 auto 0 0;width:" + pct + "%;background:var(--color-reverse-text)",
 
     heroStats: [
       {

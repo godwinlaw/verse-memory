@@ -51,7 +51,7 @@ export function boardView(v) {
   return html`<div className="board-page screen">
     <div
       className="blueprint board-hero"
-      style=${sx("background:var(--color-accent-900);color:#f2f2f3;border-color:var(--color-accent-900)")}
+      style=${sx("background:var(--color-reverse-bg);color:var(--color-reverse-text);border-color:var(--color-reverse-bg)")}
     >
       ${corners()}
       <div style=${sx("padding:36px 40px 32px;display:flex;flex-direction:column;gap:22px")}>
@@ -86,7 +86,9 @@ export function boardView(v) {
             </div>
           </div>
         </div>
-        <div style=${sx("height:10px;border:1px solid rgba(242,242,243,.4);position:relative")}>
+        <div
+          style=${sx("height:10px;border:1px solid color-mix(in srgb, var(--color-reverse-text) 40%, transparent);position:relative")}
+        >
           <div className="meter-fill" style=${sx(v.barStyle)}></div>
         </div>
         <div style=${sx("display:flex;gap:28px;font-size:12px;opacity:.75")}>

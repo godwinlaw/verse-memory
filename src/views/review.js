@@ -318,7 +318,7 @@ function learnResultStrip(v) {
       style=${sx(
         "font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;" +
           (v.learnResultDone
-            ? "background:var(--color-accent-900);color:#f2f2f3"
+            ? "background:var(--color-reverse-bg);color:var(--color-reverse-text)"
             : `border:1px solid var(--color-divider);color:${muted(55)}`),
       )}
       >${v.learnResultHeadline}</span
