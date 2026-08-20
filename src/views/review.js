@@ -78,6 +78,21 @@ function blanksPanel(v) {
         ${v.blankLevels.map((lv) => html`<button key=${lv.key} className="seg-btn" onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
       </div>
       <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${v.blankLevelDesc}</span>
+      ${
+        v.blankParityShown &&
+        html`<${React.Fragment}
+          ><span style=${sx("width:1px;height:20px;background:var(--color-divider);margin:0 4px")}></span>
+          <span style=${sx(LABEL_SECTION)}>${copy.review.blanksParityLabel}</span>
+          <div style=${sx("display:flex;gap:6px")}>
+            ${v.blankParities.map(
+              (pt) =>
+                html`<button key=${pt.key} className="seg-btn" onClick=${pt.onClick} style=${sx(pt.style)}>
+                  ${pt.label}
+                </button>`,
+            )}
+          </div></${React.Fragment}
+        >`
+      }
       <span style=${sx("width:1px;height:20px;background:var(--color-divider);margin:0 4px")}></span>
       <span style=${sx(LABEL_SECTION)}>${copy.review.blanksFirstLetter}</span>
       <button className="seg-btn" onClick=${v.toggleBlankHint} style=${sx(v.blankHintStyle)}>

@@ -6,7 +6,7 @@
 
 import { copy } from "../copy.js";
 import { norm, firstLetters as firstLetterScaffold } from "../text.js";
-import { keyBlankSet, chunksFor, BLANK_LEVELS, SCRAMBLE_LEVELS } from "../blanks.js";
+import { keyBlankSet, chunksFor, BLANK_LEVELS, BLANK_PARITIES, SCRAMBLE_LEVELS } from "../blanks.js";
 import { gradeWritten, matchesWord, revealFirstLetters } from "../grading.js";
 import { countByStatus, reviewPool } from "../progress.js";
 import { reviewSettings } from "../profile.js";
@@ -189,7 +189,7 @@ export function reviewVals({ state, prog, totals, actions }) {
   const words = curText ? curText.split(" ") : [];
 
   // ── fill the blanks ───────────────────────────────────────────────────────
-  const blanks = keyBlankSet(curText, cur ? cur.id : null, state.blankLevel);
+  const blanks = keyBlankSet(curText, cur ? cur.id : null, state.blankLevel, state.blankParity);
   const blankCells = blankWords({ words, blanks, state, actions });
   const blanksTotal = blankCells.filter((w) => w.isBlank).length;
   const blanksRight = blankCells.filter((w) => w.isBlank && matchesWord(w.word, w.value)).length;
@@ -306,6 +306,11 @@ export function reviewVals({ state, prog, totals, actions }) {
       : copy.review.blanksCount(blanksTotal),
     blankLevels: levelButtons(BLANK_LEVELS, state.blankLevel, actions.setBlankLevel),
     blankLevelDesc: copy.review.blanksLevelDesc((BLANK_LEVELS[state.blankLevel] || BLANK_LEVELS[1]).desc),
+    // Which half of the passage is taken away is only a question at the
+    // alternating level; the keyword levels have no two halves to choose
+    // between, so the row is not there to be ignored.
+    blankParityShown: !!(BLANK_LEVELS[state.blankLevel] || {}).alternate,
+    blankParities: levelButtons(BLANK_PARITIES, state.blankParity, actions.setBlankParity),
     blankHintOn: state.blankHint,
     toggleBlankHint: actions.toggleBlankHint,
     blankHintStyle: segButton(state.blankHint),

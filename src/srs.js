@@ -160,8 +160,16 @@ export function nextStep(prev, award, mode) {
 export const MODE_AWARD = { type: 1.0, blanks: 0.95, scramble: 0.9, flip: 1.0 };
 
 /* Difficulty setting, indexed like BLANK_LEVELS / SCRAMBLE_LEVELS: the finer the
- * cut and the more words blanked, the closer to the mode's ceiling it pays. */
-export const LEVEL_AWARD = [0.92, 0.96, 1.0];
+ * cut and the more words blanked, the closer to the mode's ceiling it pays.
+ *
+ * The fourth entry is the blanks list's alternating level, which has no
+ * counterpart in SCRAMBLE_LEVELS and is never reached by a scramble card. It
+ * pays the mode's full ceiling because it is at least as hard as blanking every
+ * key word: half the passage is gone, and the member cannot lean on the little
+ * words that the keyword levels always leave standing. Deliberately not left to
+ * the `!= null` fallback below — a difficulty that pays full marks should say so
+ * here rather than by omission. */
+export const LEVEL_AWARD = [0.92, 0.96, 1.0, 1.0];
 
 /* Typing first letters only is scaffolded recall, so it is worth less than
  * writing the passage out in full. */
