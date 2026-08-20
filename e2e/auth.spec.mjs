@@ -14,7 +14,7 @@ import { PROFILE, committed } from "./helpers/seed.mjs";
 test("no session: the app stops at the sign-in gate", async ({ app, page }) => {
   await app.boot({ firebase: { session: null } });
 
-  await expect(page.getByText("THE MEMORY BOARD")).toBeVisible();
+  await expect(page.getByText("VERSE MASTERY")).toBeVisible();
   await expect(page.getByRole("button", { name: /Sign in with Google/ })).toBeVisible();
   // The prompt names one of the allowed Workspace domains (PRIMARY_DOMAIN).
   await expect(page.getByText("@acts2.network")).toBeVisible();

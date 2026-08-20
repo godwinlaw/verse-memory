@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Ships the current branch of The Memory Board end-to-end — commit outstanding work, push, open and merge a GitHub PR into main, then deploy to Cloudflare Workers via wrangler. Use this whenever the user says things like "ship this", "let's deploy", "push this up and deploy", "merge and deploy", "get this live", or otherwise asks to take the current branch's work to production, even if they only name one step (e.g. just "deploy" or just "merge this") — deploying this app is only correct once the code is merged to main, so a bare "deploy" request should still go through the full commit → push → PR → merge → deploy sequence rather than running wrangler from a feature branch.
+description: Ships the current branch of Verse Mastery end-to-end — commit outstanding work, push, open and merge a GitHub PR into main, then deploy to Cloudflare Workers via wrangler. Use this whenever the user says things like "ship this", "let's deploy", "push this up and deploy", "merge and deploy", "get this live", or otherwise asks to take the current branch's work to production, even if they only name one step (e.g. just "deploy" or just "merge this") — deploying this app is only correct once the code is merged to main, so a bare "deploy" request should still go through the full commit → push → PR → merge → deploy sequence rather than running wrangler from a feature branch.
 ---
 
 # Ship
