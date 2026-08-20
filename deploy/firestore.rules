@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Firestore security rules for The Memory Board.
+// Firestore security rules for Verse Mastery.
 // Access is restricted to verified Google accounts in the Acts 2 Network
 // Workspace domains (gpmail.org, acts2.network). This is the authoritative
 // enforcement — the client-side domain check is a convenience, not security.

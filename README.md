@@ -1,4 +1,4 @@
-# The Memory Board
+# Verse Mastery
 
 A spaced-repetition Bible-verse memorization app for **Acts 2 Network - Berkeley**.
 Members work through a set of passages, review them in several modes, and watch a
@@ -160,8 +160,8 @@ Two independent deploy paths exist.
 **Container → Amazon ECS via Drone CI** — the [A2N dev standard](docs/a2n-dev-best-practices.md):
 
 ```bash
-docker build -t memory-board .
-docker run --rm -p 8080:80 memory-board   # http://localhost:8080
+docker build -t verse-mastery .
+docker run --rm -p 8080:80 verse-mastery   # http://localhost:8080
 ```
 
 `.drone.yml` lints on every push/PR and, on `main`, builds and pushes the image

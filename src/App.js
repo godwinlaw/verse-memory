@@ -1,4 +1,4 @@
-/* The Memory Board — root component.
+/* Verse Mastery — root component.
  *
  * This is the only stateful module in the app. It owns the member's progress and
  * the running review session, exposes an `actions` table for the UI to call, and

@@ -1,4 +1,4 @@
-# The Memory Board is a static, no-build client-side app: React/htm are loaded
+# Verse Mastery is a static, no-build client-side app: React/htm are loaded
 # from a CDN and the source ships as native ES modules. So the image is just a
 # lightweight nginx serving the static tree — no Node build stage required.
 FROM nginx:1.27-alpine

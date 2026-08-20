@@ -1,6 +1,6 @@
 /* What kind of machine the app is being read on.
  *
- * The Memory Board is not offered on a phone or a tablet: working a passage is
+ * Verse Mastery is not offered on a phone or a tablet: working a passage is
  * meant to be a sitting at a desk rather than another reason to pick the phone
  * up, so the app stands a gate in front of itself there (views/mobile-gate.js,
  * dispatched first in App.render — before even the splash, since a member who

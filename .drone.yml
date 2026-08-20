@@ -21,7 +21,7 @@ steps:
   - name: publish
     image: plugins/ecr
     settings:
-      repo: memory-board
+      repo: verse-mastery
       # TODO: set to the org's ECR registry, e.g. <account-id>.dkr.ecr.us-east-1.amazonaws.com
       registry: REPLACE_WITH_ECR_REGISTRY
       region: us-east-1

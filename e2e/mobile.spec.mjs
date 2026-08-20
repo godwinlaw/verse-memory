@@ -25,7 +25,7 @@ test("a phone is met by the refusal instead of the app", async ({ app, page }) =
   await expect(page.getByText(MESSAGE)).toBeVisible();
   await expect(page.getByText(/Access with a non-mobile device instead/)).toBeVisible();
   // The screen still says whose app it is.
-  await expect(page.getByText("THE MEMORY BOARD")).toBeVisible();
+  await expect(page.getByText("VERSE MASTERY")).toBeVisible();
 
   // Nothing behind the gate: no header to navigate with, no board, no queues.
   await expect(app.header).toHaveCount(0);

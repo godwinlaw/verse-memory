@@ -34,7 +34,7 @@ export const copy = {
   /* ── shared ─────────────────────────────────────────────────────────────── */
 
   app: {
-    wordmark: "THE MEMORY BOARD",
+    wordmark: "VERSE MASTERY",
     /* The epigraph under the wordmark, on the sign-in gate and the board hero. */
     epigraph:
       '"Do your best to present yourself to God as one approved, a worker who has no need to be ashamed, rightly ' +

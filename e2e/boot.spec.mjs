@@ -13,7 +13,7 @@ test("the splash names the set, then hands the member to their board", async ({ 
   await app.boot({ splashMinMs: 1500, waitForApp: false });
 
   await expect(app.splash).toBeVisible();
-  await expect(page.locator(".splash-wordmark")).toHaveText("THE MEMORY BOARD");
+  await expect(page.locator(".splash-wordmark")).toHaveText("VERSE MASTERY");
   // The one thing on it drawn from data, and it comes from the passage module
   // rather than from state — which is still loading behind it.
   await expect(page.locator(".splash-cycle")).toContainText(`Indexing ${GOAL} passages`);

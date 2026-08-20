@@ -1,7 +1,7 @@
 {
-  "name": "memory-board",
+  "name": "verse-mastery",
   "version": "1.0.0",
-  "description": "The Memory Board — a spaced-repetition Bible verse memorization app for Acts 2 Network - Berkeley.",
+  "description": "Verse Mastery — a spaced-repetition Bible verse memorization app for Acts 2 Network - Berkeley.",
   "type": "module",
   "private": true,
   "scripts": {
