@@ -1,0 +1,51 @@
+name: CI
+
+# The pre-merge gate for every pull request into main. deploy.yml re-runs the
+# unit checks on push to main before it ships, but the Playwright suite runs
+# nowhere else in CI, so this workflow is the only place a browser drives the
+# app before code lands. Both jobs are marked as required checks in main's
+# branch protection.
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Both Playwright projects — the desktop "chromium" project and the
+      # "mobile" project that claims to be a Pixel 5 — run on the Chromium
+      # engine, so only that browser is fetched. --with-deps installs the OS
+      # libraries a headless browser needs on the runner.
+      - run: npx playwright install --with-deps chromium
+      # playwright.config.mjs starts the static server itself (its webServer
+      # block), so there is nothing to launch here. CI=true — set by Actions —
+      # is what turns on retries, two workers, and forbid-only.
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
