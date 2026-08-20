@@ -651,6 +651,27 @@ export const copy = {
     colAvgFresh: "Avg fresh",
     colFreshness: "Freshness",
     colStreak: "Streak",
+
+    /* Ranking groups rather than people. The measure is per member throughout
+     * — see src/standings.js for why a total would rank by attendance — so the
+     * wording says "each" wherever a figure could be mistaken for a total. */
+    rankByLabel: "Rank",
+    rankBy: {
+      people: "People",
+      group: "Ministry groups",
+      gender: "Male vs female",
+      gradClass: "Graduating classes",
+    },
+    groupBlurb: "Groups ranked by how much each member holds, so a small group is not out-run by a large one.",
+    colGroupMembers: "Members",
+    colGroupAvgCommitted: "Committed each",
+    groupMembers: (n) => plural(n, "member", "members"),
+    /* The tally above the table counts whatever the table holds. "2 people" over
+     * a list of ministries would be counting the wrong thing. */
+    countGroups: (n) => plural(n, "group", "groups"),
+    groupEmpty: "No one has filled this in yet.",
+    podiumEach: "committed each",
+    yourGroup: "Yours",
   },
 
   /* ── the guide ──────────────────────────────────────────────────────────── */

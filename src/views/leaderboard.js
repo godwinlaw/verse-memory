@@ -1,5 +1,10 @@
 /* Leaderboard — the roster ranked by passages committed, sliceable by the
- * profile attributes members set (ministry group, gender, graduating class). */
+ * profile attributes members set (ministry group, gender, graduating class),
+ * and rankable BY those same attributes: the groups themselves against each
+ * other, per member (see src/standings.js).
+ *
+ * The two compose rather than replacing one another, so the filters stay put
+ * and only the table below the podium changes. */
 
 import { copy } from "../copy.js";
 import { html, sx, corners } from "../dom.js";
@@ -17,7 +22,21 @@ export function leaderboardView(v) {
       </div>
       <div style=${sx("margin-left:auto;" + LABEL_META)}>${v.daysLeftLabel}</div>
     </div>
-    <div style=${sx(`font-size:13px;color:${muted(55)}`)}>${copy.leaderboard.blurb}</div>
+    <div style=${sx(`font-size:13px;color:${muted(55)}`)}>${v.blurb}</div>
+
+    <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+      <span style=${sx(`font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${muted(55)}`)}
+        >${v.rankByLabel}</span
+      >
+      <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
+        ${v.rankByOptions.map(
+          (o) =>
+            html`<button key=${o.key} className="seg-btn" onClick=${o.onClick} style=${sx(o.style)}>
+              ${o.label}
+            </button>`,
+        )}
+      </div>
+    </div>
 
     <div
       className="blueprint"
@@ -48,14 +67,11 @@ export function leaderboardView(v) {
       <div
         style=${sx(`margin-left:auto;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:${muted(55)}`)}
       >
-        ${copy.leaderboard.count(v.leaderCount)}
+        ${v.leaderCount}
       </div>
     </div>
 
-    ${
-      v.leaderEmpty &&
-      html`<div style=${sx(`font-size:14px;line-height:1.6;color:${muted(60)}`)}>${copy.leaderboard.empty}</div>`
-    }
+    ${v.leaderEmpty && html`<div style=${sx(`font-size:14px;line-height:1.6;color:${muted(60)}`)}>${v.emptyNote}</div>`}
 
     <div style=${sx("display:grid;grid-template-columns:repeat(3,1fr);gap:18px")}>
       ${v.podium.map(
@@ -73,7 +89,7 @@ export function leaderboardView(v) {
                 ${p.count}
               </div>
               <div style=${sx("font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.6")}>
-                ${copy.leaderboard.podiumOf(v.goal)}
+                ${p.caption}
               </div>
             </div>
             <div style=${sx("font-size:12px;opacity:.6")}>${p.avgFresh} ${copy.leaderboard.podiumAvg}</div>
@@ -81,37 +97,88 @@ export function leaderboardView(v) {
       )}
     </div>
 
-    <div className="blueprint" style=${sx("padding:0 20px 10px")}>
-      ${corners()}
-      <table className="table">
-        <thead>
-          <tr>
-            <th style=${sx("width:60px")}>${copy.leaderboard.colRank}</th>
-            <th>${copy.leaderboard.colName}</th>
-            <th style=${sx("width:120px")}>${copy.leaderboard.colCommitted}</th>
-            <th style=${sx("width:100px")}>${copy.leaderboard.colAvgFresh}</th>
-            <th style=${sx("width:260px")}>${copy.leaderboard.colFreshness}</th>
-            <th style=${sx("width:110px")}>${copy.leaderboard.colStreak}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${v.board.map(
-            (b, i) =>
-              html` <tr key=${b.rank} style=${sx(b.rowStyle + ";--stagger-i:" + i)}>
-                <td style=${sx(`font-family:var(--font-heading);color:${muted(45)}`)}>${b.rank}</td>
-                <td style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px")}>${b.name}</td>
-                <td style=${sx("font-family:var(--font-heading);font-size:17px")}>${b.count}</td>
-                <td style=${sx(`font-size:13px;color:${muted(60)}`)}>${b.avgFresh}</td>
-                <td>
-                  <div style=${sx("height:8px;background:var(--color-neutral-200)")}>
-                    <div className="meter-fill" style=${sx(b.barStyle)}></div>
-                  </div>
-                </td>
-                <td style=${sx(`font-size:13px;color:${muted(60)}`)}>${b.streak}</td>
-              </tr>`,
-          )}
-        </tbody>
-      </table>
-    </div>
+    ${v.isGrouped ? standingsTable(v) : peopleTable(v)}
+  </div>`;
+}
+
+/* The groups themselves, ranked. Every figure on this table is per member, and
+ * the headings say so — a column called "Committed" beside a group's name would
+ * read as a total, which is the one thing it must not be. */
+function standingsTable(v) {
+  return html`<div className="blueprint" style=${sx("padding:0 20px 10px")}>
+    ${corners()}
+    <table className="table">
+      <thead>
+        <tr>
+          <th style=${sx("width:60px")}>${copy.leaderboard.colRank}</th>
+          <th>${copy.leaderboard.colName}</th>
+          <th style=${sx("width:120px")}>${copy.leaderboard.colGroupMembers}</th>
+          <th style=${sx("width:140px")}>${copy.leaderboard.colGroupAvgCommitted}</th>
+          <th style=${sx("width:100px")}>${copy.leaderboard.colAvgFresh}</th>
+          <th style=${sx("width:260px")}>${copy.leaderboard.colFreshness}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${v.standings.map(
+          (g, i) =>
+            html` <tr key=${g.name} style=${sx(g.rowStyle + ";--stagger-i:" + i)}>
+              <td style=${sx(`font-family:var(--font-heading);color:${muted(45)}`)}>${g.rank}</td>
+              <td style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px")}>
+                ${g.name}${
+                  g.mine &&
+                  html`<span
+                    style=${sx(`margin-left:8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:${muted(55)}`)}
+                    >${copy.leaderboard.yourGroup}</span
+                  >`
+                }
+              </td>
+              <td style=${sx(`font-size:13px;color:${muted(60)}`)}>${g.members}</td>
+              <td style=${sx("font-family:var(--font-heading);font-size:17px")}>${g.avgCount}</td>
+              <td style=${sx(`font-size:13px;color:${muted(60)}`)}>${g.avgFresh}</td>
+              <td>
+                <div style=${sx("height:8px;background:var(--color-neutral-200)")}>
+                  <div className="meter-fill" style=${sx(g.barStyle)}></div>
+                </div>
+              </td>
+            </tr>`,
+        )}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+/* The roster, one row per member — the board as it has always been. */
+function peopleTable(v) {
+  return html`<div className="blueprint" style=${sx("padding:0 20px 10px")}>
+    ${corners()}
+    <table className="table">
+      <thead>
+        <tr>
+          <th style=${sx("width:60px")}>${copy.leaderboard.colRank}</th>
+          <th>${copy.leaderboard.colName}</th>
+          <th style=${sx("width:120px")}>${copy.leaderboard.colCommitted}</th>
+          <th style=${sx("width:100px")}>${copy.leaderboard.colAvgFresh}</th>
+          <th style=${sx("width:260px")}>${copy.leaderboard.colFreshness}</th>
+          <th style=${sx("width:110px")}>${copy.leaderboard.colStreak}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${v.board.map(
+          (b, i) =>
+            html` <tr key=${b.rank} style=${sx(b.rowStyle + ";--stagger-i:" + i)}>
+              <td style=${sx(`font-family:var(--font-heading);color:${muted(45)}`)}>${b.rank}</td>
+              <td style=${sx("font-family:var(--font-heading);font-weight:600;font-size:16px")}>${b.name}</td>
+              <td style=${sx("font-family:var(--font-heading);font-size:17px")}>${b.count}</td>
+              <td style=${sx(`font-size:13px;color:${muted(60)}`)}>${b.avgFresh}</td>
+              <td>
+                <div style=${sx("height:8px;background:var(--color-neutral-200)")}>
+                  <div className="meter-fill" style=${sx(b.barStyle)}></div>
+                </div>
+              </td>
+              <td style=${sx(`font-size:13px;color:${muted(60)}`)}>${b.streak}</td>
+            </tr>`,
+        )}
+      </tbody>
+    </table>
   </div>`;
 }

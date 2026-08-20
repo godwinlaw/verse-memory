@@ -226,6 +226,11 @@ function initialState() {
     ministryOpen: false, // ministry-group combobox dropdown visibility
     peers: null, // leaderboard roster, minus self
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
+    // Who the board is ranking: people, or one of the three things a member
+    // says about themselves (see src/standings.js). Not persisted, like the
+    // filters beside it — which question you asked last visit is worth nothing
+    // this one.
+    leaderRankBy: "people",
 
     // the two setup screens, as last left (device-local, like the exercise
     // levels): extra review once caught up, and how much to take on learning
@@ -1123,6 +1128,7 @@ export class App extends React.Component {
 
       // leaderboard
       setLeaderFilter: (key, value) => this.setState((s) => ({ leaderFilter: { ...s.leaderFilter, [key]: value } })),
+      setLeaderRankBy: (key) => this.setState({ leaderRankBy: key }),
     };
   }
 

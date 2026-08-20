@@ -43,10 +43,49 @@ const LOG = {
   "2026-08-05": 2,
 };
 
+/* The roster, as App.loadRoster builds it. `freshnessScore` is Σ retrievability
+ * across a member's committed verses, so it is always at or below `count` — and
+ * it is not optional: the board ranks on it and quotes it as an average, so a
+ * row without one renders "NaN%". */
 const PEERS = [
-  { name: "Grace Hopper", count: 41, streak: 12, ministryGroup: "USF", gender: "Female", gradClass: 2025 },
-  { name: "Alan Turing", count: 27, streak: 3, ministryGroup: "Kairos", gender: "Male", gradClass: 2026 },
-  { name: "Katherine Johnson", count: 12, streak: 0, ministryGroup: "ECM", gender: "Female", gradClass: 2024 },
+  {
+    name: "Grace Hopper",
+    count: 41,
+    freshnessScore: 33.6,
+    streak: 12,
+    ministryGroup: "USF",
+    gender: "Female",
+    gradClass: 2025,
+  },
+  {
+    name: "Alan Turing",
+    count: 27,
+    freshnessScore: 19.2,
+    streak: 3,
+    ministryGroup: "Kairos",
+    gender: "Male",
+    gradClass: 2026,
+  },
+  {
+    name: "Katherine Johnson",
+    count: 12,
+    freshnessScore: 10.4,
+    streak: 0,
+    ministryGroup: "ECM",
+    gender: "Female",
+    gradClass: 2024,
+  },
+  // A second member of a group that already has one, so a group's figure is
+  // visibly an average rather than one person's row relabelled.
+  {
+    name: "Dorothy Vaughan",
+    count: 9,
+    freshnessScore: 8.1,
+    streak: 5,
+    ministryGroup: "USF",
+    gender: "Female",
+    gradClass: 2025,
+  },
 ];
 
 /* A microphone at rest. `supported: false` is a browser with no recognition at
@@ -121,6 +160,7 @@ export function baseState(overrides = {}) {
     welcomePrompt: false,
     ministryOpen: false,
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
+    leaderRankBy: "people",
     reviewSetup: { manualSize: 10, manualFreshness: 90 },
     learnSetup: { size: 5 },
     explainerOpen: false,
@@ -556,6 +596,19 @@ export const scenarios = [
     }),
   },
   { name: "leaderboard/solo", state: baseState({ view: "leaderboard", peers: [] }) },
+  // The groups themselves, ranked per member (src/standings.js).
+  { name: "leaderboard/by-group", state: baseState({ view: "leaderboard", leaderRankBy: "group" }) },
+  { name: "leaderboard/by-gender", state: baseState({ view: "leaderboard", leaderRankBy: "gender" }) },
+  { name: "leaderboard/by-class", state: baseState({ view: "leaderboard", leaderRankBy: "gradClass" }) },
+  // Nobody left to group once the filters have had their say.
+  {
+    name: "leaderboard/by-group-empty",
+    state: baseState({
+      view: "leaderboard",
+      leaderRankBy: "group",
+      leaderFilter: { group: "A2F", gender: "Male", gradClass: "2019" },
+    }),
+  },
   {
     name: "leaderboard/unfinished-peer",
     state: baseState({
