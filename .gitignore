@@ -28,6 +28,12 @@ tools/__pycache__/
 tools/.venv/
 *.pyc
 
+# Claude Code authoring artifacts: local tooling, not part of the app.
+# (.claude/settings.json is deliberately not listed — project permissions are
+# worth sharing; skills and workflows are how one person happens to work.)
+.claude/skills/
+.claude/workflows/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
