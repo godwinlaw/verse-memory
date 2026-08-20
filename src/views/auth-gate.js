@@ -3,7 +3,7 @@
  * to local-only). */
 
 import { copy } from "../copy.js";
-import { html, sx, corners } from "../dom.js";
+import { html, sx, corners, appMark } from "../dom.js";
 import { CALLOUT_ERROR, SCREEN_BODY, SCREEN_CENTERED, SCREEN_SUBTITLE, SCREEN_TITLE } from "../ui/tokens.js";
 
 export function authGateView(v) {
@@ -14,7 +14,10 @@ export function authGateView(v) {
     >
       ${corners()}
       <div style=${sx("display:flex;flex-direction:column;gap:2px")}>
-        <div style=${sx(SCREEN_TITLE)}>${copy.app.wordmark}</div>
+        <div style=${sx("display:flex;align-items:center;gap:13px;margin-bottom:4px")}>
+          ${appMark(44, 3)}
+          <div style=${sx(SCREEN_TITLE + ";color:var(--color-text)")}>${copy.app.wordmark}</div>
+        </div>
         <div style=${sx(SCREEN_SUBTITLE)}>${v.groupName}</div>
         ${
           v.motto &&

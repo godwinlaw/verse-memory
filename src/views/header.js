@@ -1,16 +1,19 @@
 /* Sticky app header: wordmark, primary nav, review shortcut, profile + account. */
 
 import { copy } from "../copy.js";
-import { html, sx } from "../dom.js";
+import { html, sx, appMark } from "../dom.js";
 import { LABEL_META } from "../ui/tokens.js";
 
 export function headerView(v) {
   return html`<div className="app-header">
-    <div style=${sx("display:flex;flex-direction:column;gap:1px;margin-right:auto")}>
-      <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:19px;letter-spacing:.08em")}>
-        ${copy.app.wordmark}
+    <div style=${sx("display:flex;align-items:center;gap:11px;margin-right:auto")}>
+      ${appMark(26)}
+      <div style=${sx("display:flex;flex-direction:column;gap:1px")}>
+        <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:19px;letter-spacing:.08em")}>
+          ${copy.app.wordmark}
+        </div>
+        <div style=${sx(LABEL_META)}>${v.groupName}</div>
       </div>
-      <div style=${sx(LABEL_META)}>${v.groupName}</div>
     </div>
     ${v.nav.map((n) => html`<button key=${n.key} className="nav-btn" onClick=${n.onClick} style=${sx(n.style)}>${n.label}</button>`)}
     <button className="btn btn-primary-inverse" onClick=${v.goLearnSetup} style=${sx("letter-spacing:.06em")}>

@@ -6,6 +6,18 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **The app's mark now stands beside its name.** The "marked passage" ribbon —
+  already the favicon, `src/icon.svg` — is drawn inline on the sign-in gate and
+  in the header, so the app looks like itself in a browser tab, on the way in,
+  and at the top of every screen. `dom.appMark()` sits beside `corners()`, since
+  it is a piece of the drawing system rather than of either screen that uses it.
+  It carries the design's own concession to size: three rules where it is shown
+  large on the gate, two in the header, because the third closes up into grey
+  below about 40px. A favicon has to be a standalone file a browser can fetch,
+  so the geometry is copied rather than imported — and `test/views.test.mjs`
+  reads `icon.svg` and checks the inline mark against it, because an app with
+  two marks has no mark. ([#38](https://github.com/godwinlaw/verse-memory/issues/38))
+
 - **Signing up asks who you are, and nothing else.** The four review settings —
   how many verses a sitting holds, how far a verse may fade before it comes
   back, the commit threshold, the default difficulty — are no longer on the

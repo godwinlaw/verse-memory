@@ -9,6 +9,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { render, freezeClock } from "./helpers/dom-env.mjs";
 import { scenarios, EXAM, questionAt } from "./helpers/scenarios.mjs";
@@ -117,6 +118,42 @@ test("the splash names the steps but announces only what is true", () => {
   assert.match(checking, /Indexing \d+ passages/);
   assert.match(checking, /Building today&#x27;s queue/);
   assert.match(checking, /class="splash-cycle" aria-hidden="true"/);
+});
+
+/* The app's mark: the "marked passage" ribbon, standing beside the wordmark on
+ * the way in and at the top of every screen once inside. Both places the
+ * wordmark is already, which is why it is never announced. */
+test("the mark stands beside the wordmark, on the way in and once inside", () => {
+  for (const screen of ["auth/signed-out", "board/populated"]) {
+    const markup = shown(screen);
+    assert.match(markup, /<svg[^>]*aria-hidden="true"/, `${screen} draws no mark`);
+    assert.match(markup, /points="19,8 45,8 45,56 32,46 19,56"/, `${screen} draws something else`);
+  }
+});
+
+test("and it is the same drawing as the favicon, not a second one", () => {
+  // src/icon.svg has to be a standalone file a browser can fetch, so the
+  // geometry is copied rather than imported — which is exactly why it is worth
+  // a test. An app with two marks has no mark.
+  const file = readFileSync(new URL("../src/icon.svg", import.meta.url), "utf8");
+  const inline = shown("auth/signed-out");
+
+  const ribbon = /points="([^"]+)"/.exec(file)[1];
+  assert.match(inline, new RegExp(`points="${ribbon}"`), "the ribbon differs from the favicon's");
+  for (const rule of file.match(/d="M[^"]+"/g)) {
+    assert.ok(inline.includes(rule), `the favicon's rule ${rule} is missing from the inline mark`);
+  }
+  // The one thing the file cannot do is read the palette: it writes the steel
+  // longhand where the inline mark names the token.
+  assert.match(file, /#1d2d3d/);
+  assert.match(inline, /var\(--color-accent-900\)/);
+});
+
+test("and it is drawn, not announced", () => {
+  const gate = shown("auth/signed-out");
+  const mark = gate.slice(gate.indexOf("<svg"), gate.indexOf("</svg>"));
+  assert.match(mark, /aria-hidden="true"/);
+  assert.doesNotMatch(mark, /<title>|aria-label/);
 });
 
 test("the settings form offers a reset, and the setup form does not", () => {
