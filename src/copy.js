@@ -428,6 +428,10 @@ export const copy = {
     blanksLabel: "Blanks",
     blanksFirstLetter: "First letter",
     blanksLevelDesc: (desc) => "Blanking " + desc,
+    /* Shown only at the alternating level, where there are two halves of the
+     * passage and the member picks which one goes. The button labels count the
+     * words off rather than saying "odd" and "even" — see BLANK_PARITIES. */
+    blanksParityLabel: "Take away",
     blanksResult: (right, total) => right + " of " + total + " right",
     blanksCount: (total) => total + " blanks",
 

@@ -56,13 +56,38 @@ const KEY_NOUNS = new Set(
   ).split(/\s+/),
 );
 
-/* How many of a passage's ranked keywords to actually blank. The keyword pool
- * is ordered most-important first, so a lower level keeps the highest-value
- * words (names, key verbs) and drops the more incidental ones. */
+/* How the blanks are chosen. The first three are densities over the same ranked
+ * keyword pool — it is ordered most-important first, so a lower level keeps the
+ * highest-value words (names, key verbs) and drops the more incidental ones.
+ *
+ * "Alternating" is a different rule rather than a fourth density, and that is
+ * the point of it: it ignores which words matter and blanks every other one,
+ * function words included. Keyword blanks let a member lean on the shape of the
+ * sentence — the little words are all still there to run along — where every
+ * other word gone means the passage has to be produced rather than recognised.
+ * It carries `alternate` instead of `frac` because there is no pool to take a
+ * fraction of.
+ *
+ * The `key` fields are part of the persisted preference (storage.blankLevel is
+ * an index into this list), so the labels stay beside them. */
 export const BLANK_LEVELS = [
   { key: "light", label: "Light", desc: "only the most important words", frac: 0.4 },
   { key: "medium", label: "Medium", desc: "a balanced set of key words", frac: 0.7 },
   { key: "full", label: "Full", desc: "every key word", frac: 1.0 },
+  { key: "alternate", label: "Alternating", desc: "every other word, key or not", alternate: true },
+];
+
+/* Which half of the passage the alternating level blanks. A member who has
+ * worked a verse one way round can turn it over and be asked for the words they
+ * were just reading, which is the whole reason the flip is offered.
+ *
+ * Labelled by counting rather than by parity: "odd" and "even" would leave a
+ * member working out whether the first word is word 0 or word 1, and the answer
+ * is only obvious to whoever wrote the loop. Indexed like BLANK_LEVELS, and
+ * persisted the same way. */
+export const BLANK_PARITIES = [
+  { key: "first", label: "1st, 3rd, 5th…" },
+  { key: "second", label: "2nd, 4th, 6th…" },
 ];
 
 // Granularity of the "Order the phrases" exercise: how finely the passage is
@@ -85,10 +110,25 @@ export const SCRAMBLE_LEVELS = [
   },
 ];
 
-/* Indices (into text.split(" ")) of the words to blank for a passage. */
-export function keyBlankSet(text, id, level = 1) {
+/* Indices (into text.split(" ")) of the words to blank for a passage.
+ *
+ * `parity` only means anything at the alternating level, where it says which of
+ * the two halves is taken away; every other level ignores it. */
+export function keyBlankSet(text, id, level = 1, parity = 0) {
   const words = (text || "").split(" ");
-  const frac = (BLANK_LEVELS[level] || BLANK_LEVELS[1]).frac;
+  const cfg = BLANK_LEVELS[level] || BLANK_LEVELS[1];
+  // Alternating: nothing to rank and nothing to look up, just every other word.
+  // A passage of one word still blanks it at parity 0 and nothing at parity 1 —
+  // there is no half to fall back on, and inventing one would be worse.
+  if (cfg.alternate) {
+    const want = parity ? 1 : 0;
+    const chosen = new Set();
+    words.forEach((w, i) => {
+      if (i % 2 === want) chosen.add(i);
+    });
+    return chosen;
+  }
+  const frac = cfg.frac;
   // Preferred path: per-passage keywords precomputed offline by spaCy's neural
   // tagger. The pool is ranked, so we blank the top `frac` of it; consecutive
   // keywords are allowed.

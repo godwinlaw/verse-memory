@@ -19,10 +19,12 @@ import {
   HOLD_R,
   INTERVALS,
   LAPSE_R,
+  LEVEL_AWARD,
   MAX_STEP,
   PEEK_COST,
   R_FLOOR,
 } from "../src/srs.js";
+import { BLANK_LEVELS } from "../src/blanks.js";
 
 test("migrate returns defaults for unseen verse", () => {
   const rec = migrate(undefined);
@@ -152,6 +154,25 @@ test("writing it out fully is worth the most, ordering the least", () => {
   assert.equal(write, 1, "a clean write-out leaves the passage fully fresh");
   assert.ok(write > blanks, "and is worth more than filling the blanks");
   assert.ok(blanks > order, "which is itself worth more than putting phrases back");
+});
+
+test("alternating blanks pays the mode's full ceiling, and says so in the table", () => {
+  // Half the passage gone, function words included, so there is nothing left to
+  // lean on — at least as hard as blanking every key word, and paid the same.
+  const alternate = BLANK_LEVELS.findIndex((l) => l.alternate);
+  const full = reviewAward({ mode: "blanks", blankLevel: 2, score: 1 });
+  assert.equal(reviewAward({ mode: "blanks", blankLevel: alternate, score: 1 }), full);
+  // Written down rather than reached by the != null fallback, so a difficulty
+  // that pays full marks is visible in LEVEL_AWARD itself.
+  assert.equal(LEVEL_AWARD.length, BLANK_LEVELS.length);
+  assert.equal(LEVEL_AWARD[alternate], 1.0);
+});
+
+test("and it still cannot pay more than the activity is worth", () => {
+  // The blanks ceiling is the mode's, not the level's: a cued-recall exercise
+  // never becomes free recall by being made harder.
+  const alternate = BLANK_LEVELS.findIndex((l) => l.alternate);
+  assert.ok(reviewAward({ mode: "blanks", blankLevel: alternate, score: 1 }) < reviewAward({ mode: "type", score: 1 }));
 });
 
 test("the harder setting of an activity awards more", () => {

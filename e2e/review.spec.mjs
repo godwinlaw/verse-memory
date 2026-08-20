@@ -114,6 +114,58 @@ test("fill the blanks is marked when it is handed in, and moves the freshness", 
   await expect(page.getByRole("button", { name: "Submitted" })).toBeDisabled();
 });
 
+/* The alternating level and its flip. Which words are blank is pure and tested
+ * in test/blanks.test.mjs; what needs a browser is that picking the level
+ * really redraws the exercise, that the flip is offered only there, and that
+ * turning it over hands the member the other half of the passage. */
+test("alternating blanks takes every other word, and turns over", async ({ app, page }) => {
+  await app.boot({ progress: PROGRESS });
+  await startReview(app);
+
+  await page.getByRole("button", { name: "Blanks", exact: true }).click();
+  const passage = await currentPassage(page);
+  const words = passage.text.split(" ");
+
+  // No half to choose between until there are two of them.
+  await expect(page.getByText("Take away")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Alternating", exact: true }).click();
+  await expect(page.getByText("Blanking every other word, key or not")).toBeVisible();
+  await expect(page.getByText("Take away")).toBeVisible();
+
+  // Every other word is a box, starting with the first.
+  await expect(page.locator("#blank-0")).toBeVisible();
+  await expect(page.locator("#blank-2")).toBeVisible();
+  await expect(page.locator("#blank-1")).toHaveCount(0);
+  await expect(page.getByText(`${Math.ceil(words.length / 2)} blanks`)).toBeVisible();
+
+  // Turned over, the member is asked for the words they were just reading.
+  await page.getByRole("button", { name: "2nd, 4th, 6th…" }).click();
+  await expect(page.locator("#blank-1")).toBeVisible();
+  await expect(page.locator("#blank-0")).toHaveCount(0);
+  await expect(page.getByText(`${Math.floor(words.length / 2)} blanks`)).toBeVisible();
+
+  // And it is a real exercise: fill it in and it marks like any other.
+  for (let i = 1; i < words.length; i += 2) await page.locator(`#blank-${i}`).fill(words[i]);
+  await page.getByRole("button", { name: "Submit" }).click();
+  await expect(page.locator(".result-strip")).toContainText("100% right");
+});
+
+test("which half was chosen is remembered, like every other exercise setting", async ({ app, page }) => {
+  await app.boot({ progress: PROGRESS });
+  await startReview(app);
+  await page.getByRole("button", { name: "Blanks", exact: true }).click();
+  await page.getByRole("button", { name: "Alternating", exact: true }).click();
+  await page.getByRole("button", { name: "2nd, 4th, 6th…" }).click();
+  await expect(page.locator("#blank-1")).toBeVisible();
+
+  await app.revisit();
+  await startReview(app);
+  await page.getByRole("button", { name: "Blanks", exact: true }).click();
+  await expect(page.locator("#blank-1")).toBeVisible();
+  await expect(page.locator("#blank-0")).toHaveCount(0);
+});
+
 test("typing a blank in full moves to the next one", async ({ app, page }) => {
   await app.boot({ progress: PROGRESS });
   await startReview(app);

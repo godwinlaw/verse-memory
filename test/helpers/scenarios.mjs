@@ -85,6 +85,7 @@ export function baseState(overrides = {}) {
     answers: {},
     blanksChecked: false,
     blankLevel: 1,
+    blankParity: 0,
     blankHint: true,
     typed: "",
     typeGraded: false,
@@ -349,6 +350,13 @@ export const scenarios = [
     state: reviewing({ mode: "blanks", blanksChecked: true, answers: { 2: "hear", 4: "wrong" }, blankLevel: 2 }),
   },
   { name: "review/blanks-no-hint", state: reviewing({ mode: "blanks", blankHint: false, blankLevel: 0 }) },
+  // The alternating level, both ways round. It is the one level with a second
+  // control of its own, and the only one where a function word can be blank.
+  { name: "review/blanks-alternating", state: reviewing({ mode: "blanks", blankLevel: 3 }) },
+  {
+    name: "review/blanks-alternating-flipped",
+    state: reviewing({ mode: "blanks", blankLevel: 3, blankParity: 1 }),
+  },
   { name: "review/type-empty", state: reviewing({ mode: "type" }) },
   {
     name: "review/type-graded",

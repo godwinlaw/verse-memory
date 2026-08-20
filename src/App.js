@@ -17,7 +17,7 @@ import { copy } from "./copy.js";
 import { React, html, sx } from "./dom.js";
 import { dayKey } from "./text.js";
 import { commitsVerse, freshness, migrate, nextStep, reviewAward, reviewedLast, stabilityFor } from "./srs.js";
-import { BLANK_LEVELS, SCRAMBLE_LEVELS } from "./blanks.js";
+import { BLANK_LEVELS, BLANK_PARITIES, SCRAMBLE_LEVELS } from "./blanks.js";
 import { transcribe } from "./voice.js";
 import { lockedInput } from "./grading.js";
 import { createRecognizer, voiceSupported } from "./recognizer.js";
@@ -164,6 +164,7 @@ function initialState() {
     answers: {},
     blanksChecked: false,
     blankLevel: 1,
+    blankParity: 0,
     blankHint: true,
     typed: "",
     typeGraded: false,
@@ -247,6 +248,7 @@ export class App extends React.Component {
       log: storage.loadLog(),
       profile,
       blankLevel: storage.loadBlankLevel(defaultDiff, BLANK_LEVELS.length),
+      blankParity: storage.loadBlankParity(this.state.blankParity, BLANK_PARITIES.length),
       blankHint: storage.loadBlankHint(this.state.blankHint),
       typeFirstLetter: storage.loadTypeFirstLetter(this.state.typeFirstLetter),
       // Asked once, here, because it is a question about the browser.
@@ -990,6 +992,13 @@ export class App extends React.Component {
       setBlankLevel: (level) => {
         storage.saveBlankLevel(level);
         set({ blankLevel: level, answers: {}, blanksChecked: false });
+      },
+      // Turning the passage over asks for a different set of words, so what was
+      // filled in against the old set is dropped — the same clean slate
+      // setBlankLevel gives, and for the same reason.
+      setBlankParity: (parity) => {
+        storage.saveBlankParity(parity);
+        set({ blankParity: parity, answers: {}, blanksChecked: false });
       },
       toggleBlankHint: () => {
         const on = !this.state.blankHint;

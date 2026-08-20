@@ -6,6 +6,18 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **Fill the blanks has an alternating level.** A fourth setting beside Light,
+  Medium and Full that ignores which words matter and blanks every other one,
+  function words included — and a switch, offered only there, for which half of
+  the passage goes. The keyword levels always leave the little words standing,
+  so a member can run along the shape of the sentence; every other word gone
+  means the passage has to be produced rather than recognised, which is why it
+  pays the blanks ceiling in full (`LEVEL_AWARD` gains a fourth entry, written
+  down rather than left to a fallback). Working a verse one way round and then
+  turning it over asks for exactly the words that were just being read. The
+  choice is remembered per device, like every other exercise setting.
+  ([#14](https://github.com/godwinlaw/verse-memory/issues/14))
+
 - **The first-letter drill no longer lets a mistake be taken back.** The reveal
   is live, so a member who could backspace was being shown the answer to the
   question they were being asked — type a letter, watch the word fail to

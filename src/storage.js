@@ -12,6 +12,7 @@ const KEYS = {
   log: "mv.log",
   profile: "mv.profile",
   blankLevel: "mv.blankLevel",
+  blankParity: "mv.blankParity",
   blankHint: "mv.blankHint",
   scrambleLevel: "mv.scrambleLevel",
   typeFirstLetter: "mv.typeFirstLetter",
@@ -71,6 +72,7 @@ export const storage = {
   loadLog: () => readJSON(KEYS.log, {}),
   loadProfile: () => readJSON(KEYS.profile, {}),
   loadBlankLevel: (fallback, count) => readIndex(KEYS.blankLevel, fallback, count),
+  loadBlankParity: (fallback, count) => readIndex(KEYS.blankParity, fallback, count),
   loadScrambleLevel: (fallback, count) => readIndex(KEYS.scrambleLevel, fallback, count),
   loadBlankHint: (fallback) => readBool(KEYS.blankHint, fallback),
   loadTypeFirstLetter: (fallback) => readBool(KEYS.typeFirstLetter, fallback),
@@ -110,6 +112,7 @@ export const storage = {
 
   // Exercise preferences: local to the device, never synced.
   saveBlankLevel: (level) => write(KEYS.blankLevel, level),
+  saveBlankParity: (parity) => write(KEYS.blankParity, parity),
   saveScrambleLevel: (level) => write(KEYS.scrambleLevel, level),
   saveBlankHint: (on) => writeBool(KEYS.blankHint, on),
   saveTypeFirstLetter: (on) => writeBool(KEYS.typeFirstLetter, on),

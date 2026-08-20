@@ -52,6 +52,27 @@ for (const s of scenarios) {
   });
 }
 
+/* The alternating level is the one blanks setting with a second control of its
+ * own, and it is only offered where there are two halves to choose between. */
+test("the alternating level asks which half goes; the keyword levels do not", () => {
+  const alternating = shown("review/blanks-alternating");
+  assert.match(alternating, /Take away/);
+  assert.match(alternating, /1st, 3rd, 5th/);
+  assert.match(alternating, /2nd, 4th, 6th/);
+  assert.match(alternating, /Blanking every other word/);
+
+  // Nothing to choose between at a keyword level, so the row is not there to be
+  // ignored.
+  assert.doesNotMatch(shown("review/blanks"), /Take away/);
+  assert.doesNotMatch(shown("review/blanks-no-hint"), /Take away/);
+});
+
+test("turning the passage over asks for the other words", () => {
+  // The two ways round are different exercises, not a relabelling of one — so
+  // the markup of the two screens must actually differ.
+  assert.notEqual(shown("review/blanks-alternating"), shown("review/blanks-alternating-flipped"));
+});
+
 test("a phone is turned away before the app, and before the splash", () => {
   const blocked = shown("device/mobile");
   assert.match(blocked, /not available on a mobile device/);
