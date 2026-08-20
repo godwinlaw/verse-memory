@@ -207,10 +207,17 @@ export function reviewVals({ state, prog, totals, actions }) {
   const scrambleDone = chunks.length > 0 && placed.length === chunks.length;
   const scrambleMark = scrambleScore(placed.length, chunks.length, state.scrambleMisses);
 
+  // ── the flashcard ─────────────────────────────────────────────────────────
+  // The back of the card holds two things — the passage and the first-letter
+  // scaffold that stands in for it — so what is on screen is the turn and the
+  // switch together, and each of the two buttons reads off its own one.
+  const isFlip = state.mode === "flip";
+  const lettersShown = state.revealed && state.flipLetters;
+  const passageShown = state.revealed && !state.flipLetters;
+
   // ── what handing this card in is worth ────────────────────────────────────
   // The mark the attempt has earned so far, in the terms each mode measures.
   // The flashcard is the one activity with nothing to measure, so it has none.
-  const isFlip = state.mode === "flip";
   const score = isFlip
     ? undefined
     : state.mode === "blanks"
@@ -269,19 +276,28 @@ export function reviewVals({ state, prog, totals, actions }) {
 
     isFlip,
     flipShown: isFlip && state.revealed,
-    // One button, one place: it reads Show or Hide and never moves.
-    flipToggleLabel: state.revealed ? copy.review.flipHide : copy.review.flipShow,
-    toggleFlip: () => actions.setRevealed(!state.revealed),
-    flipLettersLabel: state.flipLetters ? copy.review.flipLettersHide : copy.review.flipLettersShow,
+    // Two buttons, two places, neither of which moves: each reads Show or Hide
+    // by whether its own side is the one on screen, so a press always changes
+    // what the member is looking at.
+    flipToggleLabel: passageShown ? copy.review.flipHide : copy.review.flipShow,
+    toggleFlip: () => actions.revealFlipSide(false),
+    flipLettersLabel: lettersShown ? copy.review.flipLettersHide : copy.review.flipLettersShow,
     flipLettersOn: state.flipLetters,
     flipFirstLetters: firstLetterScaffold(curText),
-    toggleFlipLetters: actions.toggleFlipLetters,
+    toggleFlipLetters: () => actions.revealFlipSide(true),
     // The card is two-sided, so the front says which side it is, and the whole
     // card is a control — hence a label for it that names the turn, not the
-    // state, since a screen reader reads it before the member acts.
+    // state, since a screen reader reads it before the member acts. Clicking
+    // the card is only ever the turn: which of the two the back is showing is
+    // the buttons' business, so a click never swaps it under the member.
+    turnCard: () => actions.setRevealed(!state.revealed),
     flipFrontLabel: copy.review.flipFront,
     flipHint: copy.review.flipHint,
-    flipCardLabel: state.revealed ? copy.review.flipCardToFront : copy.review.flipCardToBack,
+    flipCardLabel: state.revealed
+      ? copy.review.flipCardToFront
+      : state.flipLetters
+        ? copy.review.flipCardToLetters
+        : copy.review.flipCardToBack,
 
     isBlanks: state.mode === "blanks",
     blankWords: blankCells,

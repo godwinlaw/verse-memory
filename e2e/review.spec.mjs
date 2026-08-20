@@ -8,6 +8,7 @@
 
 import { test, expect } from "./fixtures.mjs";
 import { keyBlankSet } from "../src/blanks.js";
+import { firstLetters } from "../src/text.js";
 import { committed, logOf, passageByRef } from "./helpers/seed.mjs";
 
 /* Three committed verses, all faded past the member's 75% threshold, so the
@@ -37,6 +38,31 @@ async function fillBlanks(page, passage, level = 1) {
   for (const i of indexes) await page.locator(`#blank-${i}`).fill(words[i]);
   return indexes;
 }
+
+test("the first letters take the passage's place on the back of the card", async ({ app, page }) => {
+  await app.boot({ progress: PROGRESS });
+  await startReview(app);
+
+  const card = page.locator(".flip-card");
+  const passage = await currentPassage(page);
+
+  // The scaffold is the answer at a lower strength, so asking for it turns the
+  // card to the same face the passage would have been on.
+  await page.getByRole("button", { name: "Show first letters" }).click();
+  await expect(card).toHaveClass(/is-flipped/);
+  await expect(page.locator(".flip-card-back")).not.toContainText(passage.text.slice(0, 40));
+  await expect(page.locator(".flip-card-back")).toContainText(firstLetters(passage.text).slice(0, 12));
+
+  // The other button swaps the strength without turning the card back.
+  await page.getByRole("button", { name: "Show passage" }).click();
+  await expect(card).toHaveClass(/is-flipped/);
+  await expect(page.locator(".flip-card-back")).toContainText(passage.text.slice(0, 40));
+
+  // And a press that says Hide puts the card back to the reference, rather
+  // than handing over the half of the answer it was not showing.
+  await page.getByRole("button", { name: "Hide passage" }).click();
+  await expect(card).not.toHaveClass(/is-flipped/);
+});
 
 test("the flashcard turns over, and is recorded on the way out", async ({ app, page }) => {
   await app.boot({ progress: PROGRESS });
