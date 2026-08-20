@@ -1,19 +1,20 @@
 /* Reading a stored progress map.
  *
  * A progress map is `{ [passageId]: record }` where a record is the shape
- * srs.js defines: `{ hits, status, last, stability }`. This module is the read
+ * srs.js defines: `{ hits, status, last, step, stability }`. This module is the read
  * side — the pure questions the UI asks of that map ("how fresh is verse 12?",
  * "what should we review next?", "how long is the streak?"). The write side
  * (recording a review, toggling committed) stays with the component that owns
  * the state; persistence stays in storage.js.
  *
  * Records are normalised through srs.migrate() on every read so legacy records
- * saved before stability existed answer these questions correctly too.
+ * — saved before stability existed, or before the interval ladder replaced it —
+ * answer these questions correctly too.
  *
  * Everything here is a pure function of (map, now) and unit-tested in Node. */
 
 import { copy } from "./copy.js";
-import { migrate, retrievability, freshness, isDue } from "./srs.js";
+import { migrate, retrievability, freshness } from "./srs.js";
 import { dayKey } from "./text.js";
 
 /* Member-facing wording for the three statuses a passage can be in. Re-exported
@@ -40,7 +41,6 @@ export function progressReader(progress, now = Date.now()) {
     isReviewed: (id) => !!record(id).last,
     retrievability: (id) => retrievability(record(id), now),
     freshness: (id) => freshness(record(id), now),
-    isDue: (id) => isDue(record(id), now),
   };
 }
 

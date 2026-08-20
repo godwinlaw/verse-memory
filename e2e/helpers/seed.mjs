@@ -10,7 +10,7 @@
  * writes the result into localStorage before the app boots. */
 
 import { passages } from "../../data/passages.js";
-import { backdatedLast } from "../../src/srs.js";
+import { backdatedLast, stabilityFor } from "../../src/srs.js";
 import { dayKey } from "../../src/text.js";
 
 export { passages };
@@ -31,16 +31,19 @@ export const PROFILE = {
 export const passageById = (id) => passages.find((p) => p.id === id);
 export const passageByRef = (ref) => passages.find((p) => p.ref === ref);
 
-/* A committed verse, dated so it reads at `fresh` (0–1) right now. `stability`
- * is how well it is held — the same number the guide draws its two curves at —
- * and it decides how fast the verse will fade from here. */
-export function committed(fresh = 1, { stability = 8, hits = 4, now = Date.now() } = {}) {
-  return { hits, status: "memorized", stability, last: backdatedLast(stability, fresh, now), updatedAt: now };
+/* A committed verse, dated so it reads at `fresh` (0–1) right now. `step` is the
+ * rung of the interval ladder it has climbed to (srs.INTERVALS) — 6 is the week
+ * rung — and it decides how fast the verse will fade from here. */
+export function committed(fresh = 1, { step = 6, hits = 4, now = Date.now() } = {}) {
+  const stability = stabilityFor(step);
+  return { hits, status: "memorized", step, stability, last: backdatedLast(stability, fresh, now), updatedAt: now };
 }
 
-/* A verse opened but not given back in full: what a learn session draws first. */
-export function started(fresh = 0.5, { stability = 1.5, hits = 1, now = Date.now() } = {}) {
-  return { hits, status: "learning", stability, last: backdatedLast(stability, fresh, now), updatedAt: now };
+/* A verse opened but not given back in full: what a learn session draws first.
+ * It sits on the first rung, which is where a verse starts. */
+export function started(fresh = 0.5, { step = 0, hits = 1, now = Date.now() } = {}) {
+  const stability = stabilityFor(step);
+  return { hits, status: "learning", step, stability, last: backdatedLast(stability, fresh, now), updatedAt: now };
 }
 
 /* A progress map from `{ [passageId]: record }`, keyed the way storage keys it. */
@@ -48,7 +51,7 @@ export const progressOf = (records) => ({ ...records });
 
 /* The whole set committed and fully fresh — nothing due, nothing left to learn. */
 export const everythingCommitted = (now = Date.now()) =>
-  Object.fromEntries(passages.map((p) => [p.id, committed(1, { stability: 30, hits: 6, now })]));
+  Object.fromEntries(passages.map((p) => [p.id, committed(1, { step: 9, hits: 6, now })]));
 
 /* A daily log from `{ daysAgo: reviews }`, so a streak or a chart can be seeded
  * without writing out local dates. */

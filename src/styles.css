@@ -1000,12 +1000,13 @@ textarea.input {
 }
 
 /* ── the guide ──────────────────────────────────────────────────────────────
-   The explainer screen draws four things rather than describing them: a map of
+   The explainer screen draws five things rather than describing them: a map of
    the header, a passage crossing from the learn half of the set to the review
-   half, the forgetting curve under a slider, and a looping demonstration of each
-   of the four activities. Everything that moves is a keyframe here — the view
-   (src/views/guide.js) only names the classes — and all of it is dropped under
-   prefers-reduced-motion at the bottom of the block. */
+   half, the forgetting curve under a slider, the interval ladder with a marker
+   climbing it, and a looping demonstration of each of the four activities.
+   Everything that moves is a keyframe here — the view (src/views/guide.js) only
+   names the classes — and all of it is dropped under prefers-reduced-motion at
+   the bottom of the block. */
 .guide-page {
   max-width: 1080px;
   margin: 0 auto;
@@ -1237,6 +1238,91 @@ textarea.input {
   }
 }
 
+/* The interval ladder (srs.INTERVALS). Rendered bottom-up — column-reverse, so
+   the first rung is the one at the foot of the ladder while the DOM keeps the
+   model's own order for the stagger and for a screen reader — with each rung's
+   bar as long as the gap it stands for. A marker climbs it on a loop: one
+   keyframe, delayed per rung off --rung-i, exactly as .item-in staggers a list. */
+.guide-ladder {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1px;
+}
+.guide-rung {
+  --rung-delay: calc(var(--rung-i, 0) * 0.3s);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0;
+}
+.guide-rung-label {
+  flex: none;
+  width: 9ch;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-align: right;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  animation: guide-rung-lit 7s linear infinite;
+  animation-delay: var(--rung-delay);
+}
+.guide-rung-bar {
+  height: 7px;
+  min-width: 3px;
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+  animation: guide-climb 7s linear infinite;
+  animation-delay: var(--rung-delay);
+}
+@keyframes guide-climb {
+  0%,
+  100% {
+    background: color-mix(in srgb, var(--color-text) 14%, transparent);
+  }
+  2% {
+    background: var(--color-accent);
+  }
+  9% {
+    background: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+  18% {
+    background: color-mix(in srgb, var(--color-text) 14%, transparent);
+  }
+}
+@keyframes guide-rung-lit {
+  0%,
+  100% {
+    color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  }
+  2%,
+  9% {
+    color: var(--color-accent);
+  }
+  18% {
+    color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  }
+}
+
+/* Which way a mark moves the verse, beside each of the four bands. */
+.guide-rule-dir {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid var(--color-divider);
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+.guide-rule-dir.is-up {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.guide-rule-dir.is-down,
+.guide-rule-dir.is-reset {
+  color: hsl(8, 55%, 45%);
+  border-color: color-mix(in srgb, hsl(8, 55%, 45%) 55%, transparent);
+}
+
 @media (max-width: 900px) {
   .guide-split,
   .guide-activities {
@@ -1252,6 +1338,8 @@ textarea.input {
   .guide-stamp,
   .guide-flip .flip-card-inner,
   .guide-order i,
+  .guide-rung-bar,
+  .guide-rung-label,
   .guide-blank > span,
   .guide-type b,
   .guide-caret {

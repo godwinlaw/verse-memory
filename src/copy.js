@@ -707,8 +707,41 @@ export const copy = {
       "Both verses were reviewed on the same day. The one you have practiced a few times stays off your list for " +
       "about " +
       holdsFor +
-      " days. The one you just learned is back in a day or two. Every review you do stretches that gap out " +
-      "further.",
+      " days. The one you just learned is back tomorrow. Every review you get right stretches that gap out " +
+      "further — by one step, in the order below.",
+
+    ladderTitle: "How often you will see a verse",
+    ladderNote: "the schedule",
+    ladderBody: (first, second) =>
+      "Every verse you are working on has a place on this ladder. You start at the bottom, so the app asks for " +
+      "the verse back " +
+      (first === 1 ? "the next day" : first + " days later") +
+      ". Get it right and you move up one step, so the next gap is " +
+      second +
+      " days, then three, then four, and on up to a week, a month, a year. Miss it and you slide back down. The " +
+      "steps are small at the bottom on purpose: that is when you forget the fastest.",
+    /* A rung of the ladder, in the plainest words for that many days. */
+    rungLabel: (days) => {
+      if (days < 7) return days === 1 ? "1 day" : days + " days";
+      if (days < 30) return days === 7 ? "1 week" : days / 7 + " weeks";
+      if (days < 365) return days === 30 ? "1 month" : Math.round(days / 30) + " months";
+      return "1 year";
+    },
+    rungsAria: (count, last) =>
+      "The review schedule, " + count + " steps from 1 day at the bottom up to " + last + " at the top.",
+    ruleAdvanceWhen: (pct) => "You get " + pct + "% or more right",
+    ruleAdvanceThen: "Up a step. Longer gap before you see it again.",
+    ruleHoldWhen: (from, to) => "You get " + from + "–" + to + "% right",
+    ruleHoldThen: "Stay put. You get the same gap over again.",
+    ruleBackWhen: (from, to) => "You get " + from + "–" + to + "% right",
+    ruleBackThen: "Down a step. The verse comes back sooner.",
+    ruleResetWhen: (pct) => "You get under " + pct + "% right",
+    ruleResetThen: "Back to the bottom, and the ladder starts again.",
+    ladderFoot: (peek) =>
+      "Two things never move you up. Flashcards do not count, because turning a card over shows you the verse — " +
+      "it cannot prove you knew it, so a flashcard leaves you on the step you are on. And each peek costs you " +
+      peek +
+      "%, which is often enough to keep you there too.",
 
     activityTitle: "Four ways to practise a verse",
     activityNote: "you get the same four in Learn, Review and Test",

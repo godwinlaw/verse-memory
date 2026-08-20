@@ -5,7 +5,7 @@
  * freshness. A test is the other half of the app. The member says how many
  * verses to be tested on, which of them count, and which activities to face;
  * answers every question with no feedback; and gets one score per verse, which
- * moves its freshness up *or down* (srs.testStability / srs.testedLast).
+ * moves its freshness up *or down* (srs.nextStep / srs.testedLast).
  *
  * Everything here is pure. buildExam() takes a seed, so the same setup and seed
  * always produce the same paper — that is what makes the generator testable and
@@ -26,7 +26,7 @@
 import { sentences } from "./text.js";
 import { chunksFor, keyBlankSet } from "./blanks.js";
 import { gradeReference, gradeWritten, matchesWord } from "./grading.js";
-import { freshness, migrate, testStability, testedLast, TEST_PASS } from "./srs.js";
+import { freshness, migrate, nextStep, stabilityFor, testedLast, TEST_PASS } from "./srs.js";
 import { dueOrder, progressReader } from "./progress.js";
 import { mulberry32 } from "./review.js";
 
@@ -422,9 +422,12 @@ export function scoreExam(questions, answers = {}) {
 
 /* Fold a marked paper back into the progress map.
  *
- * Unlike a review, this can send a verse backwards: testStability() shrinks the
- * interval on a poor score and testedLast() backdates the verse to the freshness
- * the member actually demonstrated.
+ * A paper moves a verse along the same interval ladder a session card does, on
+ * the same three hinges (srs.nextStep): the mark itself is the evidence, since
+ * every question on a paper is marked and there is no unmarked activity to
+ * excuse. A poor mark therefore costs a rung and a blank one puts the verse back
+ * on the first, and testedLast() backdates the verse to the freshness the member
+ * actually demonstrated.
  *
  * A test moves freshness, never status. Committing is reserved for writing the
  * passage out in full in a learn session (srs.commitsVerse) — a paper of
@@ -435,11 +438,13 @@ export function applyExam({ progress, results, now = Date.now() }) {
   const next = { ...(progress || {}) };
   const rows = results.map(({ id, score }) => {
     const prev = migrate(next[id]);
-    const stability = testStability(prev, score, now);
+    const step = nextStep(prev, score);
+    const stability = stabilityFor(step);
     const hits = (prev.hits || 0) + (score >= TEST_PASS ? 1 : 0);
     const rec = {
       ...prev,
       hits,
+      step,
       stability,
       last: testedLast(stability, score, now),
       // A test is the one write whose `last` is deliberately in the past, so it

@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import { render, freezeClock } from "./helpers/dom-env.mjs";
 import { scenarios, EXAM, questionAt } from "./helpers/scenarios.mjs";
 import { ACTIVITY_KEYS } from "../src/exam.js";
+import { ADVANCE_R, HOLD_R, INTERVALS, LAPSE_R } from "../src/srs.js";
 
 const restore = freezeClock();
 const { App } = await import("../src/App.js");
@@ -340,13 +341,39 @@ test("the freshness demonstration runs the real curve under the slider", () => {
   assert.match(start, />100%</);
   assert.match(start, /Still above the line/);
 
-  // A month on, a well-held passage is well under the mark and a new one is
-  // all but gone — which is the whole point of the picture.
+  // A month on, a well-held passage is just under the mark and a new one is all
+  // but gone — which is the whole point of the picture. Both curves are rungs of
+  // the real ladder: the fortnight one a member reaches after seven clean
+  // reviews, and the very first, a day.
   const later = shown("guide/month-later");
   assert.match(later, /30 days later/);
-  assert.match(later, />22%</, "e^(−30/20)");
-  assert.match(later, />0%</, "e^(−30/4) rounds away");
+  assert.match(later, />54%</, "the fortnight rung, e^(−30/48.7)");
+  assert.match(later, />0%</, "the first rung, e^(−30/3.5), rounds away");
   assert.match(later, /Below the line/);
+});
+
+test("the schedule is drawn from the model's own ladder, rung for rung", () => {
+  const markup = shown("guide/default");
+  // Not a list typed out beside srs.INTERVALS — the same list, in the member's
+  // words, so retuning the model redraws the picture.
+  assert.equal((markup.match(/guide-rung"/g) || []).length, INTERVALS.length);
+  for (const [days, label] of [
+    [1, "1 day"],
+    [7, "1 week"],
+    [30, "1 month"],
+    [365, "1 year"],
+  ]) {
+    assert.ok(INTERVALS.includes(days), `${days} days should be a rung`);
+    assert.match(markup, new RegExp(">" + label + "<"), `the ${days}-day rung should read "${label}"`);
+  }
+});
+
+test("the guide names the four bands a mark can fall in, off the model's hinges", () => {
+  const markup = shown("guide/default");
+  assert.match(markup, new RegExp("You get " + Math.round(ADVANCE_R * 100) + "% or more right"));
+  assert.match(markup, new RegExp("You get " + Math.round(HOLD_R * 100) + "–" + (Math.round(ADVANCE_R * 100) - 1)));
+  assert.match(markup, new RegExp("You get under " + Math.round(LAPSE_R * 100) + "% right"));
+  assert.match(markup, /Flashcards do not count/, "and says why the one unmarked activity cannot move you up");
 });
 
 test("every activity is demonstrated, and only one is flagged as committing", () => {
