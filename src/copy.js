@@ -664,8 +664,8 @@ export const copy = {
 
     commitTitle: "Committing a verse to memory",
     commitBody: (bar) =>
-      "A verse becomes committed when you give the whole thing back from memory. Say it out loud into your " +
-      "phone, or type it — either one counts, and the first-letter hints can stay on. You need " +
+      "A verse becomes committed when you give the whole thing back from memory. Say it out loud, or type it " +
+      "— either one counts, and the first-letter hints can stay on. You need " +
       bar +
       "% of the words right, and no peeking. " +
       "Try as many times as you want. Only the try you get right counts, and the ones you miss cost you nothing.",

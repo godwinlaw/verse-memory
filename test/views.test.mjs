@@ -407,6 +407,20 @@ test("the guide says none of it in the app's own shorthand", () => {
   }
 });
 
+/* The app is not offered on a device you hold (src/device.js, views/mobile-gate.js),
+ * so a guide that tells a member to recite into their phone is describing a
+ * screen they will never be shown. The recall card takes the words either way —
+ * spoken or typed — and says so without naming hardware, which is the wording
+ * the guide now borrows. */
+test("the guide never sends a member to a device the app refuses to run on", () => {
+  for (const name of ["guide/default", "guide/day-zero", "guide/month-later"]) {
+    const markup = shown(name);
+    for (const word of [/phone/i, /tablet/i, /mobile/i, /\bipad\b/i, /\btap\b/i]) {
+      assert.doesNotMatch(markup, word, `${name} reaches for ${word}`);
+    }
+  }
+});
+
 test("and teaches the two words it does keep, rather than dodging them", () => {
   // "committed" and "freshness" are printed on every other screen, so a synonym
   // here would match nothing the member goes on to see.
