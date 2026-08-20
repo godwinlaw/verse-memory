@@ -9,7 +9,6 @@ const appOverrides = (typeof window !== "undefined" && window.__APP_CONFIG__) ||
 
 export const appConfig = {
   groupName: "Acts 2 Network - Berkeley",
-  motto: "Every Member a Self Respecting Christian",
   deadline: "2026-10-31",
   /* The shortest time the opening splash stays up, in milliseconds. It sits
    * here rather than in App.js because it is a matter of taste — how long the

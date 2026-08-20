@@ -37,8 +37,9 @@ export const copy = {
     wordmark: "VERSE MASTERY",
     /* The epigraph under the wordmark, on the sign-in gate and the board hero. */
     epigraph:
-      '"Do your best to present yourself to God as one approved, a worker who has no need to be ashamed, rightly ' +
-      'handling the word of truth." — 2 Tim 2:15',
+      '"For the word of God is living and active, sharper than any two-edged sword, piercing to the division of ' +
+      'soul and of spirit, of joints and of marrow, and discerning the thoughts and intentions of the heart." — ' +
+      "Hebrews 4:12",
     /* Stands in for a member who has not filled in their profile yet. */
     anonymousMember: "Member",
   },
