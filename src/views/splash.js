@@ -23,7 +23,7 @@ import { html, sx, corners } from "../dom.js";
  * draws them 6px outside its own box, so the frame has to stand off the
  * viewport for them to land on screen. */
 const FIELD_SCREEN =
-  "min-height:100vh;background:var(--color-accent-900);color:#f2f2f3;font-family:var(--font-body);" +
+  "min-height:100vh;background:var(--color-reverse-bg);color:var(--color-reverse-text);font-family:var(--font-body);" +
   "display:flex;padding:36px";
 
 export function splashView(v) {

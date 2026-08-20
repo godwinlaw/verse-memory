@@ -87,7 +87,9 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       cardStyle:
         "padding:20px 22px;display:flex;flex-direction:column;gap:8px;" +
-        (p.me ? "background:var(--color-accent-900);color:#f2f2f3;border-color:var(--color-accent-900)" : ""),
+        (p.me
+          ? "background:var(--color-reverse-bg);color:var(--color-reverse-text);border-color:var(--color-reverse-bg)"
+          : ""),
     })),
 
     board: ranked.map((p, i) => ({

@@ -245,7 +245,7 @@ function activityCard(a, sample, flag) {
       ${
         a.commits &&
         html`<span
-          style=${sx("font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;background:var(--color-accent-900);color:#f2f2f3")}
+          style=${sx("font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;background:var(--color-reverse-bg);color:var(--color-reverse-text)")}
           >${flag}</span
         >`
       }
@@ -268,7 +268,7 @@ export function guideView(v) {
   return html`<div className="guide-page screen">
     <div
       className="blueprint"
-      style=${sx("background:var(--color-accent-900);color:#f2f2f3;border-color:var(--color-accent-900);padding:34px 40px;display:flex;flex-direction:column;gap:16px")}
+      style=${sx("background:var(--color-reverse-bg);color:var(--color-reverse-text);border-color:var(--color-reverse-bg);padding:34px 40px;display:flex;flex-direction:column;gap:16px")}
     >
       ${corners()}
       <div style=${sx("font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.72")}>

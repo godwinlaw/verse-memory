@@ -11,9 +11,21 @@
        every size, tab included, and the third rule closes up into grey below
        about 40px. favicon.ico carries the 24px cut for the same reason. See
        "App Icon.dc.html" (1C) in the design project. -->
-  <rect width="64" height="64" fill="#1d2d3d"/>
+  <!-- A standalone SVG has no :root to read tokens from, but it can still ask
+       the reader which way round they want the world. These are the same two
+       values styles.css sets for --color-reverse-bg in each theme: the plate
+       lifts off a dark page rather than sinking into it. -->
+  <style>
+    .field { fill: #1d2d3d }
+    .rule { stroke: #1d2d3d }
+    @media (prefers-color-scheme: dark) {
+      .field { fill: #26384a }
+      .rule { stroke: #26384a }
+    }
+  </style>
+  <rect width="64" height="64" class="field" fill="#1d2d3d"/>
   <polygon points="19,8 45,8 45,56 32,46 19,56" fill="#f2f2f3"/>
-  <g stroke="#1d2d3d" stroke-width="3.2">
+  <g class="rule" stroke="#1d2d3d" stroke-width="3.2">
     <path d="M24 21H40"/>
     <path d="M24 31H36"/>
   </g>

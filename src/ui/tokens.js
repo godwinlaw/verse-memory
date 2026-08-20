@@ -14,9 +14,10 @@
  * change. `pct` is how much of the text colour remains. */
 export const muted = (pct) => `color-mix(in srgb, var(--color-text) ${pct}%, transparent)`;
 
-/* The one colour in the app outside the design-system tokens: the "wrong answer"
- * red used by the graders and the sign-in error callout. */
-export const COLOR_ERROR = "#a4553f";
+/* The "wrong answer" red used by the graders and the sign-in error callout.
+ * A token rather than a literal so the dark theme can lift it: #a4553f is set
+ * for paper and goes muddy on a dark ground. */
+export const COLOR_ERROR = "var(--color-error)";
 
 /* Uppercase micro-labels. The design uses two tunings — a slightly wider-tracked
  * one for form/section labels, a tighter dimmer one for inline metadata. */
@@ -74,7 +75,7 @@ export const checkBox = (on) =>
 const TAG_BASE = "display:inline-flex;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;";
 export const statusTag = (status) =>
   status === "memorized"
-    ? TAG_BASE + "background:var(--color-accent-900);color:#f2f2f3"
+    ? TAG_BASE + "background:var(--color-reverse-bg);color:var(--color-reverse-text)"
     : status === "learning"
       ? TAG_BASE + "background:var(--color-accent-200);color:var(--color-accent-800)"
       : TAG_BASE + `border:1px solid var(--color-divider);color:${muted(55)}`;

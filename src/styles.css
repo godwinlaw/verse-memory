@@ -9,6 +9,22 @@
   --color-accent-2: #728fab;
   --color-divider: color-mix(in srgb, #1d1f20 16%, transparent);
 
+  /* The reversed plate: paper printed on a steel field. It is a treatment, not
+     a shade — the splash, the board's hero, the guide's plate, a status tag and
+     the app's own mark are all the same object, printed the other way round
+     from the page around them.
+     It gets its own two tokens rather than reaching for the end of the accent
+     ramp, because the ramp means "strongest state" and inverts with the theme,
+     while this has to stay a plate: on a dark page it lifts *off* the ground
+     instead of sinking into it, which the ramp's darkest step cannot do. */
+  --color-reverse-bg: #1d2d3d;
+  --color-reverse-text: #f2f2f3;
+  --color-reverse-line: color-mix(in srgb, var(--color-reverse-text) 25%, transparent);
+
+  /* The "wrong answer" red, used by the graders and the sign-in error callout.
+     A token so the dark theme can lift it — #a4553f is set for paper. */
+  --color-error: #a4553f;
+
   /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
      same step of any role matches the others in visual value. */
   --color-neutral-100: #f5f5f8;
@@ -42,7 +58,10 @@
   --color-accent-2-900: #1f2d3a;
 
   /* Freshness meter track — the fill colour is computed inline as a continuous
-     red→green gradient keyed to each verse's retrievability. */
+     red→green gradient keyed to each verse's retrievability. srs.freshColor
+     picks the hue and leaves the lightness here, so the gradient can be mixed
+     for the ground it is printed on. */
+  --fresh-l: 45%;
   --color-fresh-track: var(--color-neutral-200);
 
   --font-heading: "Barlow Condensed", system-ui, sans-serif;
@@ -74,6 +93,95 @@
   --dur-tap: 120ms; /* a control answering a press */
   --dur-swap: 260ms; /* something replacing something else */
   --dur-tell: 640ms; /* a figure being shown, worth watching */
+}
+
+/* ── the dark theme ──────────────────────────────────────────────────────────
+   The system follows the reader, and only the reader: prefers-color-scheme and
+   nothing else. There is no switch anywhere in the app and nothing persisted,
+   because a member who wants dark has already said so once, to their operating
+   system, and saying it again here would be the app asking a question it can
+   look up.
+
+   It is one block of token overrides and no rules of its own — everything below
+   this point is written against the tokens, so the whole app turns over
+   together. Two ideas carry it:
+
+   The two ramps INVERT rather than being replaced. Their steps mean distance
+   from the page's ground, not lightness: 100 is nearest the paper, 900 furthest
+   into the ink. Read that way, "the strongest state" is the darkest step on a
+   light page and the lightest on a dark one — so a committed cell in the board's
+   map, its legend swatch and a member's own bar all stay the strongest thing on
+   screen without a single view being touched.
+
+   The reversed plate does NOT invert, which is exactly why it has its own two
+   tokens. It is a plate printed the other way round from the page, so on a dark
+   ground it has to lift *off* the page rather than sink into it — the accent
+   ramp's far end would do the opposite. It stays a steel field with paper on it,
+   just a steel field a few steps lighter than the room. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #131416;
+    --color-surface: #1b1c1e;
+    --color-text: #e9e9ec;
+    --color-accent: #8ab0d6;
+    --color-accent-2: #93a9c0;
+    --color-divider: color-mix(in srgb, #e9e9ec 16%, transparent);
+
+    /* Both ramps, end for end. */
+    --color-neutral-100: #1a1a1c;
+    --color-neutral-200: #232325;
+    --color-neutral-300: #2f2f31;
+    --color-neutral-400: #45454a;
+    --color-neutral-500: #6a6a6e;
+    --color-neutral-600: #8c8c90;
+    --color-neutral-700: #adadb1;
+    --color-neutral-800: #cfcfd2;
+    --color-neutral-900: #ebebee;
+
+    --color-accent-100: #16202a;
+    --color-accent-200: #1d2b38;
+    --color-accent-300: #26384a;
+    --color-accent-400: #3d5a76;
+    --color-accent-500: #5c82a8;
+    --color-accent-600: #7ba1c6;
+    --color-accent-700: #9dbcdb;
+    --color-accent-800: #c2d8ee;
+    --color-accent-900: #e3eefb;
+
+    --color-accent-2-100: #171f27;
+    --color-accent-2-200: #1e2831;
+    --color-accent-2-300: #28343f;
+    --color-accent-2-400: #3f5163;
+    --color-accent-2-500: #5f7488;
+    --color-accent-2-600: #7e94a8;
+    --color-accent-2-700: #9db0c2;
+    --color-accent-2-800: #c1cfdb;
+    --color-accent-2-900: #e2eaf1;
+
+    /* The plate, lifted off the room rather than sunk into it. */
+    --color-reverse-bg: #26384a;
+
+    /* The freshness gradient, lifted for the same reason as the red below: a
+       45% lightness that reads on paper sinks into a dark ground. */
+    --fresh-l: 60%;
+
+    /* Lifted off #a4553f, which is mixed for paper and goes muddy on ink. */
+    --color-error: #dc9077;
+
+    /* Elevation the other way round, as the tokens' own note anticipated: a
+       hairline edge and ambient darkness, since a soft ink shadow says nothing
+       on a ground that is already dark. */
+    --shadow-sm: 0 0 0 1px color-mix(in srgb, #e9e9ec 8%, transparent);
+    --shadow-md: 0 0 0 1px color-mix(in srgb, #e9e9ec 9%, transparent), 0 3px 12px rgb(0 0 0 / 45%);
+    --shadow-lg: 0 0 0 1px color-mix(in srgb, #e9e9ec 10%, transparent), 0 14px 36px rgb(0 0 0 / 55%);
+  }
+
+  /* The one thing a token cannot reach: the browser's own widgets — form
+     controls, scrollbars, the caret — which are painted by the UA and have to
+     be told which way round the page is. */
+  :root {
+    color-scheme: dark;
+  }
 }
 
 html {
@@ -704,7 +812,7 @@ textarea.input {
 .board-hero-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border-left: 1px solid rgba(242, 242, 243, 0.25);
+  border-left: 1px solid color-mix(in srgb, var(--color-reverse-text) 25%, transparent);
 }
 .board-map-grid {
   display: grid;
@@ -802,7 +910,7 @@ textarea.input {
   --splash-turn: 2s;
 }
 .splash-field > .corner {
-  color: rgba(242, 242, 243, 0.75);
+  color: color-mix(in srgb, var(--color-reverse-text) 75%, transparent);
 }
 
 /* — the mark, drawn large — */
@@ -822,12 +930,12 @@ textarea.input {
 }
 .splash-mark-ring {
   inset: 0;
-  border: 1px solid rgba(242, 242, 243, 0.45);
+  border: 1px solid color-mix(in srgb, var(--color-reverse-text) 45%, transparent);
   animation: splash-rotate 9s linear infinite;
 }
 .splash-mark-pulse {
   inset: 26px;
-  border: 1px solid rgba(242, 242, 243, 0.22);
+  border: 1px solid color-mix(in srgb, var(--color-reverse-text) 22%, transparent);
   animation: splash-breathe 2.4s ease-in-out infinite;
 }
 .splash-mark-v {
@@ -835,14 +943,14 @@ textarea.input {
   top: 14px;
   bottom: 14px;
   width: 1px;
-  background: #f2f2f3;
+  background: var(--color-reverse-text);
 }
 .splash-mark-h {
   top: 50%;
   left: 14px;
   right: 14px;
   height: 1px;
-  background: #f2f2f3;
+  background: var(--color-reverse-text);
 }
 /* Relative only to lift it over the crosshair, which is positioned and would
    otherwise paint across it. */
@@ -852,7 +960,7 @@ textarea.input {
   display: block;
   width: 9px;
   height: 9px;
-  background: #f2f2f3;
+  background: var(--color-reverse-text);
 }
 /* The mark's own rotation, which has nothing to do with --splash-turn: it runs
    at its own unhurried pace and never has to arrive anywhere. */
@@ -893,7 +1001,7 @@ textarea.input {
   font-size: 10.5px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(242, 242, 243, 0.55);
+  color: color-mix(in srgb, var(--color-reverse-text) 55%, transparent);
 }
 /* The design draws the scale at 340px; on a phone it gives that up rather than
    push the frame off the screen. */
@@ -908,7 +1016,11 @@ textarea.input {
    divisions, so the loop is seamless however long the boot takes. */
 .splash-ticks {
   height: 8px;
-  background-image: repeating-linear-gradient(to right, rgba(242, 242, 243, 0.55) 0 1px, transparent 1px 16px);
+  background-image: repeating-linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-reverse-text) 55%, transparent) 0 1px,
+    transparent 1px 16px
+  );
   animation: splash-ticks 2s linear infinite;
 }
 @keyframes splash-ticks {
@@ -919,7 +1031,7 @@ textarea.input {
 .splash-track {
   position: relative;
   height: 4px;
-  background: rgba(242, 242, 243, 0.22);
+  background: color-mix(in srgb, var(--color-reverse-text) 22%, transparent);
 }
 .splash-fill {
   position: absolute;
@@ -927,7 +1039,7 @@ textarea.input {
   bottom: 0;
   left: 0;
   display: block;
-  background: #f2f2f3;
+  background: var(--color-reverse-text);
   animation: splash-advance var(--splash-turn) steps(8, end) infinite;
 }
 /* Held full for the last stretch so the bar arrives before the turn is over,
@@ -1794,7 +1906,7 @@ textarea.input {
   }
   .board-hero-stats {
     border-left: none;
-    border-top: 1px solid rgba(242, 242, 243, 0.25);
+    border-top: 1px solid color-mix(in srgb, var(--color-reverse-text) 25%, transparent);
   }
   .board-map-grid {
     grid-template-columns: repeat(14, 1fr);

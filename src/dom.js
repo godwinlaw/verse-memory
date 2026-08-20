@@ -50,7 +50,8 @@ const corners = () => [
  *
  * The one thing it does that the file cannot is read the palette: a standalone
  * SVG has no :root, so icon.svg writes #1d2d3d and #f2f2f3 out longhand where
- * this names the tokens.
+ * this names the reversed-plate tokens — which is also what keeps the mark
+ * visible on a dark page, where a steel square would sink into the ground.
  *
  * `rules` is the design's own concession to size. The drawing carries three
  * rules when it is shown large and two when it is small, because the third
@@ -60,8 +61,8 @@ const corners = () => [
  * `aria-hidden`: the wordmark is beside it in both places it is used, so a
  * screen reader reaching this as well would only say the name of the app
  * twice. */
-const MARK_STEEL = "var(--color-accent-900)";
-const MARK_PAPER = "#f2f2f3";
+const MARK_STEEL = "var(--color-reverse-bg)";
+const MARK_PAPER = "var(--color-reverse-text)";
 const appMark = (size = 24, rules = 2) =>
   html`<svg
     width=${size}
