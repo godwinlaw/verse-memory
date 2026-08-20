@@ -11,6 +11,23 @@
     <link rel="icon" type="image/svg+xml" href="./src/icon.svg" />
     <link rel="icon" sizes="48x48" href="./src/favicon.ico" />
     <link rel="stylesheet" href="./src/styles.css" />
+    <!-- Which way round the page is printed, settled before the first paint.
+       src/theme.js is where this rule lives and is written out; the four lines
+       are repeated here because they have to run before anything is drawn, and
+       a module cannot: the member's choice would arrive a paint late and the
+       page would turn over in front of them. It is deliberately the smallest
+       thing that can be said — read the stored choice, fall back to the reader's
+       system, stamp the answer — so there is nothing here to drift. -->
+    <script>
+      try {
+        var t = localStorage.getItem("mv.theme");
+        if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = t;
+      } catch {
+        /* storage blocked, or a browser with no matchMedia: the stylesheet's
+           own default is paper, which is what the app was drawn on */
+      }
+    </script>
     <!-- React + htm, loaded as classic scripts so their globals are ready before the module runs -->
     <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>

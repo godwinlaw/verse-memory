@@ -16,6 +16,7 @@ import {
   isProfileComplete,
 } from "../profile.js";
 import { SCRAMBLE_LEVELS } from "../blanks.js";
+import { THEMES } from "../theme.js";
 import { committedCount, countByStatus, streakOf } from "../progress.js";
 import { segButton } from "../ui/tokens.js";
 import { PRIMARY_DOMAIN } from "../firebase.js";
@@ -174,6 +175,23 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
         onClick: () => actions.setProfileField("defaultDifficulty", i),
       };
     }),
+
+    /* Appearance, which behaves unlike everything above it and is meant to.
+     * The theme is device-local (storage.saveTheme), so it is not in the draft,
+     * not waiting on Save, and not cancelled by Cancel: pressing one of these
+     * turns the page over there and then, which is also the only demonstration
+     * the setting needs. Offered on the settings form for the same reason as
+     * the review settings below — the system already answers for a member who
+     * has never thought about it. */
+    showAppearance: !isSetup,
+    theme: state.theme,
+    themeOptions: THEMES.map((key) => ({
+      key,
+      label: copy.profileForm.themeLabels[key],
+      style: segButton(state.theme === key),
+      onClick: () => actions.setTheme(key),
+    })),
+    themeNote: copy.profileForm.themeNote,
 
     // How reviews behave is not asked for at sign-up. A member meeting the app
     // for the first time has no way to judge how many verses a sitting should

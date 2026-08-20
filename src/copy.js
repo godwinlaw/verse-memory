@@ -191,6 +191,17 @@ export const copy = {
     difficulty: "Default difficulty",
     difficultyLevels: ["Easy", "Medium", "Hard"],
 
+    /* Which way round the page is printed. Its own block rather than another
+     * review setting, because it is not one: it is about the screen the member
+     * is reading on, which is why the note says "this device" — the settings
+     * above travel with the profile and this one cannot. */
+    appearance: "APPEARANCE",
+    theme: "Theme",
+    themeLabels: { light: "Light", dark: "Dark", system: "System" },
+    themeNote:
+      "System follows whatever your device is set to. Light and dark override it on this device only — your other " +
+      "devices keep following theirs.",
+
     /* Wiping the record. The button is the smaller half of this: what stands
      * beside it has to say plainly what goes, what stays, and that it reaches
      * the member's other devices — nothing here is recoverable afterwards. */

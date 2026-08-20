@@ -6,6 +6,26 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **Light, dark, or follow the system — a switch under Settings.** The reader's
+  operating system is still the default and still answers for most members;
+  what is new is that a member who wants the other ground on one screen can say
+  so. It is **device-local and never synced** (`storage.saveTheme`, beside the
+  exercise preferences): a screen read under office lights and one read at
+  night are two different questions, so a choice made on the laptop has no
+  business travelling to the desktop. It is not a profile field either, which
+  is why it does not wait for Save and is not undone by Cancel — pressing it
+  turns the page over there and then, which is the only demonstration the
+  setting needs. **The choosing moved into JS** (`src/theme.js`, pure and unit
+  tested beside `device.js`): a stylesheet cannot say "dark unless the member
+  asked for light" without writing the whole palette out a second time under
+  another selector, so `prefers-color-scheme` is now read in one place and the
+  settled answer — `data-theme="light"` or `"dark"`, never `"system"` — is
+  stamped on the root element, which is all the dark block in `styles.css` now
+  reads. index.html stamps it in the line before the first paint, so the page
+  never opens on one ground and turns over onto the other; that is asserted
+  with the app's own module blocked, on a page the app never runs on. The
+  favicon keeps following the system, because a browser fetches it outside the
+  page and there is no version of it that could read the choice.
 - **The stats board can rank the groups themselves.** It could always _filter_
   by ministry group, gender and graduating class; now it can rank by them —
   ministries, male vs female, or classes, against each other. The two compose

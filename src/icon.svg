@@ -14,7 +14,15 @@
   <!-- A standalone SVG has no :root to read tokens from, but it can still ask
        the reader which way round they want the world. These are the same two
        values styles.css sets for --color-reverse-bg in each theme: the plate
-       lifts off a dark page rather than sinking into it. -->
+       lifts off a dark page rather than sinking into it.
+
+       This is the one place the member's own choice under Settings cannot
+       reach, and there is no version of it that could: the browser fetches this
+       file on its own, outside the page, so it has no data-theme to read and no
+       localStorage to ask. A tab icon therefore keeps following the system even
+       for a member who asked the app for the other ground — which is the right
+       way round anyway, since the tab strip it sits in belongs to the browser
+       and is painted the system's way too. -->
   <style>
     .field { fill: #1d2d3d }
     .rule { stroke: #1d2d3d }

@@ -249,6 +249,13 @@ export class AppHarness {
     return raw == null ? null : JSON.parse(raw);
   }
 
+  /* The one preference that is not stored as JSON: the theme is a bare word,
+   * because index.html reads it in the line before the first paint and that
+   * line has to stay the smallest thing that can be said (see src/theme.js). */
+  async storedText(key) {
+    return this.page.evaluate((k) => localStorage.getItem(k), key);
+  }
+
   /* Documents the app pushed to Firestore this session (see firebase-stub.mjs). */
   async writes() {
     return this.page.evaluate(() => window.__E2E_WRITES__ || []);

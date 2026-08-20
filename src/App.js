@@ -36,6 +36,7 @@ import {
 } from "./profile.js";
 import { appConfig } from "./config.js";
 import { detectMobile } from "./device.js";
+import { DEFAULT_THEME, applyTheme, normalizeTheme, watchSystemTheme } from "./theme.js";
 import { initAuth, signIn, signOutUser, fetchRoster, retrySync, onPushError } from "./firebase.js";
 import { passages } from "../data/passages.js";
 import {
@@ -244,6 +245,14 @@ function initialState() {
     // persisted — a slider position is worth nothing on the next visit,
     // unlike the setups above.
     guideDays: 6,
+
+    // Which way round the page is printed: "light", "dark", or "system", which
+    // is the default and follows the reader's own machine. Device-local like
+    // the setups above, and the one preference the app has already acted on
+    // before this state exists — index.html stamps the ground before the first
+    // paint, so this is the app catching up with the page it booted on rather
+    // than the other way round (see theme.js).
+    theme: DEFAULT_THEME,
   };
 }
 
@@ -258,6 +267,15 @@ export class App extends React.Component {
   componentDidMount() {
     const profile = storage.loadProfile();
     const defaultDiff = profile.defaultDifficulty != null ? Number(profile.defaultDifficulty) : DEFAULT_DIFFICULTY;
+    /* The theme is already on the page — index.html settled it before the first
+     * paint — so this is only the app learning what the member chose, plus a
+     * standing subscription for a reader who turns their system over with the
+     * app open. Stamped again all the same, so a stored value the pre-paint
+     * line could not make sense of is corrected by normalizeTheme rather than
+     * left on screen. */
+    const theme = normalizeTheme(storage.loadTheme());
+    applyTheme(theme);
+    this.unwatchTheme = watchSystemTheme(() => applyTheme(this.state.theme));
     this.setState({
       passages,
       progress: storage.loadProgress(),
@@ -274,6 +292,7 @@ export class App extends React.Component {
       reviewSetup: storage.loadReviewSetup(this.state.reviewSetup),
       learnSetup: storage.loadLearnSetup(this.state.learnSetup),
       explainerOpen: storage.loadExplainerOpen(this.state.explainerOpen),
+      theme,
       loaded: true,
     });
     // The two ends of the splash: the least it stays up for, and the most it
@@ -315,6 +334,7 @@ export class App extends React.Component {
     clearTimeout(this.ministryTimer);
     clearTimeout(this.splashTimer);
     clearTimeout(this.authWaitTimer);
+    if (this.unwatchTheme) this.unwatchTheme();
     this.stopListening();
   }
 
@@ -921,6 +941,16 @@ export class App extends React.Component {
         this.goto(view);
       },
       setProfileField: (key, value) => this.setProfileField(key, value),
+      /* Appearance is not one of the profile's fields, and the way it behaves
+       * says so: it is saved and on screen the moment it is pressed, rather
+       * than waiting for the form's Save with the rest — there is nothing to
+       * confirm about a choice the member can already see, and nothing to
+       * cancel back to. */
+      setTheme: (theme) => {
+        storage.saveTheme(theme);
+        applyTheme(theme);
+        set({ theme });
+      },
       // Wiping the record is asked about first, and the dialog is the only way
       // to reach resetProgress — the button on the form only opens it.
       askResetProgress: () => set({ resetAsk: true }),
