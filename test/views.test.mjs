@@ -205,14 +205,27 @@ test("the flashcard is a two-sided card: reference out, passage in", () => {
   assert.match(back, /title="Turn the card back to the reference"/);
 });
 
-test("the first letters are a prompt, so they sit on the front and do not turn it", () => {
+test("the first letters stand in for the passage, so they take its place on the back", () => {
   const letters = shown("review/flip-letters");
-  assert.match(letters, /H, O I: T L o G/, "the scaffold, not the passage");
-  assert.match(letters, /Deuteronomy 6:4-5/, "beside the reference it is helping recall");
-  assert.doesNotMatch(letters, /class="flip-card is-flipped"/, "a hint is not the answer");
-  assert.doesNotMatch(letters, /Say it aloud from memory/, "it replaces the prompt it stands in for");
+  assert.match(letters, /class="flip-card is-flipped"/, "the answer is on the back, at either strength");
+  assert.match(letters, /H, O I: T L o G/, "the scaffold");
+  assert.doesNotMatch(letters, /Israel:/, "and not the passage it stands in for");
+  assert.match(letters, /Deuteronomy 6:4-5/, "the reference stays with it");
   assert.match(letters, /Hide first letters<\/button>/);
+  assert.match(letters, /Show passage<\/button>/, "the other button still offers the full text");
+});
+
+test("each of the flashcard's buttons reads by what is on screen, not by the switch", () => {
+  // A press that says Hide must be undoing something the member can see, and a
+  // press that says Show must change what they are looking at.
   assert.match(shown("review/flip-hidden"), /Show first letters<\/button>/);
+  assert.match(shown("review/flip-revealed"), /Show first letters<\/button>/);
+  // Front-side out with the switch still set: the letters are not on screen,
+  // so the button offers them rather than offering to take them away.
+  const front = shown("review/flip-letters-front");
+  assert.match(front, /Show first letters<\/button>/);
+  assert.doesNotMatch(front, /class="flip-card is-flipped"/);
+  assert.match(front, /title="Turn the card over to show the first letters"/, "and the turn says what it will show");
 });
 
 test("the guide demonstrates the flashcard component itself, not a drawing of one", () => {

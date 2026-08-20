@@ -199,6 +199,25 @@ test("the flashcard has nothing to submit, so moving on marks it", () => {
   assert.equal(a.state.progress[1].last, NOW, "an unmarked activity still counts as reviewed");
 });
 
+test("each of the flashcard's buttons turns it to its own side of the answer", () => {
+  const a = session("flip");
+  const showing = () => [a.state.revealed, a.state.flipLetters];
+
+  a.actions.revealFlipSide(true);
+  assert.deepEqual(showing(), [true, true], "the scaffold is on the back, so asking for it turns the card");
+
+  a.actions.revealFlipSide(false);
+  assert.deepEqual(showing(), [true, false], "and the passage takes its place on that same face");
+
+  a.actions.revealFlipSide(false);
+  assert.equal(a.state.revealed, false, "pressing it again puts the card back to the reference");
+
+  // Hiding the scaffold is never the press that hands over the passage.
+  a.actions.revealFlipSide(true);
+  a.actions.revealFlipSide(true);
+  assert.equal(a.state.revealed, false);
+});
+
 test("the first card is as far back as a session goes, and the last ends it", () => {
   const a = session("flip");
   a.actions.prevCard();

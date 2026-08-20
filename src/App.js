@@ -955,7 +955,16 @@ export class App extends React.Component {
 
       // review — flashcard
       setRevealed: (revealed) => set({ revealed }),
-      toggleFlipLetters: () => this.setState((s) => ({ flipLetters: !s.flipLetters })),
+      // Both the passage and the first-letter scaffold are on the back, so each
+      // of the two buttons below the card turns it over to its own side of the
+      // pair, and pressing one again puts the card back to the reference. That
+      // last part is the point: hiding the scaffold must not be the press that
+      // hands over the passage, and a press must always change what is on
+      // screen rather than a flag on the face nobody is looking at.
+      revealFlipSide: (letters) =>
+        this.setState((s) =>
+          s.revealed && s.flipLetters === letters ? { revealed: false } : { revealed: true, flipLetters: letters },
+        ),
 
       // review — fill the blanks
       setAnswer: (index, value, focusIndex) => {

@@ -336,8 +336,11 @@ export const scenarios = [
 
   // ── review, one per mode ───────────────────────────────────────────────────
   { name: "review/flip-hidden", state: reviewing({ mode: "flip" }) },
-  { name: "review/flip-letters", state: reviewing({ mode: "flip", flipLetters: true }) },
   { name: "review/flip-revealed", state: reviewing({ mode: "flip", revealed: true }) },
+  // The scaffold shares the back with the passage: turned to it, and the same
+  // card left front-side out with the switch still set from last time.
+  { name: "review/flip-letters", state: reviewing({ mode: "flip", flipLetters: true, revealed: true }) },
+  { name: "review/flip-letters-front", state: reviewing({ mode: "flip", flipLetters: true }) },
   { name: "review/blanks", state: reviewing({ mode: "blanks" }) },
   {
     name: "review/blanks-checked",

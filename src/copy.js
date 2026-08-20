@@ -421,6 +421,7 @@ export const copy = {
     flipLettersShow: "Show first letters",
     flipLettersHide: "Hide first letters",
     flipCardToBack: "Turn the card over to show the passage",
+    flipCardToLetters: "Turn the card over to show the first letters",
     flipCardToFront: "Turn the card back to the reference",
 
     /* fill the blanks */

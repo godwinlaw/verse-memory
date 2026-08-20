@@ -13,45 +13,48 @@ import { COLOR_ERROR, LABEL_META, LABEL_SECTION, muted } from "../ui/tokens.js";
  * passage on the back, and the card turns over rather than swapping its
  * contents, so the member can see which way round they are.
  *
- * The first-letter scaffold is a prompt, not an answer, so it belongs on the
- * front beside the reference it is helping recall — turning the card still
- * shows the passage in full either way.
+ * The first-letter scaffold stands in for the passage rather than sitting beside
+ * it, so it is on the back too, in the passage's place: the back of the card is
+ * the answer, at whichever strength was asked for. The front is the reference
+ * either way.
  *
  * The two buttons sit in one fixed row below the card, so showing and hiding is
  * the same control in the same place rather than a button that moves when the
- * passage appears. Clicking the card turns it too, but it is deliberately not a
- * tab stop of its own: "Show passage" below it is a real button that already
- * does exactly this, and a second one would only be a duplicate stop reading out
- * the same thing. */
+ * passage appears. Each turns the card to its own side of that pair and reads
+ * Show or Hide by what is actually on screen (App.revealFlipSide), so a press is
+ * never a state change the member cannot see. Clicking the card turns it too,
+ * but it is deliberately not a tab stop of its own: "Show passage" below it is a
+ * real button that already does exactly this, and a second one would only be a
+ * duplicate stop reading out the same thing. */
 function flipPanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:26px")}>
     <div
       className=${"flip-card" + (v.flipShown ? " is-flipped" : "")}
       title=${v.flipCardLabel}
-      onClick=${v.toggleFlip}
+      onClick=${v.turnCard}
       style=${sx("width:100%;max-width:720px;margin:0 auto;cursor:pointer")}
     >
       <div className="flip-card-inner" style=${sx("min-height:196px")}>
         <div className="flip-card-face" aria-hidden=${v.flipShown}>
           <div style=${sx(LABEL_META)}>${v.flipFrontLabel}</div>
           <div style=${sx("font-size:34px;line-height:1.15")}>${v.curRef}</div>
-          ${
-            v.flipLettersOn
-              ? html`<p
-                  style=${sx(`margin:0;font-size:19px;line-height:1.9;max-width:64ch;letter-spacing:.06em;color:${muted(75)}`)}
-                >
-                  ${v.flipFirstLetters}
-                </p>`
-              : html`<div
-                  style=${sx(`font-size:13px;font-family:var(--font-body);font-weight:400;color:${muted(55)};max-width:44ch`)}
-                >
-                  ${v.flipHint}
-                </div>`
-          }
+          <div
+            style=${sx(`font-size:13px;font-family:var(--font-body);font-weight:400;color:${muted(55)};max-width:44ch`)}
+          >
+            ${v.flipHint}
+          </div>
         </div>
         <div className="flip-card-face flip-card-back" aria-hidden=${!v.flipShown}>
           <div style=${sx(LABEL_META + ";font-family:var(--font-heading)")}>${v.curRef}</div>
-          <p style=${sx("margin:0;font-size:21px;line-height:1.62;max-width:74ch")}>${v.curText}</p>
+          ${
+            v.flipLettersOn
+              ? html`<p
+                  style=${sx(`margin:0;font-size:19px;line-height:1.9;max-width:74ch;letter-spacing:.06em;color:${muted(75)}`)}
+                >
+                  ${v.flipFirstLetters}
+                </p>`
+              : html`<p style=${sx("margin:0;font-size:21px;line-height:1.62;max-width:74ch")}>${v.curText}</p>`
+          }
         </div>
       </div>
     </div>
