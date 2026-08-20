@@ -181,6 +181,9 @@ export const copy = {
     gender: "Gender",
     gradClass: "Graduating class",
     gradClassPlaceholder: "e.g. 2016",
+    /* Shown on the setup form in place of the review settings, which are not
+     * asked for until the member has something to judge them against. */
+    settingsLater: "You can change how reviews work later, under Settings.",
     reviewSettings: "REVIEW SETTINGS",
     dueTopX: "Top X committed verses to review at a time",
     dueFreshness: "Review a committed verse once it fades to (%)",

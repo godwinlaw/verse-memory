@@ -54,6 +54,41 @@ test("a member with no profile fills one in before the app", async ({ app, page 
   });
 });
 
+/* Signing up asks who the member is and stops there. How reviews behave is a
+ * set of questions nobody can answer before they have used the app, so they
+ * wait for Settings — and nothing is lost by waiting, because the defaults are
+ * written either way (App.submitProfile). */
+test("signing up never asks how reviews should work", async ({ app, page }) => {
+  await app.boot({ profile: null, firebase: signedIn });
+  await expect(page.getByText("SET UP YOUR PROFILE")).toBeVisible();
+
+  await expect(page.getByText("REVIEW SETTINGS")).toHaveCount(0);
+  await expect(page.getByText("Top X committed verses to review at a time")).toHaveCount(0);
+  await expect(page.getByText("You can change how reviews work later, under Settings.")).toBeVisible();
+
+  await page.getByPlaceholder("Your full name").fill("Grace Hopper");
+  await page.getByPlaceholder("Start typing to search…").fill("Kai");
+  await page.getByRole("button", { name: "Kairos" }).click();
+  await page.getByRole("button", { name: "Female" }).click();
+  await page.getByPlaceholder("e.g. 2016").fill("2027");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Start learning right away" }).click();
+
+  // The defaults went in all the same — the questions were skipped, not the
+  // answers.
+  expect(await app.stored("mv.profile")).toMatchObject({
+    dueTopX: 10,
+    dueFreshness: 75,
+    commitThreshold: 95,
+    defaultDifficulty: 1,
+  });
+
+  // And they are all there to change, the moment the member wants them.
+  await app.header.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByText("REVIEW SETTINGS")).toBeVisible();
+  await expect(page.getByLabel("Review a committed verse once it fades to (%)")).toHaveValue("75");
+});
+
 test("the member's freshness threshold decides what comes back round", async ({ app, page }) => {
   // Committed at 60%: due at the default 75% mark, but not at 40%.
   await app.boot({ progress: { 2: committed(0.6) }, firebase: signedIn });

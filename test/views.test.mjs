@@ -131,6 +131,36 @@ test("the settings form offers a reset, and the setup form does not", () => {
   assert.doesNotMatch(shown("profile/setup-empty"), /Reset all progress/);
 });
 
+/* Signing up asks for who the member is and nothing else. How reviews behave
+ * is a set of questions nobody can answer before they have used the app — how
+ * many verses a sitting should hold, how far one may fade — so they wait until
+ * there is something to judge them against. */
+test("signing up asks for personal details only", () => {
+  const setup = shown("profile/setup-empty");
+
+  // Who they are: still asked, and still the whole gate.
+  for (const field of [/Name/, /Ministry group/, /Gender/, /Graduating class/]) {
+    assert.match(setup, field);
+  }
+
+  // How reviews behave: not asked yet, and the form says where it went.
+  assert.doesNotMatch(setup, /REVIEW SETTINGS/);
+  assert.doesNotMatch(setup, /Top X committed verses/);
+  assert.doesNotMatch(setup, /once it fades to/);
+  assert.doesNotMatch(setup, /Default difficulty/);
+  assert.match(setup, /You can change how reviews work later, under Settings\./);
+});
+
+test("and the settings form still carries every one of them", () => {
+  // The absence above is a choice about when to ask, not a setting being lost.
+  const editing = shown("profile/edit");
+  assert.match(editing, /REVIEW SETTINGS/);
+  assert.match(editing, /Top X committed verses/);
+  assert.match(editing, /once it fades to/);
+  assert.match(editing, /Default difficulty/);
+  assert.doesNotMatch(editing, /You can change how reviews work later/);
+});
+
 test("resetting says what goes, where it goes from, and what stays", () => {
   const asking = shown("profile/edit-reset-ask");
   assert.match(asking, /Reset all progress\?/);
