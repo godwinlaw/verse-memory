@@ -636,6 +636,47 @@ test("a hand-picked session survives, so the other half can be taken next", () =
   assert.deepEqual(a.state.selection, [1, 4], "the ticks are the member's to clear");
 });
 
+/* ── the first-letter drill is forward-only ───────────────────────────────── */
+
+/* The rule itself is pure and asserted in test/grading.test.mjs (lockedInput).
+ * What is asserted here is that the box is actually wired to it, and only in
+ * the one mode where the reveal would otherwise be answering its own question. */
+
+test("a first-letter attempt cannot be taken back", () => {
+  const a = learnSession("type", { typeFirstLetter: true });
+  a.actions.setTyped("t");
+  a.actions.setTyped("ti");
+  assert.equal(a.state.typed, "ti");
+
+  a.actions.setTyped("t");
+  assert.equal(a.state.typed, "ti", "backspace changes nothing");
+  a.actions.setTyped("");
+  assert.equal(a.state.typed, "ti", "and neither does clearing the box");
+  a.actions.setTyped("xy");
+  assert.equal(a.state.typed, "ti", "nor retyping over a selection");
+
+  a.actions.setTyped("tit");
+  assert.equal(a.state.typed, "tit", "but typing the next letter goes in");
+});
+
+test("writing the passage out in full is still an ordinary box", () => {
+  // The lock is the price of a live reveal. Free recall reveals nothing until
+  // it is handed in, so there is nothing there to cheat and backspace stays.
+  const a = learnSession("type", { typeFirstLetter: false });
+  a.actions.setTyped("Trust in the Lard");
+  a.actions.setTyped("Trust in the");
+  assert.equal(a.state.typed, "Trust in the", "a typo can be fixed");
+});
+
+test("starting over is still offered, it is just not silent", () => {
+  const a = learnSession("type", { typeFirstLetter: true });
+  a.actions.setTyped("tx");
+  a.actions.toggleTypeFirstLetter();
+  a.actions.toggleTypeFirstLetter();
+  assert.equal(a.state.typed, "", "switching the scaffold off and on is a fresh attempt");
+  assert.equal(a.state.typeFirstLetter, true);
+});
+
 /* ── reciting aloud ───────────────────────────────────────────────────────────
  *
  * Recognition needs a browser, so what is driven here is the seam below it: the

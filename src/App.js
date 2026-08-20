@@ -19,6 +19,7 @@ import { dayKey } from "./text.js";
 import { commitsVerse, freshness, migrate, nextStep, reviewAward, reviewedLast, stabilityFor } from "./srs.js";
 import { BLANK_LEVELS, SCRAMBLE_LEVELS } from "./blanks.js";
 import { transcribe } from "./voice.js";
+import { lockedInput } from "./grading.js";
 import { createRecognizer, voiceSupported } from "./recognizer.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
 import { committedCount, dueOrder, freshnessSum, streakOf } from "./progress.js";
@@ -1000,9 +1001,19 @@ export class App extends React.Component {
       // A hand edit settles everything in the box: the member has taken the
       // transcript over, so the next phrase heard starts after what they left
       // rather than overwriting it.
+      //
+      // The first-letter drill is the exception, and it is the whole of issue
+      // #28: the reveal is live, so a member who can backspace is being shown
+      // the answer to the question they are being asked. lockedInput refuses
+      // anything that is not an append, which leaves the box forward-only
+      // without the view needing to know a key from a paste. There is no voice
+      // in that mode, so the tail it settles is moot either way.
       setTyped: (typed) => {
         if (this.activityMarked()) return;
-        this.setState((s) => ({ typed, voice: { ...s.voice, tail: typed.length } }));
+        this.setState((s) => {
+          const next = s.typeFirstLetter && s.mode === "type" ? lockedInput(s.typed, typed) : typed;
+          return { typed: next, voice: { ...s.voice, tail: next.length } };
+        });
       },
       toggleTypeFirstLetter: () => {
         // Switching this changes how the input is graded, so drop any in-progress

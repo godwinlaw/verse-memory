@@ -6,6 +6,20 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **The first-letter drill no longer lets a mistake be taken back.** The reveal
+  is live, so a member who could backspace was being shown the answer to the
+  question they were being asked — type a letter, watch the word fail to
+  appear, correct it, and reach 100% on a passage they could not produce. A
+  wrong initial now gives up the word itself, marked wrong, with the letter
+  that was typed struck through beneath it (the shape the marked paper already
+  used), and the drill moves on. `grading.lockedInput` refuses any edit to the
+  box that is not an append, which covers backspace, select-all-and-retype and
+  a cursor dropped into the middle without naming any of them. Starting over is
+  still offered, just not silently: Try again and the scaffold switch both
+  clear the box outright. Free recall is untouched — it reveals nothing until
+  it is handed in, so there is nothing there to cheat.
+  ([#28](https://github.com/godwinlaw/verse-memory/issues/28))
+
 - **The guide no longer tells anyone to recite into their phone.** The app
   refuses to run on a device you hold (`src/device.js`), so "Say it out loud
   into your phone" described a screen the member will never be shown. It now

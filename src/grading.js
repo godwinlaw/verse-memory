@@ -67,9 +67,16 @@ const HIDDEN_WORD = "···";
 /* First-letter drill: map the Nth letter typed onto the Nth word.
  *
  * A correct initial pops the whole word into view ("right"); a wrong one shows
- * just the letter that was typed ("wrong"); anything not yet reached stays
- * masked ("hidden"). Unlike gradeWritten this is strictly positional — it is a
- * live reveal, so word N must correspond to keystroke N. */
+ * the word the member missed, marked wrong, and the drill moves on to the next
+ * one; anything not yet reached stays masked ("hidden"). Unlike gradeWritten
+ * this is strictly positional — it is a live reveal, so word N must correspond
+ * to keystroke N.
+ *
+ * A miss shows the answer rather than the letter that was typed, and that is
+ * the whole point of the exercise rather than a nicety: the member finds out
+ * what the word was at the moment they could not produce it, which is when it
+ * is worth knowing. It only works because the letter cannot be taken back —
+ * see lockedInput, which is what makes the score mean something. */
 export function revealFirstLetters(words, typed) {
   const tokens = attemptTokens(typed, { firstLetters: true });
   let hits = 0;
@@ -81,9 +88,29 @@ export function revealFirstLetters(words, typed) {
       hits++;
       return { text: word, state: "right" };
     }
-    return { text: got, state: "wrong" };
+    return { text: word, state: "wrong", typed: got };
   });
   return { words: revealed, hits, total: words.length, score: words.length ? hits / words.length : 0 };
+}
+
+/* What the first-letter box is allowed to become — the rule that makes the
+ * drill a recall test rather than a typing exercise.
+ *
+ * Without it a member can always reach 100%: type a letter, see the word fail
+ * to appear, backspace, try the next letter. The reveal is live, so the box is
+ * answering its own question. So the box only ever grows: an edit that is not
+ * `prev` with something added is refused outright and the box keeps what it
+ * had. That covers backspace, select-all-and-retype, and putting the cursor
+ * back into the middle, without any of them needing to be named — the one
+ * shape that is allowed is the one a member typing forwards produces.
+ *
+ * Starting over is still allowed, just not silently: Try again and switching
+ * the scaffold off and on both clear the box outright, which is a fresh
+ * attempt rather than a repaired one. */
+export function lockedInput(prev, next) {
+  const before = prev || "";
+  const after = next || "";
+  return after.startsWith(before) ? after : before;
 }
 
 /* ── references ───────────────────────────────────────────────────────────── */

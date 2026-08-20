@@ -433,10 +433,13 @@ export const copy = {
 
     /* from memory — typed, or recited aloud */
     typeFirstLetterLabel: "First letters only",
-    typeFirstLetterNote: "Type just the first letter of each word instead of the whole passage.",
+    typeFirstLetterNote:
+      "Type just the first letter of each word instead of the whole passage. " +
+      "A wrong letter shows you the word and moves on — you cannot go back and change it.",
     typePlaceholder: "Type the passage from memory, or recite it aloud. Punctuation and capitals are ignored.",
     typeFirstLetterPlaceholder:
-      "Type just the first letter of each word — e.g. “f t h w”. Spacing and punctuation are ignored.",
+      "Type just the first letter of each word — e.g. “f t h w”. Spacing and punctuation are ignored, " +
+      "and there is no backspace: type each letter once.",
     typeRevealed: "words revealed",
     typeMatched: "words matched",
 
