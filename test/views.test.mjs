@@ -42,6 +42,19 @@ function shown(name) {
 
 test.after(() => restore());
 
+/* No screen prints arithmetic that did not work out.
+ *
+ * This is cheap and it earns its place: the leaderboard quoted "NaN%" on every
+ * peer row for as long as the roster fixture went without a freshnessScore, and
+ * nothing here noticed, because a NaN renders as text rather than as a warning.
+ * A figure the member cannot read is a bug wherever it appears. */
+for (const s of scenarios) {
+  test(`prints no NaN: ${s.name}`, () => {
+    const { markup } = renderScenario(s.state, s.props);
+    assert.doesNotMatch(markup, /NaN|undefined%|Infinity/, `${s.name} shows a figure that did not compute`);
+  });
+}
+
 for (const s of scenarios) {
   test(`renders without throwing: ${s.name}`, () => {
     assert.doesNotThrow(() => renderScenario(s.state, s.props));
@@ -155,6 +168,46 @@ test("and it is drawn, not announced", () => {
   const mark = gate.slice(gate.indexOf("<svg"), gate.indexOf("</svg>"));
   assert.match(mark, /aria-hidden="true"/);
   assert.doesNotMatch(mark, /<title>|aria-label/);
+});
+
+/* Ranking groups rather than people. The rule is pure (src/standings.js); what
+ * is asserted here is that the screen changes the question it is answering,
+ * rather than relabelling the same table. */
+test("the board can rank the groups themselves, per member", () => {
+  const byGroup = shown("leaderboard/by-group");
+
+  // The fixture holds two USF members (41 + 9 committed), so a group's figure
+  // has to be the average and visibly not either row.
+  assert.match(byGroup, /USF/);
+  assert.match(byGroup, /25\.0/, "the average of 41 and 9, not either of them");
+  assert.match(byGroup, /2 members/);
+  assert.match(byGroup, /Committed each/, "and the heading says it is per member");
+  assert.match(byGroup, /a small group is not out-run by a large one/);
+
+  // Counting whatever the table holds: three ministries, not four people.
+  assert.match(byGroup, /3 groups/);
+});
+
+test("and each of the three things a member says about themselves", () => {
+  assert.match(shown("leaderboard/by-gender"), /Female/);
+  assert.match(shown("leaderboard/by-class"), /2025/);
+  // The member's own group is pointed out, as their own row is on the people
+  // board.
+  assert.match(shown("leaderboard/by-group"), /Yours/);
+});
+
+test("ranking people is still the board it has always been", () => {
+  const people = shown("leaderboard/all");
+  assert.match(people, /Grace Hopper/);
+  assert.match(people, /5 people/, "four peers and you");
+  assert.doesNotMatch(people, /Committed each/);
+  assert.doesNotMatch(people, /a small group is not out-run/);
+});
+
+test("a grouping with nobody left in it says so in its own words", () => {
+  const empty = shown("leaderboard/by-group-empty");
+  assert.match(empty, /No one has filled this in yet\./);
+  assert.doesNotMatch(empty, /No one matches these filters yet\./);
 });
 
 test("the settings form offers a reset, and the setup form does not", () => {

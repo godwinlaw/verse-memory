@@ -10,6 +10,8 @@
 
 import { copy } from "../copy.js";
 import { freshnessSum } from "../progress.js";
+import { RANK_BY, rankFieldFor, standingsBy } from "../standings.js";
+import { segButton } from "../ui/tokens.js";
 
 /* The filters offered above the board. `field` is the profile attribute each one
  * narrows by, which is also what makes the option lists self-building: every
@@ -65,8 +67,33 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
     .sort((a, b) => b.freshnessScore - a.freshnessScore || b.count - a.count);
   const top = Math.max(1, ranked[0] ? ranked[0].freshnessScore : 1);
 
+  // Ranking groups is the same board asked a different question, so it runs off
+  // the same filtered rows: rank the ministries within the class of 2027 and
+  // both are answered at once. The measure is per member throughout — see
+  // standings.js for why a total would only rank attendance.
+  const rankBy = state.leaderRankBy || "people";
+  const grouped = standingsBy(ranked, rankFieldFor(rankBy));
+  const isGrouped = rankBy !== "people";
+  const groupTop = Math.max(1e-9, grouped[0] ? grouped[0].avgScore : 1);
+  const groupStyle = (g) =>
+    g.mine
+      ? "background:var(--color-reverse-bg);color:var(--color-reverse-text);border-color:var(--color-reverse-bg)"
+      : "";
+
   return {
     daysLeftLabel: copy.leaderboard.daysLeft(totals.daysLeft),
+
+    rankByLabel: copy.leaderboard.rankByLabel,
+    rankByOptions: RANK_BY.map((r) => ({
+      key: r.key,
+      label: copy.leaderboard.rankBy[r.key],
+      style: segButton(r.key === rankBy),
+      onClick: () => actions.setLeaderRankBy(r.key),
+    })),
+    isGrouped,
+    // The blurb explains the measure, and which measure it is depends on what
+    // is being ranked — so the two sit together rather than the view choosing.
+    blurb: isGrouped ? copy.leaderboard.groupBlurb : copy.leaderboard.blurb,
 
     leaderFilters: FILTERS.map((f) => ({
       key: f.key,
@@ -77,19 +104,45 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
       fmt: (o) => (f.key === "gradClass" && o !== ANY ? copy.leaderboard.filterClassOf(o) : o),
     })),
 
-    leaderCount: ranked.length,
-    leaderEmpty: ranked.length === 0,
+    // Counts whatever the table below holds, which is not always people.
+    leaderCount: isGrouped ? copy.leaderboard.countGroups(grouped.length) : copy.leaderboard.count(ranked.length),
+    leaderEmpty: isGrouped ? grouped.length === 0 : ranked.length === 0,
+    emptyNote: isGrouped ? copy.leaderboard.groupEmpty : copy.leaderboard.empty,
 
-    podium: ranked.slice(0, PLACES.length).map((p, i) => ({
+    podium: (isGrouped ? grouped : ranked).slice(0, PLACES.length).map((p, i) => ({
       place: PLACES[i],
       name: p.name,
-      count: p.count,
+      // A group's headline figure is what one of its members holds, not what
+      // all of them hold between them. One decimal, because whole numbers
+      // would make a group of seven look like a group of one.
+      count: isGrouped ? p.avgCount.toFixed(1) : p.count,
+      // "of 167" is a claim about one person's set, so a group says what the
+      // figure is instead of what it is out of.
+      caption: isGrouped ? copy.leaderboard.podiumEach : copy.leaderboard.podiumOf(totals.goal),
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       cardStyle:
         "padding:20px 22px;display:flex;flex-direction:column;gap:8px;" +
-        (p.me
-          ? "background:var(--color-reverse-bg);color:var(--color-reverse-text);border-color:var(--color-reverse-bg)"
-          : ""),
+        (isGrouped
+          ? groupStyle(p)
+          : p.me
+            ? "background:var(--color-reverse-bg);color:var(--color-reverse-text);border-color:var(--color-reverse-bg)"
+            : ""),
+    })),
+
+    standings: grouped.map((g, i) => ({
+      rank: i + 1,
+      name: g.name,
+      members: copy.leaderboard.groupMembers(g.members),
+      avgCount: g.avgCount.toFixed(1),
+      avgFresh: avgFreshPct(g.freshnessScore, g.count) + "%",
+      mine: g.mine,
+      rowStyle: g.mine ? "background:var(--color-accent-100)" : "",
+      barStyle:
+        "height:100%;background:" +
+        (g.mine ? "var(--color-accent-900)" : "var(--color-accent)") +
+        ";width:" +
+        Math.round((g.avgScore / groupTop) * 100) +
+        "%",
     })),
 
     board: ranked.map((p, i) => ({

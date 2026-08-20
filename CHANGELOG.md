@@ -6,6 +6,24 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **The stats board can rank the groups themselves.** It could always _filter_
+  by ministry group, gender and graduating class; now it can rank by them —
+  ministries, male vs female, or classes, against each other. The two compose
+  rather than replacing one another, so ranking the ministries within the class
+  of 2027 answers both questions at once. Every figure is **per member**
+  (`src/standings.js`), because a total would rank by attendance: the largest
+  ministry would win every week and the smallest could never place. A member
+  with nothing committed yet is left out of their group's average, so a ministry
+  that recruits well is not scored down for it, and a member who has not said
+  which group they are in joins none rather than a fictional "Unknown" team.
+  ([#30](https://github.com/godwinlaw/verse-memory/issues/30))
+- **Fixed: the leaderboard printed "NaN%" for every peer.** The roster fixture
+  had no `freshnessScore`, so the average-freshness column rendered `NaN` on
+  every row and nothing caught it — a NaN renders as text, not as a warning.
+  The fixture now carries the field real peers always have, and every scenario
+  is scanned for `NaN`, `undefined%` and `Infinity`, since a figure the member
+  cannot read is a bug wherever it turns up.
+
 - **The app follows the reader into dark.** `prefers-color-scheme` and nothing
   else: no switch anywhere, nothing persisted, because a member who wants dark
   has already said so once to their operating system. It is one block of token
