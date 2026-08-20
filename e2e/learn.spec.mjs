@@ -269,3 +269,73 @@ test("a sitting run to the end counts what it committed", async ({ app, page }) 
   await page.getByRole("button", { name: "Back to the board" }).click();
   expect(await app.figure(app.committedFigure)).toBe(2);
 });
+
+/* Reciting the passage instead of typing it.
+ *
+ * Recognition is the browser's own, so the engine is stubbed (voice: "stub" in
+ * e2e/helpers/app.mjs) exactly as the Firebase SDK is — what is under test is
+ * everything downstream of it. Where the words go is pure and covered in
+ * test/voice.test.mjs; what needs a real textarea is the caret.
+ */
+async function reciteInto(app, page) {
+  await startLearning(app);
+  await recallCard(page);
+  await page.getByRole("button", { name: "Off", exact: true }).last().click();
+  await expect(page.locator(".mic-dot")).toBeVisible();
+}
+
+const say = (page, text, settled = true) => page.evaluate(([t, s]) => window.__E2E_SAY__(t, s), [text, settled]);
+
+test("a recited passage comes out looking like the passage", async ({ app, page }) => {
+  await app.boot({ progress: {}, voice: "stub" });
+  await reciteInto(app, page);
+
+  const passage = passageById(FIRST.id);
+  const box = page.getByPlaceholder(/Type the passage from memory/);
+  const flat = (n) =>
+    passage.text
+      .split(" ")
+      .slice(0, n)
+      .map((w) => w.replace(/[^A-Za-z0-9']/g, "").toLowerCase())
+      .join(" ");
+
+  // The engine hands back a flat lowercase stream; the box shows the verse.
+  await say(page, flat(4));
+  await expect(box).toHaveValue(
+    passage.text
+      .split(" ")
+      .slice(0, 4)
+      .join(" ")
+      .replace(/[^\p{L}\p{N}]+$/u, ""),
+  );
+
+  // And carrying on to the end commits it, because the grader never learns how
+  // the words arrived.
+  const rest = passage.text
+    .split(" ")
+    .slice(4)
+    .map((w) => w.replace(/[^A-Za-z0-9']/g, "").toLowerCase())
+    .join(" ");
+  await say(page, rest);
+  await page.getByRole("button", { name: "Submit" }).click();
+  await expect(page.locator(".result-strip")).toContainText("Committed");
+});
+
+test("the words go in where the cursor is left", async ({ app, page }) => {
+  await app.boot({ progress: {}, voice: "stub" });
+  await reciteInto(app, page);
+
+  const box = page.getByPlaceholder(/Type the passage from memory/);
+  await say(page, "you yourselves");
+  await expect(box).toHaveValue("You yourselves");
+
+  // Park the caret in the middle of what is already there, with the arrow key a
+  // member would actually use — the browser's own selection event is what
+  // carries the position across, and that is the half no unit test reaches.
+  await box.click();
+  for (let i = 0; i < "yourselves".length; i++) await box.press("ArrowLeft");
+
+  await say(page, "did");
+  // The phrase goes in at the caret and "yourselves" is put back after it.
+  await expect(box).toHaveValue("You did yourselves");
+});

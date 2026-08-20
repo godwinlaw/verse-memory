@@ -5,8 +5,21 @@ import { norm, firstLetters, sentences, dayKey } from "../src/text.js";
 
 test("norm lowercases and strips punctuation", () => {
   assert.equal(norm("Self-Control;"), "selfcontrol");
-  assert.equal(norm("don't"), "don't");
   assert.equal(norm(""), "");
+  assert.equal(norm(null), "");
+});
+
+test("an apostrophe is punctuation like any other", () => {
+  // Nobody pronounces one, and a member typing from the sound of the verse
+  // cannot tell where it belongs — so these are one word.
+  assert.equal(norm("eagles"), norm("eagles'"));
+  assert.equal(norm("eagles"), norm("eagle's"));
+  assert.equal(norm("dont"), norm("don't"));
+
+  // And straight and typographic are the same apostrophe. ESV text carries ’
+  // where a keyboard produces ', which used to grade as two different words.
+  assert.equal(norm("eagles’"), norm("eagles'"));
+  assert.equal(norm("God’s"), norm("God's"));
 });
 
 test("firstLetters keeps punctuation, spacing, and hyphens", () => {

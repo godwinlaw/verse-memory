@@ -204,7 +204,7 @@ function typePanel(v) {
             </div></${React.Fragment}
           >`
         : html`<${React.Fragment}
-            >${v.typeUngraded && html`<textarea id=${v.typeInputId} className="input" value=${v.typed} onChange=${v.onTyped} placeholder=${v.typePlaceholder} style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
+            >${v.typeUngraded && html`<textarea id=${v.typeInputId} className="input" value=${v.typed} onChange=${v.onTyped} onSelect=${v.onCaret} placeholder=${v.typePlaceholder} style=${sx("min-height:210px;font-size:17px;line-height:1.7")}></textarea>`}
             ${
               v.typeGraded &&
               // Nothing grades the attempt until it is submitted, so this is

@@ -1,8 +1,19 @@
 /* Small, pure text and date helpers shared across the app. */
 
-/* Normalize a word for comparison: lowercase, strip everything but letters,
- * digits, and apostrophes. Used to grade typed answers and fill-in blanks. */
-export const norm = (s) => s.toLowerCase().replace(/[^a-z0-9']/g, "");
+/* Normalize a word for comparison: lowercase, keep only letters and digits.
+ * Used to grade typed answers and fill-in blanks.
+ *
+ * Apostrophes go with the rest of the punctuation, so "eagles", "eagles'" and
+ * "eagle's" are one word here. That is not a leniency so much as the only
+ * defensible reading: a member reciting a passage aloud does not pronounce an
+ * apostrophe, and one typing it cannot tell from the sound of the verse where
+ * it belongs. It also closes a straight-vs-curly trap — ESV text carries the
+ * typographic ’ (already stripped), while a keyboard produces ', so "eagles’"
+ * and "eagles'" used to grade as different words. */
+export const norm = (s) =>
+  String(s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 
 /* First-letter scaffold for flashcards: reduce every word to its first letter
  * while keeping punctuation, spacing, and hyphens so the shape of the passage

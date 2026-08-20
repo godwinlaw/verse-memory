@@ -63,6 +63,8 @@ export class AppHarness {
    *                             the way; boot.spec.mjs is what raises it;
    *   voice                     "unsupported" for a browser with no
    *                             SpeechRecognition, as Firefox has none;
+   *                             "stub" for one the test can speak into,
+   *                             through window.__E2E_SAY__(text, settled);
    *   reducedMotion             "reduce" by default, so screens are settled the
    *                             moment they arrive — the app drops every
    *                             animation under that query. motion.spec.mjs is
@@ -117,6 +119,35 @@ export class AppHarness {
         if (voice === "unsupported") {
           delete window.SpeechRecognition;
           delete window.webkitSpeechRecognition;
+        }
+        if (voice === "stub") {
+          // A microphone the test can speak into. Chrome will not grant one in
+          // CI, and recognition is the browser's own anyway (src/recognizer.js
+          // is the seam, exactly as src/firebase.js is) — so this stands in for
+          // the engine and nothing else. `window.__E2E_SAY__(text, settled)`
+          // delivers a phrase the way onresult does: the running guess first,
+          // then the settled version.
+          class StubRecognition {
+            start() {
+              window.__E2E_ENGINE__ = this;
+              setTimeout(() => this.onstart && this.onstart(), 0);
+            }
+            abort() {
+              window.__E2E_ENGINE__ = null;
+            }
+            stop() {
+              this.abort();
+            }
+          }
+          window.SpeechRecognition = StubRecognition;
+          window.__E2E_SAY__ = (text, settled) => {
+            const engine = window.__E2E_ENGINE__;
+            if (!engine || !engine.onresult) return false;
+            const results = [{ 0: { transcript: text }, isFinal: !!settled }];
+            results.length = 1;
+            engine.onresult({ resultIndex: 0, results });
+            return true;
+          };
         }
       },
       { seeded, scenario, voice },

@@ -104,6 +104,17 @@ function scrollRecallToEnd() {
   if (el) el.scrollTop = el.scrollHeight;
 }
 
+/* Put the caret back where the words just landed, so a member reciting into
+ * the middle of the transcript can carry straight on from there. `rest` is how
+ * much of the box sits after that point (see voice.js). */
+function caretAfterRecitation(rest) {
+  const el = document.getElementById(RECALL_INPUT_ID);
+  if (!el) return;
+  const at = Math.max(0, el.value.length - rest);
+  el.setSelectionRange(at, at);
+  if (rest) (el.blur(), el.focus(), el.setSelectionRange(at, at));
+}
+
 /* A session opens at the top of the page, so the mode switch — all four
  * activities — is on screen from the first card rather than scrolled past
  * from wherever the board or setup screen left off. */
@@ -124,7 +135,7 @@ function focusRecall() {
 /* The microphone at rest. Reset between cards, since an attempt's transcript
  * belongs to that attempt. `tail` is where the phrase currently being heard
  * begins in `typed` (see voice.js); at rest there is no such phrase. */
-const quietVoice = () => ({ status: "off", error: null, tail: 0 });
+const quietVoice = () => ({ status: "off", error: null, tail: 0, rest: 0 });
 
 function initialState() {
   return {
@@ -345,7 +356,7 @@ export class App extends React.Component {
     this.stopListening();
     // Whatever was still provisional when they stopped is theirs to keep — it
     // is the last thing they said, and it is already in the box.
-    this.setState((s) => ({ voice: { ...s.voice, status: "off", tail: s.typed.length } }));
+    this.setState((s) => ({ voice: { ...s.voice, status: "off", tail: s.typed.length, rest: 0 } }));
   }
 
   toggleVoice() {
@@ -364,12 +375,18 @@ export class App extends React.Component {
    * should take dictation. */
   hearRecitation(text, settled) {
     if (this.state.mode !== "type" || this.state.typeFirstLetter || this.cardSubmitted()) return;
+    let landed = 0;
     this.setState(
       (s) => {
-        const next = transcribe(s.typed, s.voice.tail, text, settled);
-        return { typed: next.typed, voice: { ...s.voice, tail: next.tail } };
+        // The verse is handed over so the words can be fitted back onto it —
+        // the passage's own spelling and punctuation, which the engine has no
+        // way to know (see voice.js).
+        const verse = s.passages.find((p) => p.id === s.queue[s.qi]);
+        const next = transcribe(s.typed, s.voice.tail, text, settled, verse ? verse.text : "", s.voice.rest);
+        landed = next.rest;
+        return { typed: next.typed, voice: { ...s.voice, tail: next.tail, rest: next.rest } };
       },
-      () => scrollRecallToEnd(),
+      () => (landed ? caretAfterRecitation(landed) : scrollRecallToEnd()),
     );
   }
 
@@ -1017,11 +1034,27 @@ export class App extends React.Component {
       // anything that is not an append, which leaves the box forward-only
       // without the view needing to know a key from a paste. There is no voice
       // in that mode, so the tail it settles is moot either way.
-      setTyped: (typed) => {
+      setTyped: (typed, caret) => {
         if (this.activityMarked()) return;
         this.setState((s) => {
           const next = s.typeFirstLetter && s.mode === "type" ? lockedInput(s.typed, typed) : typed;
-          return { typed: next, voice: { ...s.voice, tail: next.length } };
+          // A hand edit settles the box up to the caret rather than to the end:
+          // what sits after the cursor is the member's too, and the next phrase
+          // heard goes in where they left off rather than past it.
+          const at = typeof caret === "number" ? Math.max(0, Math.min(caret, next.length)) : next.length;
+          return { typed: next, voice: { ...s.voice, tail: at, rest: next.length - at } };
+        });
+      },
+      // Moving the cursor without typing anything says the same thing a hand
+      // edit does about where the next phrase belongs. Only worth tracking
+      // while the microphone is open — nothing else in the app reads it, and a
+      // member who is only typing should not pay for a setState per keystroke.
+      setCaret: (caret) => {
+        if (this.state.voice.status === "off" || this.activityMarked()) return;
+        this.setState((s) => {
+          const at = Math.max(0, Math.min(caret, s.typed.length));
+          if (at === s.voice.tail && s.typed.length - at === s.voice.rest) return null;
+          return { voice: { ...s.voice, tail: at, rest: s.typed.length - at } };
         });
       },
       toggleTypeFirstLetter: () => {
