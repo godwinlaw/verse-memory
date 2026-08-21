@@ -125,6 +125,42 @@ function caretAfterRecitation(rest) {
   if (rest) (el.blur(), el.focus(), el.setSelectionRange(at, at));
 }
 
+/* Publish the app header's height as --app-header-h, for the sticky things
+ * that have to stop underneath it (styles.css, .list-head).
+ *
+ * The header is sticky and its height is not a constant: it wraps in a narrow
+ * window, and its type settles a little when the web font arrives. A number
+ * written into the stylesheet would be right for one of those and wrong for
+ * the rest, so it is measured. The observer is what covers the font, and
+ * `attach` — called again on every update — is what covers the header not
+ * being on the page yet: the splash and the sign-in gate come first, so at
+ * mount there is nothing to measure.
+ *
+ * Absent ResizeObserver (or a document at all, under node:test) the CSS
+ * fallback stands, which sticks the table head to the top of the window
+ * instead of below the header — degraded, not broken. */
+function watchHeaderHeight() {
+  if (typeof document === "undefined" || typeof ResizeObserver === "undefined") return { attach() {}, stop() {} };
+  let watched = null;
+  // The box, not offsetHeight: the header's height is rarely a whole number,
+  // and rounding it down leaves the sticky thing below it half a pixel under
+  // the header rather than against it.
+  const measure = (el) =>
+    document.documentElement.style.setProperty("--app-header-h", Math.ceil(el.getBoundingClientRect().height) + "px");
+  const observer = new ResizeObserver((entries) => entries.forEach((e) => measure(e.target)));
+  return {
+    attach() {
+      const el = document.querySelector(".app-header");
+      if (!el || el === watched) return;
+      if (watched) observer.unobserve(watched);
+      watched = el;
+      measure(el);
+      observer.observe(el);
+    },
+    stop: () => observer.disconnect(),
+  };
+}
+
 /* A session opens at the top of the page, so the mode switch — all four
  * activities — is on screen from the first card rather than scrolled past
  * from wherever the board or setup screen left off. */
@@ -330,6 +366,14 @@ export class App extends React.Component {
     // Independent of the auth/sync seam above: an unconfigured or unreachable
     // Analytics is invisible to the member, same as an unconfigured Firebase.
     initAnalytics();
+    this.headerHeight = watchHeaderHeight();
+    this.headerHeight.attach();
+  }
+
+  /* The header arrives on the page some renders after mount — see
+   * watchHeaderHeight for why this is where it is picked up. */
+  componentDidUpdate() {
+    if (this.headerHeight) this.headerHeight.attach();
   }
 
   /* Begin (or begin again) the account half of the boot. Separated from
@@ -355,6 +399,7 @@ export class App extends React.Component {
     clearTimeout(this.splashTimer);
     clearTimeout(this.authWaitTimer);
     if (this.unwatchTheme) this.unwatchTheme();
+    if (this.headerHeight) this.headerHeight.stop();
     this.stopListening();
   }
 

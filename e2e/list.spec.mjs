@@ -116,6 +116,28 @@ test("ticked rows are taken as one sitting", async ({ app, page }) => {
   await expect(page.getByText("Learn · Flashcard · Passage 1 of 2")).toBeVisible();
 });
 
+/* The head is CSS the view only names, and the thing worth asserting is not the
+ * declaration but the effect: that it is still on screen, and still under the
+ * app header rather than through it, after the list has been scrolled. */
+test("the table's head stays on screen while the rows scroll under it", async ({ app, page }) => {
+  await app.boot({ progress: PROGRESS });
+  await openList(app);
+
+  await tick(page, passageById(6).ref).click();
+  await tick(page, passageById(7).ref).click();
+  await expect(page.locator(".selection-bar")).toContainText("2 verses selected");
+
+  await page.mouse.wheel(0, 2000);
+  await expect(page.locator(".selection-bar")).toBeInViewport();
+  await expect(page.getByText("Freshness", { exact: true })).toBeInViewport();
+
+  // Below the app header, not behind it: the measured height is what the head
+  // stops at (see App.watchHeaderHeight).
+  const header = await page.locator(".app-header").boundingBox();
+  const head = await page.locator(".list-head").boundingBox();
+  expect(head.y).toBeGreaterThanOrEqual(header.y + header.height - 1);
+});
+
 test("shift-click ticks the run between two rows", async ({ app, page }) => {
   await app.boot({ progress: PROGRESS });
   await openList(app);

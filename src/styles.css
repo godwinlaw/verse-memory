@@ -17,6 +17,11 @@
      ramp, because the ramp means "strongest state" and inverts with the theme,
      while this has to stay a plate: on a dark page it lifts *off* the ground
      instead of sinking into it, which the ramp's darkest step cannot do. */
+  /* The app header's measured height, republished by App.watchHeaderHeight for
+     the sticky things that stop underneath it. Declared here so the cascade
+     always has a value; nothing but that measurement ever writes it. */
+  --app-header-h: 0px;
+
   --color-reverse-bg: #1d2d3d;
   --color-reverse-text: #f2f2f3;
   --color-reverse-line: color-mix(in srgb, var(--color-reverse-text) 25%, transparent);
@@ -1785,7 +1790,25 @@ textarea.input {
 }
 
 /* ── the passage list ───────────────────────────────────────────────────────
-   The bar over the ticked rows is not there until something is ticked, so it
+   The table's head stays put while the rows scroll under it. It is one sticky
+   box holding both the column labels and, once rows are ticked, the selection
+   bar above them — the whole reason for ticking a run of verses is the Review
+   button in that bar, and on a list this long it used to scroll out of sight
+   long before the member had finished choosing.
+
+   It stops below the app header rather than at the top of the window, which is
+   what --app-header-h is for: that header is sticky too, and its height is not
+   a constant (it wraps in a narrow window, and settles when the web font
+   arrives), so App.watchHeaderHeight measures it and publishes it here. Under
+   the header's own z-index, so scrolling tucks this beneath it rather than
+   through it. */
+.list-head {
+  position: sticky;
+  top: var(--app-header-h, 0px);
+  z-index: 10;
+  background: var(--color-bg);
+}
+/* The bar over the ticked rows is not there until something is ticked, so it
    arrives from under the header it pushes down. */
 .selection-bar {
   animation: selection-in var(--dur-swap) var(--ease-out) backwards;
