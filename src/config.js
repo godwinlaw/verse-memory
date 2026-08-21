@@ -31,6 +31,7 @@ const DEFAULT_FIREBASE_CONFIG = {
   storageBucket: "verse-memory.firebasestorage.app",
   messagingSenderId: "223583873519",
   appId: "1:223583873519:web:eb490a7c3f51a14897ae1a",
+  measurementId: "G-3YYWC1KY57",
 };
 
 const firebaseOverride = typeof window !== "undefined" ? window.__FIREBASE_CONFIG__ : undefined;

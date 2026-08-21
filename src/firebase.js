@@ -68,6 +68,50 @@ async function loadServices() {
   return services;
 }
 
+/* Google Analytics, wired as the same kind of optional overlay as sync above:
+ * a build with no measurementId (or one where the CDN or the browser itself
+ * refuses the SDK — private browsing, an ad/tracker blocker) simply sends no
+ * events, and nothing else in the app is allowed to depend on it. Memoized on
+ * its own rather than folded into loadServices() so a member who never gets a
+ * signed-in session (and so never needs auth/Firestore) still doesn't pay for
+ * this import, and so a browser that refuses Analytics doesn't take auth down
+ * with it. */
+let analyticsPromise = null;
+
+async function loadAnalytics() {
+  if (!firebaseConfig || !firebaseConfig.measurementId) return null;
+  if (!analyticsPromise) {
+    analyticsPromise = (async () => {
+      try {
+        const [{ app }, analyticsMod] = await Promise.all([loadServices(), import(`${SDK}/firebase-analytics.js`)]);
+        if (!(await analyticsMod.isSupported())) return null;
+        return { mod: analyticsMod, instance: analyticsMod.getAnalytics(app) };
+      } catch (e) {
+        console.warn("Firebase Analytics unavailable:", e);
+        return null;
+      }
+    })();
+  }
+  return analyticsPromise;
+}
+
+/* Start Analytics eagerly (rather than waiting for the first logAnalyticsEvent)
+ * so the SDK's own automatic page_view/session_start events fire for every
+ * member, not only those who go on to log a custom event. Fire-and-forget: the
+ * app's boot never waits on this and nothing reads its result. */
+export function initAnalytics() {
+  loadAnalytics();
+}
+
+/* Log a custom Analytics event. Never throws and resolves silently wherever
+ * Analytics did not start (see loadAnalytics) — callers do not need to know
+ * whether Analytics is configured, reachable, or supported in this browser. */
+export async function logAnalyticsEvent(name, params) {
+  const analytics = await loadAnalytics();
+  if (!analytics) return;
+  analytics.mod.logEvent(analytics.instance, name, params);
+}
+
 /* True only for an address in one of the allowed Workspace domains. Matches the
  * exact domain after the final "@" (case-insensitive), so look-alikes like
  * "evilgpmail.org" or "gpmail.org.evil.com" are rejected. */

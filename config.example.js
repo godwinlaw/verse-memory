@@ -26,5 +26,6 @@ window.__APP_CONFIG__ = {
 //   storageBucket: "your-project.firebasestorage.app",
 //   messagingSenderId: "...",
 //   appId: "...",
+//   measurementId: "G-...", // omit to disable Google Analytics only
 // };
 // window.__FIREBASE_CONFIG__ = null; // disable cloud sync
