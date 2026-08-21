@@ -68,9 +68,13 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
 
   // The set, split the way the two sittings split it: committed verses that have
   // faded enough to be worth topping up, and verses not yet committed at all.
-  const toReview = reviewPool(state.passages, state.progress, dueFreshness).slice(0, dueTopX);
+  // `today` is threaded through rather than left to these two calls' own
+  // Date.now() default, so the split is pinned to the same instant as every
+  // other figure on this screen (see activityDays, deriveTotals above).
+  const now = today.getTime();
+  const toReview = reviewPool(state.passages, state.progress, dueFreshness, now).slice(0, dueTopX);
   const learnSize = (state.learnSetup && state.learnSetup.size) || LEARN_SIZE;
-  const toLearn = learnPool(state.passages, state.progress).slice(0, learnSize);
+  const toLearn = learnPool(state.passages, state.progress, now).slice(0, learnSize);
 
   const days = activityDays(state.log, today);
   const peak = Math.max(MIN_CHART_PEAK, ...days.map((x) => x.n));
