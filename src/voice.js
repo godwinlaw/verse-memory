@@ -17,7 +17,11 @@
  * there is nothing else here: what the member sees in the box is what the
  * grader will mark, and correcting a mistake needs no machinery of its own,
  * because the box is an ordinary textarea the whole time. Backspace is
- * backspace. */
+ * backspace.
+ *
+ * The one correction the box does make for itself is a word the engine spelled
+ * wrong rather than a word the member said wrong — see same() below, which is
+ * the only loose comparison anywhere in the app and says why. */
 
 import { norm } from "./text.js";
 
@@ -36,10 +40,77 @@ const wordsOf = (s) =>
  * it opens and there is never a question of having earned it. */
 const unpunctuated = (w) => w.replace(/[^\p{L}\p{N}]+$/u, "");
 
+/* How far apart two spellings may be and still be the same word said out loud.
+ * One edit, and never on a word short enough for one edit to be most of it —
+ * "us" and "as" are two words, "Jews" and "Jew" are one word twice. */
+const MAX_EDITS = 1;
+const MIN_FUZZY_LEN = 3;
+
+/* Whether two strings are within MAX_EDITS of each other — one substitution,
+ * insertion, or deletion. Walked in step rather than scored with a full edit
+ * matrix, because the only question ever asked is "one or fewer", and the
+ * answer to that is known the second time the walk falls out of step. */
+function withinOneEdit(a, b) {
+  if (a === b) return true;
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  if (long.length - short.length > MAX_EDITS) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < short.length && j < long.length) {
+    if (short[i] === long[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    if (++edits > MAX_EDITS) return false;
+    // Same length: the two are out of step by a substitution, so both advance.
+    // Different: the longer one carries a letter the shorter does not.
+    if (short.length === long.length) i++;
+    j++;
+  }
+  return true;
+}
+
+/* A word with one plural or third-person ending taken off. Speech recognition
+ * gets the sound and guesses the grammar, and the guess it gets wrong most is
+ * this one: "sows" comes back as "sews", "Jew" as "Jews". Stripped from both
+ * sides before they are compared, so the ending is never what separates them. */
+const stem = (w) => w.replace(/(?:es|s)$/, "");
+
 /* Whether a word that was heard is the word the passage wanted. Compared
  * through norm(), so neither punctuation nor an apostrophe nobody pronounces
- * can separate "eagles", "eagles'" and "eagle's". */
-const same = (heard, want) => !!want && !!heard && norm(heard) === norm(want);
+ * can separate "eagles", "eagles'" and "eagle's".
+ *
+ * And compared loosely, which is the one place in the app that grades anything
+ * loosely. The engine hands back a spelling, not a sound: a member reciting
+ * Galatians perfectly gets "sews" for "sow" and "Jews" for "Jew", and then
+ * fails the card — or has to stop and repair the box by hand, which is the
+ * thing reciting was meant to save them. Those are not recall errors, they are
+ * transcription errors, and the passage is right there to correct them
+ * against.
+ *
+ * So a heard word within one edit of the word the passage wanted, ignoring a
+ * plural ending on either side, is taken as that word — and fitToPassage then
+ * writes the passage's spelling into the box, which is the correction. Held
+ * tight by the two rules above: one edit, and nothing under MIN_FUZZY_LEN
+ * letters, where a single edit is the difference between "he" and "be".
+ *
+ * It is deliberately only here. grading.js stays exact, so nothing a member
+ * *types* is forgiven — this is the microphone being held to what it heard,
+ * not the commit bar being lowered. The cost is that a recited word genuinely
+ * misremembered as a near neighbour ("hear" for "heart") is now given, which
+ * is the trade this makes on purpose: the alternative failed a member who said
+ * the verse right. MAX_EDITS and MIN_FUZZY_LEN are where that is tuned. */
+function same(heard, want) {
+  if (!want || !heard) return false;
+  const a = norm(heard);
+  const b = norm(want);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.length < MIN_FUZZY_LEN || b.length < MIN_FUZZY_LEN) return false;
+  return withinOneEdit(a, b) || withinOneEdit(stem(a), stem(b));
+}
 
 /* Fitting what was heard back onto the passage.
  *
