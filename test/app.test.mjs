@@ -130,6 +130,35 @@ test("each peek costs the card freshness", () => {
   assert.equal(peeked.state.results[1].peeks, 2);
 });
 
+test("the latch keeps the passage up for one peek, not one per look", () => {
+  const a = session("blanks");
+
+  a.actions.togglePeekStick();
+  assert.equal(a.state.showHelp, true, "switching the latch on is the reveal");
+  assert.equal(a.state.peeks, 1, "and is charged as a peek, exactly once");
+
+  // What the latch is for: the presses that used to be needed to keep looking.
+  a.actions.setPeek(true);
+  a.actions.setPeek(false);
+  assert.equal(a.state.showHelp, true, "letting go does not put away what the latch is holding");
+  assert.equal(a.state.peeks, 1, "and a peek at a passage already on screen costs nothing further");
+
+  a.actions.togglePeekStick();
+  assert.equal(a.state.showHelp, false, "switching it off puts the passage away");
+  assert.equal(a.state.peeks, 1, "having seen it is not refunded");
+});
+
+test("the latch belongs to the card, so the next verse is not revealed for free", () => {
+  const a = session("blanks");
+  a.actions.togglePeekStick();
+  a.actions.submitCard(1);
+  a.actions.nextCard();
+
+  assert.equal(a.state.peekStick, false);
+  assert.equal(a.state.showHelp, false);
+  assert.equal(a.state.peeks, 0);
+});
+
 test("moving on without submitting asks first, and records nothing", () => {
   const a = session("blanks");
 

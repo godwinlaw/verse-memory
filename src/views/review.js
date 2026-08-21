@@ -268,6 +268,48 @@ function scramblePanel(v) {
   </div>`;
 }
 
+/* Looking the passage up, directly above where it appears.
+ *
+ * It sits at the foot of the card rather than in its header, which is where it
+ * used to be: the reveal opens below the activity, so a control at the top of
+ * the card scrolled the answer it had just produced off the bottom of the
+ * screen. Beside what it reveals, the press and the passage are one place.
+ *
+ * Two ways to look, because they answer different questions. Holding the button
+ * is a glance — the passage while the finger is down — and is what the control
+ * has always been. The latch beside it is that glance held open, for a member
+ * checking themselves line by line who would otherwise be pressing the button
+ * once a line. Both cost the card the same single peek (App.setPeek,
+ * App.togglePeekStick); neither is a way of seeing the passage for free.
+ *
+ * Not shown on the flashcard, which is already a reveal. */
+function peekRow(v) {
+  return html`<div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+    <button
+      className="btn btn-ghost"
+      onMouseDown=${v.peekOn}
+      onMouseUp=${v.peekOff}
+      onMouseLeave=${v.peekOff}
+      onTouchStart=${v.peekOn}
+      onTouchEnd=${v.peekOff}
+      style=${sx("font-size:12px;user-select:none;touch-action:none")}
+    >
+      ${v.helpLabel}
+    </button>
+    <span style=${sx(LABEL_SECTION)}>${v.peekStickLabel}</span>
+    <button
+      className="seg-btn"
+      onClick=${v.togglePeekStick}
+      aria-label=${v.peekStickLabel}
+      aria-pressed=${v.peekStickOn}
+      style=${sx(v.peekStickStyle)}
+    >
+      ${v.peekStickOn ? copy.common.on : copy.common.off}
+    </button>
+    <span style=${sx(`font-size:12px;color:${v.peekSpent ? COLOR_ERROR : muted(50)}`)}>${v.peekNote}</span>
+  </div>`;
+}
+
 /* Whichever activity is running, wrapped in the one thing all four share: they
  * are dealt rather than redrawn. The wrapper is keyed on the card and the mode
  * together (v.cardKey), so moving to the next verse and switching exercise on
@@ -442,26 +484,9 @@ export function reviewView(v) {
       >
         <h2 style=${sx("margin:0")}>${v.curRef}</h2>
         <div style=${sx(LABEL_META)}>${v.curMeta}</div>
-        ${
-          !v.isFlip &&
-          html`<div style=${sx("margin-left:auto;display:flex;align-items:baseline;gap:10px")}>
-            <span style=${sx(`font-size:12px;color:${v.peekSpent ? COLOR_ERROR : muted(50)}`)}>${v.peekNote}</span>
-            <button
-              className="btn btn-ghost"
-              onMouseDown=${v.peekOn}
-              onMouseUp=${v.peekOff}
-              onMouseLeave=${v.peekOff}
-              onTouchStart=${v.peekOn}
-              onTouchEnd=${v.peekOff}
-              style=${sx("font-size:12px;user-select:none;touch-action:none")}
-            >
-              ${v.helpLabel}
-            </button>
-          </div>`
-        }
       </div>
 
-      ${activityPanel(v)}
+      ${activityPanel(v)} ${!v.isFlip && peekRow(v)}
       ${v.showHelp && html`<div className="reveal-in" style=${sx(`border-left:2px solid var(--color-accent);padding:4px 0 4px 16px;font-size:15px;line-height:1.65;color:${muted(70)};max-width:74ch`)}>${v.curText}</div>`}
       ${v.resultShown && (v.isLearn ? learnResultStrip(v) : resultStrip(v))}
 

@@ -168,7 +168,7 @@ test("a browser that cannot listen says so, and is still a box you type in", asy
   const box = await recallCard(page);
 
   await expect(page.getByText("Not available in this browser.")).toBeVisible();
-  const voiceSwitch = page.locator(".seg-btn").filter({ hasText: /^Off$/ }).last();
+  const voiceSwitch = page.getByRole("button", { name: "Off", exact: true }).last();
   await expect(voiceSwitch).toBeDisabled();
 
   // Nothing about the activity depends on it.

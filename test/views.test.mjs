@@ -432,6 +432,17 @@ test("what a card is worth is quoted before it is submitted", () => {
   assert.match(shown("review/blanks"), /Each peek costs 5%/);
 });
 
+test("looking the passage up is offered two ways, below the activity", () => {
+  const markup = shown("review/blanks");
+  assert.match(markup, /Peek/, "held down for a glance");
+  assert.match(markup, /Keep shown/, "or latched on, for a member checking line by line");
+  assert.ok(
+    markup.indexOf("Keep shown") > markup.indexOf("blank-input"),
+    "and the control sits below the activity, beside where the passage appears",
+  );
+  assert.doesNotMatch(shown("review/flip-hidden"), /Keep shown/, "a flashcard is already a reveal");
+});
+
 test("submitting shows the freshness earned as two bars and a signed figure", () => {
   const markup = shown("review/submitted");
   assert.match(markup, /Was/);

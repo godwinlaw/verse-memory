@@ -180,6 +180,10 @@ function initialState() {
     reviewMoveAsk: null, // walking off an unsubmitted card: null | "prev" | "next"
     showHelp: false,
     peeks: 0, // presses of "Peek" on the card in front of us
+    // Peek latched on, so the passage stays up instead of needing to be held.
+    // Per card like `peeks` above: carrying it onto the next verse would spend
+    // a peek on a card the member had not asked to see.
+    peekStick: false,
     revealed: false,
     flipLetters: false,
     answers: {},
@@ -696,6 +700,7 @@ export class App extends React.Component {
       flipLetters: false,
       showHelp: false,
       peeks: 0,
+      peekStick: false,
       answers: {},
       blanksChecked: false,
       typed: "",
@@ -1052,8 +1057,28 @@ export class App extends React.Component {
         else if (this.cardOpenAgain()) this.retryCard();
       },
       // Peeking is counted, not prevented: each press costs the card freshness
-      // (see srs.reviewAward), so only the press is worth counting.
-      setPeek: (showHelp) => this.setState((s) => ({ showHelp, peeks: showHelp ? s.peeks + 1 : s.peeks })),
+      // (see srs.reviewAward), so only the press is worth counting. A peek that
+      // is already showing costs nothing further — that is only reachable with
+      // the latch on, and charging for pressing Peek at a passage already on
+      // screen would be charging for nothing.
+      //
+      // Releasing the button leaves the passage up while the latch holds it:
+      // hold-to-peek and keep-it-up are the same reveal, so a hold must not be
+      // the gesture that puts away what the latch is keeping.
+      setPeek: (showHelp) =>
+        this.setState((s) => ({
+          showHelp: showHelp || s.peekStick,
+          peeks: showHelp && !s.showHelp ? s.peeks + 1 : s.peeks,
+        })),
+      // The latch itself. Switching it on is a peek — it reveals the passage —
+      // and is charged as one; switching it off puts the passage away and
+      // refunds nothing, since it was seen.
+      togglePeekStick: () =>
+        this.setState((s) =>
+          s.peekStick
+            ? { peekStick: false, showHelp: false }
+            : { peekStick: true, showHelp: true, peeks: s.showHelp ? s.peeks : s.peeks + 1 },
+        ),
       submitCard: (score) => this.submitCard(score),
       retryCard: () => this.retryCard(),
       nextCard: () => this.moveCard(1),
