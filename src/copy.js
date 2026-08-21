@@ -64,6 +64,16 @@ export const copy = {
     new: "Not started",
   },
 
+  /* The member-facing word for each stored gender value. GENDERS in profile.js
+   * ("Male"/"Female") stays the persisted key — it is what is written to a
+   * profile and what the filters match against — this is only what gets said
+   * on screen: the profile form's buttons, the leaderboard's gender filter, and
+   * the group name when the standings are ranked by gender. */
+  gender: {
+    Male: "Brother",
+    Female: "Sister",
+  },
+
   /* ── chrome ─────────────────────────────────────────────────────────────── */
 
   nav: {
@@ -668,10 +678,10 @@ export const copy = {
      * wording says "each" wherever a figure could be mistaken for a total. */
     rankByLabel: "Rank",
     rankBy: {
-      people: "People",
-      group: "Ministry groups",
-      gender: "Male vs female",
-      gradClass: "Graduating classes",
+      group: "Ministry",
+      gradClass: "Class",
+      gender: "Bros & Sis",
+      people: "Individuals",
     },
     groupBlurb: "Groups ranked by how much each member holds, so a small group is not out-run by a large one.",
     colGroupMembers: "Members",

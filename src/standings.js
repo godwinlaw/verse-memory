@@ -23,13 +23,14 @@
  * of grouping and deliberately lives in the same list, so the control is one
  * row of choices rather than a mode switch beside a mode switch. */
 export const RANK_BY = [
-  { key: "people", field: null },
   { key: "group", field: "ministryGroup" },
-  { key: "gender", field: "gender" },
   { key: "gradClass", field: "gradClass" },
+  { key: "gender", field: "gender" },
+  { key: "people", field: null },
 ];
 
-export const rankFieldFor = (key) => (RANK_BY.find((r) => r.key === key) || RANK_BY[0]).field;
+export const rankFieldFor = (key) =>
+  (RANK_BY.find((r) => r.key === key) || RANK_BY.find((r) => r.key === "people")).field;
 
 /* A member with nothing to their name yet does not drag their group down.
  *

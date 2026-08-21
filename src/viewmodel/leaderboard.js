@@ -22,6 +22,12 @@ const FILTERS = [
   { key: "gradClass", field: "gradClass", label: copy.leaderboard.filterClass },
 ];
 
+/* The stored value for a filter/group, as it should read on screen. Only
+ * gender and graduating class need a translation — ministry group is already
+ * shown verbatim. */
+const displayValue = (key, value) =>
+  key === "gender" ? copy.gender[value] || value : key === "gradClass" ? copy.leaderboard.filterClassOf(value) : value;
+
 const ANY = copy.common.all;
 const PLACES = copy.leaderboard.places;
 
@@ -72,7 +78,12 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   // both are answered at once. The measure is per member throughout — see
   // standings.js for why a total would only rank attendance.
   const rankBy = state.leaderRankBy || "people";
-  const grouped = standingsBy(ranked, rankFieldFor(rankBy));
+  // A group's name is its raw field value (e.g. standingsBy names a ministry
+  // grouping "Kairos" straight off the profile) — gender is the one grouping
+  // whose stored value is not what a member should read on screen.
+  const grouped = standingsBy(ranked, rankFieldFor(rankBy)).map((g) =>
+    rankBy === "gender" ? { ...g, name: copy.gender[g.name] || g.name } : g,
+  );
   const isGrouped = rankBy !== "people";
   const groupTop = Math.max(1e-9, grouped[0] ? grouped[0].avgScore : 1);
   const groupStyle = (g) =>
@@ -101,7 +112,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
       value: selected[f.key],
       onChange: (e) => actions.setLeaderFilter(f.key, e.target.value),
       opts: [ANY, ...distinctValues(roster, f.field)],
-      fmt: (o) => (f.key === "gradClass" && o !== ANY ? copy.leaderboard.filterClassOf(o) : o),
+      fmt: (o) => displayValue(f.key, o),
     })),
 
     // Counts whatever the table below holds, which is not always people.
