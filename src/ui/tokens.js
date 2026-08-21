@@ -24,6 +24,16 @@ export const COLOR_ERROR = "var(--color-error)";
 export const LABEL_SECTION = `font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${muted(55)}`;
 export const LABEL_META = `font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:${muted(50)}`;
 
+/* A line of controls: a label, the switches or segments it names, and usually a
+ * note after them. Every way of working a review card is drawn as one of these
+ * — the blanks' level, the first-letter scaffold, the microphone, the phrase
+ * length, Peek — and so is the leaderboard's "rank by", which is the same
+ * gesture asked on a different screen. Wrapping is the whole reason it is a
+ * shared string rather than five similar ones: these rows are as long as their
+ * copy, and a row that broke differently from the row above it would read as a
+ * different kind of thing. */
+export const CONTROL_ROW = "display:flex;align-items:center;gap:10px;flex-wrap:wrap";
+
 /* Full-screen centred shell used by the sign-in gate and the profile form. */
 export const SCREEN_CENTERED =
   "min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);" +

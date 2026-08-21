@@ -8,7 +8,7 @@
 
 import { copy } from "../copy.js";
 import { html, sx, corners } from "../dom.js";
-import { LABEL_META, muted } from "../ui/tokens.js";
+import { CONTROL_ROW, LABEL_META, muted } from "../ui/tokens.js";
 
 export function leaderboardView(v) {
   return html`<div
@@ -24,7 +24,7 @@ export function leaderboardView(v) {
     </div>
     <div style=${sx(`font-size:13px;color:${muted(55)}`)}>${v.blurb}</div>
 
-    <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+    <div style=${sx(CONTROL_ROW)}>
       <span style=${sx(`font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${muted(55)}`)}
         >${v.rankByLabel}</span
       >
