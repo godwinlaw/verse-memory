@@ -49,7 +49,11 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   const roster = (state.peers || []).concat([
     {
       name: copy.leaderboard.you,
-      count: totals.memorized,
+      // Every category, matching the peer rows above — those come from
+      // committedCount(r.progress) in App.loadRoster, which knows nothing about
+      // the goal category. totals.memorized is the goal's own count and would
+      // have quietly under-reported you against everybody else.
+      count: totals.committedAll,
       freshnessScore: myFreshnessScore,
       streak: myStreak,
       me: true,
@@ -127,9 +131,11 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
       // all of them hold between them. One decimal, because whole numbers
       // would make a group of seven look like a group of one.
       count: isGrouped ? p.avgCount.toFixed(1) : p.count,
-      // "of 167" is a claim about one person's set, so a group says what the
-      // figure is instead of what it is out of.
-      caption: isGrouped ? copy.leaderboard.podiumEach : copy.leaderboard.podiumOf(totals.goal),
+      // "of 183" is a claim about one person's set, so a group says what the
+      // figure is instead of what it is out of. Out of the whole set rather
+      // than the goal category, because `count` above spans every category —
+      // against the goal's 167 a member could read "170 of 167".
+      caption: isGrouped ? copy.leaderboard.podiumEach : copy.leaderboard.podiumOf(totals.totalCount),
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       cardStyle:
         "padding:20px 22px;display:flex;flex-direction:column;gap:8px;" +

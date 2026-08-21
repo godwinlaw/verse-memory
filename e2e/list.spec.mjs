@@ -5,7 +5,9 @@
  * that exists until there is a pointer holding shift. */
 
 import { test, expect } from "./fixtures.mjs";
-import { GOAL, committed, passageById, started } from "./helpers/seed.mjs";
+import { TOTAL, committed, passageById, passages, started } from "./helpers/seed.mjs";
+
+const PSALMS = passages.filter((p) => p.category === "psalms").length;
 
 const PROGRESS = { 1: committed(0.9), 2: committed(0.4), 4: started(0.5) };
 
@@ -21,8 +23,8 @@ test("search narrows the table, and the summary counts what is shown", async ({ 
   await app.boot({ progress: PROGRESS });
   await openList(app);
 
-  await expect(page.locator(".item-in")).toHaveCount(GOAL);
-  await expect(page.getByText(`${GOAL} shown · 2 committed`)).toBeVisible();
+  await expect(page.locator(".item-in")).toHaveCount(TOTAL);
+  await expect(page.getByText(`${TOTAL} shown · 2 committed`)).toBeVisible();
 
   await page.getByPlaceholder("Search reference or text").fill("Psalm 46");
   await expect(page.locator(".item-in")).toHaveCount(1);
@@ -33,20 +35,58 @@ test("search narrows the table, and the summary counts what is shown", async ({ 
   await expect(page.locator(".item-in")).toHaveCount(0);
 });
 
+/* Two tab rows sit side by side above the table — the shelves, then the
+ * statuses — and each has an "All". Reached by row so a spec cannot silently
+ * press the wrong one. */
+const categoryTabs = (page) => page.locator(".seg").first();
+const statusTabs = (page) => page.locator(".seg").nth(1);
+
 test("the status tabs show one half of the set at a time", async ({ app, page }) => {
   await app.boot({ progress: PROGRESS });
   await openList(app);
 
-  await page.getByRole("button", { name: "Committed", exact: true }).click();
+  await statusTabs(page).getByRole("button", { name: "Committed", exact: true }).click();
   await expect(page.locator(".item-in")).toHaveCount(2);
   await expect(row(page, passageById(1).ref)).toBeVisible();
 
-  await page.getByRole("button", { name: "In progress", exact: true }).click();
+  await statusTabs(page).getByRole("button", { name: "In progress", exact: true }).click();
   await expect(page.locator(".item-in")).toHaveCount(1);
   await expect(row(page, passageById(4).ref)).toBeVisible();
 
-  await page.getByRole("button", { name: "All", exact: true }).click();
-  await expect(page.locator(".item-in")).toHaveCount(GOAL);
+  await statusTabs(page).getByRole("button", { name: "All", exact: true }).click();
+  await expect(page.locator(".item-in")).toHaveCount(TOTAL);
+});
+
+test("the category tabs show one shelf at a time, and the two rows narrow together", async ({ app, page }) => {
+  await app.boot({ progress: PROGRESS });
+  await openList(app);
+
+  await categoryTabs(page).getByRole("button", { name: "Psalms", exact: true }).click();
+  await expect(page.locator(".item-in")).toHaveCount(PSALMS);
+  await expect(row(page, "Psalm 23")).toBeVisible();
+  // A core verse is genuinely gone, not merely scrolled past.
+  await expect(row(page, passageById(1).ref)).toHaveCount(0);
+
+  // The two rows are separate filters, so a status on top of a shelf narrows
+  // again rather than replacing it.
+  await statusTabs(page).getByRole("button", { name: "Committed", exact: true }).click();
+  await expect(page.locator(".item-in")).toHaveCount(0);
+
+  await statusTabs(page).getByRole("button", { name: "All", exact: true }).click();
+  await categoryTabs(page).getByRole("button", { name: "All", exact: true }).click();
+  await expect(page.locator(".item-in")).toHaveCount(TOTAL);
+});
+
+test("the sections of a long chapter are gathered under its heading", async ({ app, page }) => {
+  await app.boot({ progress: PROGRESS });
+  await openList(app);
+
+  await categoryTabs(page).getByRole("button", { name: "DT", exact: true }).click();
+  // Hebrews 11 ships as several sections, each committing on its own, with one
+  // heading over the run so they still read as one chapter.
+  await expect(page.getByText("Hebrews 11", { exact: true })).toHaveCount(1);
+  await expect(row(page, "Hebrews 11:1-7")).toBeVisible();
+  await expect(row(page, "Hebrews 11:39-40")).toBeVisible();
 });
 
 test("a row's own button takes that verse as a sitting of one", async ({ app, page }) => {

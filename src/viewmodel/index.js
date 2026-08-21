@@ -36,6 +36,8 @@ export function buildViewModel({ state, groupName, motto, deadline, actions, now
     learning: totals.learning,
     remaining: totals.remaining,
     pctLabel: totals.pctLabel,
+    // Every category, where the four above are the goal's own (see totals.js).
+    totalCount: totals.totalCount,
 
     ...chromeVals({ state, groupName, motto, actions }),
     ...boardVals({ state, totals, prog, actions, today: now }),

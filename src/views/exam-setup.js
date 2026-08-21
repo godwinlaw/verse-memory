@@ -27,6 +27,14 @@ export function examSetupView(v) {
       ${corners()}
 
       <div style=${sx(FIELD)}>
+        <span style=${sx(LABEL_SECTION)}>${copy.category.label}</span>
+        <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
+          ${v.setupCategories.map((c) => html`<button key=${c.key} className="seg-btn" title=${c.title} onClick=${c.onClick} style=${sx(c.style)}>${c.label}</button>`)}
+        </div>
+        <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${copy.category.note}</span>
+      </div>
+
+      <div style=${sx(FIELD)}>
         <span style=${sx(LABEL_SECTION)}>${copy.exam.setupSize}</span>
         <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
           ${v.setupSizes.map((s) => html`<button key=${s.key} className="seg-btn" onClick=${s.onClick} style=${sx(s.style)}>${s.label}</button>`)}

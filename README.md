@@ -64,7 +64,9 @@ HTTP; opening `index.html` from the filesystem will not work.
 │   ├── passages.js        #   the passage set (ESV)
 │   └── keywords.js        #   per-passage keyword indices (generated)
 ├── tools/
-│   └── gen_keywords.py    # spaCy keyword generator -> data/keywords.js
+│   ├── gen_keywords.py    # spaCy keyword generator -> data/keywords.js
+│   ├── fetch_passages.mjs # ESV API fetch -> data/passages.js (authoring only)
+│   └── new-passages.json  #   what that fetch should pull
 ├── scripts/
 │   └── build.mjs          # assembles ./dist for the Cloudflare Workers deploy
 ├── test/                  # node:test suite — pure modules + view render tests
@@ -96,6 +98,32 @@ cp config.example.js config.js
 
 `config.js` is gitignored and loaded by `index.html` before the app. If it is
 absent, the app runs on the built-in defaults.
+
+## Adding passages
+
+`data/passages.js` is authored offline and shipped as a static module — **the
+app never calls a Bible API at run time**, and there is no key in the build.
+To add passages, list them in `tools/new-passages.json` (reference, book,
+testament, category, and a `group` if the entry is one section of a longer
+chapter), then:
+
+```bash
+ESV_API_KEY=... node tools/fetch_passages.mjs   # --dry-run to see it first
+npm run keywords                                 # indices realign to the new text
+```
+
+Get a key at [api.esv.org/account](https://api.esv.org/account/). It is read
+from the environment and never written to the repo. A reference already in the
+set is refreshed in place, so the script is safe to re-run.
+
+A long chapter is listed as several sections sharing one `group` — each is an
+ordinary passage that commits on its own, and the group is only what holds them
+together on the list. Sections also keep each record inside the ESV licence and
+inside what a member can actually give back in one sitting.
+
+`test/passages.test.mjs` asserts the two limits Crossway's terms put on what may
+be stored — no more than half of any book, and no run of 500 consecutive verses
+— so an over-eager addition fails the build rather than the licence.
 
 ## Regenerating keywords
 
@@ -192,6 +220,12 @@ npm run format:check   # Prettier (check, as CI runs it)
 
 ## Scripture text
 
-Passage text is the **English Standard Version (ESV)**, © Crossway. Use is
-subject to Crossway's [copyright and permissions](https://www.crossway.org/permissions/).
+Passage text is the **English Standard Version (ESV)**, © Crossway, fetched from
+the [ESV API](https://api.esv.org/) (see _Adding passages_). Use is
+noncommercial and subject to Crossway's
+[copyright and permissions](https://www.crossway.org/permissions/) and the
+[API v3 guidelines](https://api.esv.org/docs/). The required notice is shown in
+the app itself, in the footer under every signed-in screen (`copy.footer.esv`),
+because the terms ask for it wherever the text appears — not only here.
+
 The MIT license below covers the application code, not the scripture text.

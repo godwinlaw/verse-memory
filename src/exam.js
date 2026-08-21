@@ -29,6 +29,7 @@ import { gradeReference, gradeWritten, matchesWord } from "./grading.js";
 import { freshness, migrate, nextStep, stabilityFor, testedLast, TEST_PASS } from "./srs.js";
 import { dueOrder, progressReader } from "./progress.js";
 import { mulberry32 } from "./review.js";
+import { inCategory, normalizeCategory } from "./categories.js";
 
 /* ── setup ────────────────────────────────────────────────────────────────── */
 
@@ -94,6 +95,9 @@ export const DEFAULT_SETUP = {
   size: 10,
   committedOnly: false,
   maxFreshness: 100, // include verses at or below this freshness
+  // null is "All". See categories.js — the paper is narrowed to one shelf, but
+  // the decoy references it offers are not (see buildExam).
+  category: null,
   activities: ACTIVITY_KEYS,
 };
 
@@ -136,6 +140,9 @@ export function normalizeSetup(raw) {
     maxFreshness: Number.isFinite(s.maxFreshness)
       ? Math.max(0, Math.min(100, Math.round(s.maxFreshness)))
       : DEFAULT_SETUP.maxFreshness,
+    // A saved category that no longer exists reads back as "All" rather than
+    // as a shelf with nothing on it.
+    category: normalizeCategory(s.category),
     // An empty selection would build an empty paper; fall back to everything.
     activities: activities.length ? activities : ACTIVITY_KEYS,
   };
@@ -148,7 +155,12 @@ export function normalizeSetup(raw) {
 export function eligiblePassages(passages, progress, setup, now = Date.now()) {
   const read = progressReader(progress, now);
   const max = setup.maxFreshness;
-  return dueOrder(passages, progress, now).filter((p) => {
+  // The category narrows what is *tested*. It deliberately does not narrow the
+  // `passages` that buildExam() hands to pickRefQuestion / matchQuestion: a
+  // wrong reference is only worth reasoning about if it could plausibly have
+  // come from anywhere in the set, so the decoys keep the run of the whole
+  // thing even when the paper is one shelf.
+  return dueOrder(inCategory(passages, setup.category), progress, now).filter((p) => {
     if (setup.committedOnly && read.statusOf(p.id) !== "memorized") return false;
     return read.freshness(p.id) <= max;
   });
@@ -253,8 +265,9 @@ function matchQuestion(block, pool, rnd) {
 }
 
 function scrambleQuestion(p, rnd) {
-  // Use medium granularity (1) by default
-  const chunks = chunksFor(p.text, 1);
+  // Use medium granularity (1) by default. A long passage carries its verses,
+  // and at medium that means two-verse chunks rather than clause fragments.
+  const chunks = chunksFor(p.text, 1, p.verses);
   const shuffled = shuffle(
     rnd,
     chunks.map((v, i) => ({ v, i })),

@@ -161,3 +161,66 @@ test("a manual size of 0 means all matching verses, not none", () => {
   v.startReviewSession();
   assert.equal(capture.startedIds.length, 3, '"All" reviews every matching verse');
 });
+
+/* ── categories ───────────────────────────────────────────────────────────── */
+
+/* Committed verses on two different shelves, all faded well past the due
+ * threshold so the due queue — not the manual controls — is what is on offer. */
+const SHELVED = [
+  { id: 1, category: "core" },
+  { id: 2, category: "core" },
+  { id: 3, category: "psalms" },
+  { id: 4, category: "psalms" },
+];
+const FADED = { 1: committed(30), 2: committed(30), 3: committed(30), 4: committed(30) };
+
+const shelfState = (category) =>
+  stateOf(SHELVED, FADED, category ? { reviewSetup: { manualSize: 10, manualFreshness: 90, category } } : {});
+
+/* The ids a sitting started from this state would run. */
+function startedFrom(state) {
+  const { v, capture } = build(state);
+  v.startReviewSession();
+  return capture.startedIds;
+}
+
+test("with All chosen the screen sees the whole set, exactly as before", () => {
+  const { v } = build(shelfState(null));
+  assert.equal(v.reviewHasDue, true);
+  assert.deepEqual(startedFrom(shelfState(null)), [1, 2, 3, 4]);
+});
+
+test("a category narrows the due queue, not just the manual controls", () => {
+  // The picker has to mean the same thing on both paths of this screen. These
+  // verses are all due, so this is the due path — and it still comes back as
+  // psalms only. Narrowing only the manual controls would have made the picker
+  // silently do nothing for the member who is behind, which is most of them.
+  const { v } = build(shelfState("psalms"));
+  assert.equal(v.reviewHasDue, true);
+  assert.deepEqual(startedFrom(shelfState("psalms")), [3, 4]);
+});
+
+test("a shelf with nothing committed on it has nothing to review", () => {
+  const state = stateOf(
+    SHELVED,
+    { 1: committed(30), 2: committed(30) },
+    {
+      reviewSetup: { manualSize: 10, manualFreshness: 90, category: "psalms" },
+    },
+  );
+  const { v } = build(state);
+  assert.equal(v.reviewSetupCanStart, false);
+  // And it says so as "nothing committed here" — the true reason — rather than
+  // "you are caught up", which is a different situation with a different fix.
+  assert.equal(v.reviewNothingCommitted, true);
+});
+
+test("the picker offers All and every shelf, and saves the one pressed", () => {
+  const { v, capture } = build(shelfState(null));
+  assert.deepEqual(
+    v.reviewSetupCategories.map((c) => c.key),
+    ["all", "core", "psalms", "dt"],
+  );
+  v.reviewSetupCategories.find((c) => c.key === "dt").onClick();
+  assert.deepEqual(capture.setup, { category: "dt" });
+});

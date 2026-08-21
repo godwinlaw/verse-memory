@@ -117,3 +117,37 @@ test("building the view-model does not reorder state.passages", () => {
     before,
   );
 });
+
+/* ── categories ───────────────────────────────────────────────────────────── */
+
+const SHELVED = [
+  { id: 1, category: "core" },
+  { id: 2, category: "core" },
+  { id: 3, category: "psalms" },
+  { id: 4, category: "dt" },
+];
+
+test("with All chosen the queue draws on the whole set", () => {
+  const { v } = build(stateOf(SHELVED, {}));
+  v.startLearnSession();
+  const b = build(stateOf(SHELVED, {}));
+  b.v.startLearnSession();
+  assert.deepEqual(b.capture.startedIds, [1, 2, 3, 4]);
+});
+
+test("a category narrows what the sitting can open", () => {
+  const b = build(stateOf(SHELVED, {}, { learnSetup: { size: 5, category: "psalms" } }));
+  b.v.startLearnSession();
+  assert.deepEqual(b.capture.startedIds, [3]);
+});
+
+test("choosing a shelf is saved as the learn setup", () => {
+  const b = build(stateOf(SHELVED, {}));
+  b.v.learnSetupCategories.find((c) => c.key === "dt").onClick();
+  assert.deepEqual(b.capture.setup, { category: "dt" });
+});
+
+test("a shelf with everything already committed has nothing to learn", () => {
+  const b = build(stateOf(SHELVED, { 3: committed(0) }, { learnSetup: { size: 5, category: "psalms" } }));
+  assert.equal(b.v.learnSetupCanStart, false);
+});

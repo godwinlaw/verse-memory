@@ -10,12 +10,20 @@
  * writes the result into localStorage before the app boots. */
 
 import { passages } from "../../data/passages.js";
+import { GOAL_CATEGORY, inCategory } from "../../src/categories.js";
 import { backdatedLast, stabilityFor } from "../../src/srs.js";
 import { dayKey } from "../../src/text.js";
 
 export { passages };
 
-export const GOAL = passages.length;
+/* Two different sizes, and specs have to pick the right one on purpose.
+ *
+ * GOAL is what the board counts down to — the goal category alone, which is
+ * what "n / 167" and the weekly pace are measured against (see
+ * viewmodel/totals.js). TOTAL is every passage on every shelf: the size of the
+ * list, the board's map, and the set the splash names while it loads. */
+export const GOAL = inCategory(passages, GOAL_CATEGORY).length;
+export const TOTAL = passages.length;
 
 /* A complete profile, so the profile form is not in the way of every spec. The
  * two review settings are left off deliberately — the defaults (10 verses, due

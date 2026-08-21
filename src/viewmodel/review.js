@@ -7,6 +7,8 @@
 import { copy } from "../copy.js";
 import { norm, firstLetters as firstLetterScaffold } from "../text.js";
 import { keyBlankSet, chunksFor, BLANK_LEVELS, BLANK_PARITIES, SCRAMBLE_LEVELS } from "../blanks.js";
+import { inCategory, normalizeCategory } from "../categories.js";
+import { categoryOptions } from "./category.js";
 import { gradeWritten, matchesWord, revealFirstLetters } from "../grading.js";
 import { countByStatus, reviewPool } from "../progress.js";
 import { reviewSettings } from "../profile.js";
@@ -201,7 +203,7 @@ export function reviewVals({ state, prog, totals, actions }) {
   const live = state.typeFirstLetter ? revealFirstLetters(words, state.typed) : null;
 
   // ── order the phrases ─────────────────────────────────────────────────────
-  const chunks = curText ? chunksFor(curText, state.scrambleLevel) : [];
+  const chunks = curText ? chunksFor(curText, state.scrambleLevel, cur && cur.verses) : [];
   const shuffled = seededShuffle(chunks, (cur ? cur.id : 1) * SEED_SPREAD);
   const placed = state.scrambleOrder;
   const scrambleDone = chunks.length > 0 && placed.length === chunks.length;
@@ -479,21 +481,36 @@ export function reviewSetupVals({ state, actions, now = Date.now() }) {
   const manualFreshness = setup.manualFreshness !== undefined ? setup.manualFreshness : 90;
   const { dueTopX, dueFreshness } = reviewSettings(state.profile);
 
-  const dueNow = reviewPool(state.passages, state.progress, dueFreshness, now).slice(0, dueTopX);
+  // The chosen shelf, or the whole set. Narrowing happens here, before the
+  // pools, so reviewPool() stays the one definition of what a review sitting
+  // can contain — a category only decides which passages it is asked about.
+  // It narrows the due queue as well as the manual one, so the picker means the
+  // same thing on both paths; with "All" chosen (the default) this list is
+  // state.passages and the screen agrees with the board exactly.
+  const category = normalizeCategory(setup.category);
+  const shelf = inCategory(state.passages, category);
+
+  const dueNow = reviewPool(shelf, state.progress, dueFreshness, now).slice(0, dueTopX);
   const hasDue = dueNow.length > 0;
 
   // Committed verses at or below the chosen ceiling; size 0 = "All".
-  const manualPool = reviewPool(state.passages, state.progress, manualFreshness, now);
+  const manualPool = reviewPool(shelf, state.progress, manualFreshness, now);
   const manualVerses = manualSize === 0 ? manualPool : manualPool.slice(0, manualSize);
 
   const versesToReview = hasDue ? dueNow : manualVerses;
   const poolSize = versesToReview.length;
-  const committed = countByStatus(state.passages, state.progress, "memorized");
+  const committed = countByStatus(shelf, state.progress, "memorized");
 
   return {
     // The due queue's availability, not a toggle, decides which controls show.
     reviewHasDue: hasDue,
     reviewNothingCommitted: committed === 0,
+
+    reviewSetupCategories: categoryOptions({
+      selected: category,
+      onPick: (key) => actions.setReviewSetup({ category: key }),
+      style: segButton,
+    }),
 
     reviewSetupSizes: [5, 10, 20, 0].map((n) => ({
       key: String(n),

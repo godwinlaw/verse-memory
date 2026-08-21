@@ -26,6 +26,7 @@ function build(over = {}, progress = PROGRESS, passages = PASSAGES) {
     setSelection: (ids) => (capture.selection = ids),
     setSearch: () => {},
     setFilter: () => {},
+    setListCategory: (key) => (capture.listCategory = key),
   };
   const state = stateOf(passages, progress, { search: "", filter: "All", selection: [], ...over });
   const prog = progressReader(state.progress, NOW);
@@ -233,4 +234,77 @@ test("each row still offers the one sitting that suits it", () => {
 test("state.selection missing entirely is an empty selection, not a crash", () => {
   const { v } = build({ selection: undefined });
   assert.equal(v.selectionCount, 0);
+});
+
+/* ── categories ───────────────────────────────────────────────────────────── */
+
+/* Passages spread across the three shelves, with the two sections of one long
+ * chapter next to each other so the heading has a run to sit on. */
+const SHELVED = [
+  { id: 1, category: "core" },
+  { id: 2, category: "psalms" },
+  { id: 3, category: "dt", group: "Hebrews 11" },
+  { id: 4, category: "dt", group: "Hebrews 11" },
+];
+
+test("the category tabs offer All and every shelf, with All chosen to begin with", () => {
+  const { v } = build({}, {}, SHELVED);
+  assert.deepEqual(
+    v.categoryTabs.map((t) => t.key),
+    ["all", "core", "psalms", "dt"],
+  );
+  // "All" is the only one lit, which is what makes the list open on the whole
+  // set exactly as it did before there were categories.
+  assert.equal(v.categoryTabs.filter((t) => t.style.includes("var(--color-accent)")).length, 1);
+  assert.equal(v.rows.length, 4);
+});
+
+test("choosing a category narrows the rows to that shelf", () => {
+  const { v } = build({ listCategory: "dt" }, {}, SHELVED);
+  assert.deepEqual(
+    v.rows.map((r) => r.id),
+    [3, 4],
+  );
+});
+
+test("a passage with no category of its own counts as core", () => {
+  const { v } = build({ listCategory: "core" }, {}, [{ id: 1 }, { id: 2, category: "psalms" }]);
+  assert.deepEqual(
+    v.rows.map((r) => r.id),
+    [1],
+  );
+});
+
+test("a category that no longer exists reads as All rather than as an empty shelf", () => {
+  const { v } = build({ listCategory: "apocrypha" }, {}, SHELVED);
+  assert.equal(v.rows.length, 4);
+});
+
+test("the first shown section of a chapter carries the heading and the rest do not", () => {
+  const { v } = build({}, {}, SHELVED);
+  assert.equal(rowFor(v, 3).groupLabel, "Hebrews 11");
+  assert.equal(rowFor(v, 4).groupLabel, "");
+  // A passage that is not part of a chapter has no heading at all.
+  assert.equal(rowFor(v, 1).groupLabel, "");
+});
+
+test("a filter that hides the first section moves the heading to the one still shown", () => {
+  // Only id 4 survives the search, so it becomes the first shown row of the run
+  // and has to carry the heading itself — otherwise the section would appear
+  // with nothing saying which chapter it is from.
+  const { v } = build({ search: "verse 4" }, {}, SHELVED);
+  assert.deepEqual(
+    v.rows.map((r) => r.id),
+    [4],
+  );
+  assert.equal(rowFor(v, 4).groupLabel, "Hebrews 11");
+});
+
+test("the summary counts the whole set, not just the goal category", () => {
+  // This screen shows every shelf. Borrowing the board's goal-scoped figures
+  // would leave the passages on the other shelves apparently unaccounted for.
+  const { v } = build({}, { 1: committed(0), 2: committed(0) }, SHELVED);
+  assert.equal(v.shownCount, 4);
+  assert.equal(v.listCommitted, 2);
+  assert.equal(v.listUntouched, 2);
 });

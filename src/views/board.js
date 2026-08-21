@@ -185,7 +185,7 @@ export function boardView(v) {
             <button className="btn btn-primary" onClick=${v.goLearnSetup}>${copy.board.paceLearn}</button>
             <button className="btn btn-secondary" onClick=${v.goReviewSetup}>${copy.board.paceReview}</button>
             <button className="btn btn-secondary" onClick=${v.goTest}>${copy.board.paceTest}</button>
-            <button className="btn btn-secondary" onClick=${v.goList}>${copy.board.paceBrowse(v.goal)}</button>
+            <button className="btn btn-secondary" onClick=${v.goList}>${copy.board.paceBrowse(v.totalCount)}</button>
             <button className="btn btn-ghost" onClick=${v.goGuide}>${copy.board.paceGuide}</button>
           </div>
         </div>

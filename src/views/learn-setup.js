@@ -61,6 +61,14 @@ export function learnSetupView(v) {
       ${corners()}
 
       <div style=${sx(FIELD)}>
+        <span style=${sx(LABEL_SECTION)}>${copy.category.label}</span>
+        <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
+          ${v.learnSetupCategories.map((c) => html`<button key=${c.key} title=${c.title} onClick=${c.onClick} style=${sx(c.style)}>${c.label}</button>`)}
+        </div>
+        <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${copy.category.note}</span>
+      </div>
+
+      <div style=${sx(FIELD)}>
         <span style=${sx(LABEL_SECTION)}>${copy.learnSetup.size}</span>
         <div style=${sx("display:flex;gap:6px;flex-wrap:wrap")}>
           ${v.learnSetupSizes.map((s) => html`<button key=${s.key} onClick=${s.onClick} style=${sx(s.style)}>${s.label}</button>`)}

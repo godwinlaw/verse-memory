@@ -6,7 +6,7 @@
  * counter the member actually sees is the one the model computed. */
 
 import { test, expect } from "./fixtures.mjs";
-import { GOAL, committed, logOf, passageById, started } from "./helpers/seed.mjs";
+import { GOAL, TOTAL, committed, logOf, passageById, started } from "./helpers/seed.mjs";
 
 /* Three committed verses at three ages, and two opened but not given back. The
  * member's threshold is the default 75%, so the two faded ones are due and the
@@ -96,7 +96,7 @@ test("the map draws one cell per passage, and says what each one is", async ({ a
   await app.boot({ progress: PROGRESS });
 
   const cells = page.locator(".board-map-grid > button");
-  await expect(cells).toHaveCount(GOAL);
+  await expect(cells).toHaveCount(TOTAL);
   await expect(cells.first()).toHaveAttribute("title", `${passageById(1).ref} — Committed · 98% fresh`);
   await expect(cells.nth(5)).toHaveAttribute("title", `${passageById(6).ref} — Not started`);
 });

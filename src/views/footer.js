@@ -1,5 +1,10 @@
 /* App footer — a persistent feedback prompt linking to the bug / feature-request
- * form. Rendered below the current view on every signed-in screen. */
+ * form, and the ESV copyright notice. Rendered below the current view on every
+ * signed-in screen.
+ *
+ * The notice is not decoration: Crossway's API terms require it wherever their
+ * text is shown, and the footer is the one place in the app that is under every
+ * screen without being a card a member is working. */
 
 import { copy } from "../copy.js";
 import { html, sx } from "../dom.js";
@@ -17,5 +22,10 @@ export function footerView() {
       style=${sx("color:var(--color-accent);text-decoration:underline")}
       >${copy.footer.link}</a
     >
+    <div
+      style=${sx(`margin-top:14px;padding-top:12px;border-top:1px solid var(--color-divider);font-size:11px;color:${muted(42)};max-width:80ch`)}
+    >
+      ${copy.footer.esv}
+    </div>
   </div>`;
 }

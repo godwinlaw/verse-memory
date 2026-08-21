@@ -211,6 +211,10 @@ function initialState() {
     // passage list
     search: "",
     filter: "All",
+    /* Which part of the set the passage list is showing; null is all of it.
+     * Device-local and deliberately unpersisted, like `search` and `filter` —
+     * where a member last left the tabs is worth nothing on the next visit. */
+    listCategory: null,
     // Passage ids ticked on the list, so a sitting can be hand-picked rather
     // than drawn from a pool. Kept as an array, in the order they were ticked;
     // the view-model is what asks whether a given row is in it.
@@ -1008,6 +1012,7 @@ export class App extends React.Component {
       // passage list
       setSearch: (search) => set({ search }),
       setFilter: (filter) => set({ filter }),
+      setListCategory: (listCategory) => set({ listCategory }),
       // A row ticked on its own also becomes the anchor a later shift-click
       // measures its range from — including a row just unticked, since that is
       // the end a shift-click would clear a run from.
