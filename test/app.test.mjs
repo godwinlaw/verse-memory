@@ -148,11 +148,37 @@ test("the latch keeps the passage up for one peek, not one per look", () => {
   assert.equal(a.state.peeks, 1, "having seen it is not refunded");
 });
 
-test("the latch belongs to the card, so the next verse is not revealed for free", () => {
+test("the latch lasts the sitting, and every card it opens is a card peeked at", () => {
   const a = session("blanks");
   a.actions.togglePeekStick();
   a.actions.submitCard(1);
   a.actions.nextCard();
+
+  assert.equal(a.state.peekStick, true, "how the member wants to work outlives the verse");
+  assert.equal(a.state.showHelp, true, "so the next verse opens with its passage on screen");
+  assert.equal(a.state.peeks, 1, "which is a peek, and is charged as one — not a free read of the set");
+});
+
+test("switching the latch off mid-sitting leaves the rest of the cards clean", () => {
+  const a = session("blanks");
+  a.actions.togglePeekStick();
+  a.actions.submitCard(1);
+  a.actions.nextCard();
+  a.actions.togglePeekStick();
+
+  assert.equal(a.state.showHelp, false);
+  assert.equal(a.state.peeks, 1, "this card had already seen the passage, which is not refunded");
+
+  a.actions.submitCard(1);
+  a.actions.nextCard();
+  assert.equal(a.state.peeks, 0, "but the one after it starts clean");
+  assert.equal(a.state.showHelp, false);
+});
+
+test("a new sitting is a fresh answer to how the member wants to work", () => {
+  const a = session("blanks");
+  a.actions.togglePeekStick();
+  a.actions.startSession("blanks", [1, 2]);
 
   assert.equal(a.state.peekStick, false);
   assert.equal(a.state.showHelp, false);

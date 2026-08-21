@@ -223,8 +223,11 @@ function initialState() {
     showHelp: false,
     peeks: 0, // presses of "Peek" on the card in front of us
     // Peek latched on, so the passage stays up instead of needing to be held.
-    // Per card like `peeks` above: carrying it onto the next verse would spend
-    // a peek on a card the member had not asked to see.
+    // Unlike `peeks` above this belongs to the SITTING, not the card: a member
+    // who has said they want the passage in front of them means it for the
+    // sitting, and having to say it again on every verse is the tired fingers
+    // the latch was asked for. It still costs each card a peek — see
+    // resetCard, where a latched card arrives having already seen its verse.
     peekStick: false,
     revealed: false,
     flipLetters: false,
@@ -732,6 +735,10 @@ export class App extends React.Component {
     this.setState({
       view: "review",
       sessionKind: kind,
+      // The latch lasts the sitting and no longer: it is carried from card to
+      // card by resetCard, and a new sitting is a fresh answer to how the
+      // member wants to work.
+      peekStick: false,
       mode: mode || this.state.mode || DEFAULT_MODE,
       queue,
       qi: 0,
@@ -745,7 +752,14 @@ export class App extends React.Component {
 
   /* Clear everything that belongs to the card being left — including what it
    * cost, since peeks and wrong tries are per attempt. What a submitted card
-   * was worth lives in `results`, keyed by passage, and survives. */
+   * was worth lives in `results`, keyed by passage, and survives.
+   *
+   * The Peek latch is the exception, and the only thing here that outlives the
+   * card: it is the member saying how they want to work this sitting, not
+   * something they did to this verse. So it is carried over — and the card it
+   * carries onto opens with its passage on screen, which is a peek, and is
+   * charged as one. A latched sitting is a sitting where every card starts a
+   * peek down; it is not a way of reading the set for free. */
   resetCard() {
     // The microphone belongs to the attempt, not to the session: leaving it hot
     // across a card change would have the next passage recorded against the one
@@ -754,9 +768,8 @@ export class App extends React.Component {
     this.setState((s) => ({
       revealed: false,
       flipLetters: false,
-      showHelp: false,
-      peeks: 0,
-      peekStick: false,
+      showHelp: s.peekStick,
+      peeks: s.peekStick ? 1 : 0,
       answers: {},
       blanksChecked: false,
       typed: "",

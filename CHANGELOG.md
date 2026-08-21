@@ -45,9 +45,13 @@ what moved, and why it moved.
   out of view. It is now directly above what it reveals. And beside the button
   there is a **Keep shown** switch: holding the button down is still a glance,
   but a member checking themselves line by line was pressing it once a line.
-  Both cost the card the same single peek, a peek at a passage already on
-  screen costs nothing further, and the latch belongs to the card, so the next
-  verse is never revealed for free. Closes #63.
+  **The latch lasts the sitting**, not the card — having to switch it back on
+  at every verse is the tired fingers it was asked for. It is not a free read
+  of the set: a card that opens with its passage already on screen has peeked
+  at it, and is charged the one peek any other look would cost, so a latched
+  sitting is one where every card starts a peek down. A peek at a passage
+  already showing costs nothing further, and a new sitting starts unlatched.
+  Closes #63.
 - **The passage table's head stays on screen.** The column labels and — the
   half that matters — the selection bar above them, which holds the Review and
   Learn buttons that ticking a run of verses was for, and which used to scroll
