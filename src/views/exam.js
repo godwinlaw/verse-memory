@@ -135,6 +135,10 @@ function blanksPanel(v) {
                     className="blank-input"
                     value=${w.value}
                     onChange=${w.onChange}
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck=${false}
                     style=${sx(w.inputStyle)}
                   />`
                 : w.word

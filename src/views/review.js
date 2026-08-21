@@ -114,6 +114,10 @@ function blanksPanel(v) {
                     onChange=${w.onChange}
                     onKeyDown=${w.onKeyDown}
                     placeholder=${w.hint}
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck=${false}
                     style=${sx(w.inputStyle)}
                   />`
                 : w.word
