@@ -6,6 +6,61 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **The leaderboard no longer downloads everybody's record to build itself.**
+  It used to read the whole `users` collection — every verse of every member's
+  progress map and every day of their log — and throw nearly all of it away to
+  arrive at three numbers each. That is the one read whose cost grows with the
+  size of the group, and every member paid it on every visit to the board. Each
+  push now also writes **`standings/{uid}`**: the display name, the three
+  profile fields the board filters and groups by, a flat `fresh` array of
+  `last, stability` pairs for the committed verses only, and the streak with
+  the day it was true of (`standings.summarize`). `fetchRoster()` scans that
+  instead. **Freshness is still computed when the board asks** rather than
+  stored, since a stored score is a claim about the moment it was written — a
+  member who stops opening the app still sinks down the board over the
+  following fortnight. Which verses somebody holds is deliberately not in
+  there, and neither is their email. The summary is written inside the same
+  transaction as the record and from the merged result, so a device that has
+  not caught up cannot publish a row missing another device's commits.
+  **`deploy/firestore.rules` gains a `standings/{uid}` block and must be
+  redeployed**, or every push fails on a refused write. The old full scan
+  remains as the fallback while `standings` is empty, which covers the day this
+  ships; each member's summary appears on their first save. `App.loadRoster()`
+  also holds a fetched roster for a minute, since the board is one press away in
+  the header. Closes #31.
+- **A word the speech engine spelled wrong is corrected against the passage.**
+  Reciting Galatians gave "sews" for _sow_ and "Jews" for _Jew_, and then the
+  card failed — or the member stopped to repair the box by hand, which is the
+  thing reciting was meant to save them. Those are transcription errors, not
+  recall errors, so `voice.js` now matches a heard word to the passage's within
+  one edit, ignoring a plural ending on either side and never on a word under
+  three letters, and `fitToPassage` writes the passage's own spelling in. It is
+  the only loose comparison in the app and lives only there: `grading.js` stays
+  exact, so nothing a member **types** is forgiven. The trade — a recited word
+  genuinely misremembered as a near neighbour is now given — is deliberate, and
+  `MAX_EDITS` / `MIN_FUZZY_LEN` are where it is tuned. Closes #60.
+- **Peek moved to the foot of the card, and can be latched on.** It sat in the
+  card's header, which put it at the top of the screen while the passage it
+  reveals opened at the bottom — so looking something up scrolled the answer
+  out of view. It is now directly above what it reveals. And beside the button
+  there is a **Keep shown** switch: holding the button down is still a glance,
+  but a member checking themselves line by line was pressing it once a line.
+  Both cost the card the same single peek, a peek at a passage already on
+  screen costs nothing further, and the latch belongs to the card, so the next
+  verse is never revealed for free. Closes #63.
+- **The passage table's head stays on screen.** The column labels and — the
+  half that matters — the selection bar above them, which holds the Review and
+  Learn buttons that ticking a run of verses was for, and which used to scroll
+  out of sight long before a member had finished choosing. One sticky box
+  stopping below the app header, whose height is measured and published as
+  `--app-header-h` (`App.watchHeaderHeight`) because it wraps in a narrow window
+  and settles when the web font arrives. Closes #58.
+- **The blanks stop autocompleting the answer.** The browser was offering words
+  typed into earlier blanks as suggestions on later ones, which handed the
+  member the answer; the reporter confirmed no browser setting reliably stops
+  it. `autocomplete="off"` (with `autocorrect`, `autocapitalize` and
+  `spellcheck`) on the blank inputs in both the review card and Test mode.
+  Closes #62.
 - **Light, dark, or follow the system — a switch under Settings.** The reader's
   operating system is still the default and still answers for most members;
   what is new is that a member who wants the other ground on one screen can say

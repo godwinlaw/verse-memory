@@ -28,10 +28,50 @@ const ROSTER = [
   peer("p3", "Alan Turing", "Kairos", "Male", 2026, { 1: committed(0.9), 2: committed(0.9) }),
 ];
 
+/* The same three, as the board actually reads them now: one summary document
+ * each in `standings`, holding the figures and nothing else. */
+const summary = (uid, name, group, gender, gradClass, verses) => ({
+  uid,
+  name,
+  ministryGroup: group,
+  gender,
+  gradClass,
+  // last, stability, last, stability — see src/standings.js, summarize.
+  fresh: Array.from({ length: verses }, () => [Date.now(), 30]).flat(),
+  streak: 2,
+  streakDay: new Date().toISOString().slice(0, 10),
+});
+
 async function stats(app) {
   await app.nav("Stats").click();
   return app.page;
 }
+
+test("the board is built from the summaries, not from everybody's record", async ({ app, page }) => {
+  // Both collections are answered, holding different people. Only the summaries
+  // may appear: reading `users` for the board is the cost this replaced.
+  await app.boot({
+    progress: {},
+    firebase: {
+      session: MEMBER,
+      standings: [summary("p1", "Ada Lovelace", "USF", "Female", 2025, 3)],
+      roster: ROSTER,
+    },
+  });
+  await stats(app);
+
+  await expect(page.getByRole("cell", { name: "Ada Lovelace" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Grace Hopper" })).toHaveCount(0);
+});
+
+test("a group with no summaries yet still has a board, read the old way", async ({ app, page }) => {
+  // The day the change ships, nobody has pushed one. The fallback is what keeps
+  // the board whole until they have.
+  await app.boot({ progress: {}, firebase: { session: MEMBER, standings: [], roster: ROSTER } });
+  await stats(app);
+
+  await expect(page.getByRole("cell", { name: "Grace Hopper" })).toBeVisible();
+});
 
 test("the groups can be ranked against each other, per member", async ({ app, page }) => {
   await app.boot({ progress: {}, firebase: { session: MEMBER, roster: ROSTER } });

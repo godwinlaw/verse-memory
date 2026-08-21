@@ -1,4 +1,4 @@
-/* Ranking groups instead of people.
+/* The board's own record of a member, and ranking groups instead of people.
  *
  * The leaderboard has always been able to *filter* by the three things a member
  * puts in their profile — ministry group, gender, graduating class. This is the
@@ -75,4 +75,114 @@ export function standingsBy(rows, field) {
       avgCount: g.count / g.members,
     }))
     .sort((a, b) => b.avgScore - a.avgScore || b.members - a.members || a.name.localeCompare(b.name));
+}
+
+/* ── what the board reads ─────────────────────────────────────────────────── */
+
+/* The leaderboard used to be built by downloading every member's whole record —
+ * their progress map for all 183 verses and their entire daily log — and then
+ * throwing nearly all of it away to arrive at three numbers each. That is fine
+ * for a dozen members and is not fine for a few hundred: it is the one read in
+ * the app whose cost grows with the size of the group, and it grows in the
+ * worst way, since every member pays it every time they open the board.
+ *
+ * So each member also keeps a summary of themselves — `standings/{uid}` in
+ * Firestore (see firebase.js) — and the board reads those instead. It is the
+ * same three numbers, written by the one device that already has the record in
+ * hand, rather than recomputed by every other device from the raw material.
+ *
+ * The one thing a summary cannot be is those three numbers. **Freshness
+ * decays**: a score is a claim about a moment, and a stored one is wrong by the
+ * time it is read. So the summary keeps the two figures the curve actually runs
+ * on — when the verse was last reviewed and how stable it is — for the
+ * committed verses only, and the reader runs the curve at the moment it asks.
+ * That is a pair of numbers per committed verse instead of a record per verse
+ * in the set, plus a log that grows for as long as the member uses the app.
+ *
+ * `fresh` holds those pairs flat — last, stability, last, stability — rather
+ * than as a list of pairs, because Firestore will not store an array inside an
+ * array. Which verse is which is deliberately not in there: the board asks how
+ * many and how fresh, never which, so the ids would be a third of the payload
+ * spent saying something nobody reads (and telling every member which verses
+ * every other member has).
+ *
+ * The streak is the same problem in miniature and gets the same treatment: it
+ * is stored with the day it was true of, and reads as nothing once that day is
+ * older than yesterday. And the email is simply not here — the board never
+ * needed it, and not sending it is one less thing every member holds about
+ * every other. */
+
+import { migrate, retrievability } from "./srs.js";
+import { streakOf } from "./progress.js";
+import { dayKey } from "./text.js";
+
+/* Bumped if the shape below changes in a way a reader cannot infer. Written on
+ * every summary so an old document can be recognised rather than guessed at. */
+export const SUMMARY_VERSION = 1;
+
+/* How many numbers `fresh` spends on one verse. */
+const PAIR = 2;
+
+/* The most recent day the member reviewed anything, or "" for a member who
+ * never has. What `streak` is a claim about. */
+const lastLoggedDay = (log) =>
+  Object.keys(log || {})
+    .sort()
+    .pop() || "";
+
+/* One member's record, reduced to what the board asks of it. `name` is the
+ * fallback for a member whose profile has none — their Google account's, which
+ * firebase.js already holds. */
+export function summarize({ name = "", profile, progress, log, now = Date.now() } = {}) {
+  const p = profile || {};
+  return {
+    v: SUMMARY_VERSION,
+    name: p.name || name || "",
+    ministryGroup: p.ministryGroup || "",
+    gender: p.gender || "",
+    gradClass: p.gradClass || "",
+    // Committed verses only: an uncommitted one is not on the board's books.
+    fresh: Object.values(progress || {})
+      .map(migrate)
+      .filter((r) => r.status === "memorized" && r.last && r.stability)
+      .flatMap((r) => [r.last, r.stability]),
+    streak: streakOf(log, new Date(now)),
+    streakDay: lastLoggedDay(log),
+    updatedAt: now,
+  };
+}
+
+/* Yesterday's key, for the one question asked of `streakDay`. */
+function yesterdayKey(now) {
+  const d = new Date(now);
+  d.setDate(d.getDate() - 1);
+  return dayKey(d);
+}
+
+/* A summary read back as the row viewmodel/leaderboard.js ranks — the same
+ * shape App.loadRoster used to build out of a whole record.
+ *
+ * The freshness is computed here rather than stored, which is the point of the
+ * shape: a member who has not opened the app for a fortnight sinks down the
+ * board over that fortnight, exactly as they did when the board held their
+ * whole record. A streak, being a run of days rather than a curve, cannot be
+ * carried forward the same way — so it stands only while the day it was true
+ * of is today or yesterday, and is nothing after that. */
+export function rowFromSummary(summary, now = Date.now()) {
+  const s = summary || {};
+  const fresh = Array.isArray(s.fresh) ? s.fresh : [];
+  const day = s.streakDay || "";
+  let freshnessScore = 0;
+  for (let i = 0; i + 1 < fresh.length; i += PAIR) {
+    freshnessScore += retrievability({ last: fresh[i], stability: fresh[i + 1] }, now);
+  }
+  return {
+    name: s.name || "",
+    count: Math.floor(fresh.length / PAIR),
+    freshnessScore,
+    streak: day === dayKey(new Date(now)) || day === yesterdayKey(now) ? s.streak || 0 : 0,
+    ministryGroup: s.ministryGroup,
+    gender: s.gender,
+    gradClass: s.gradClass,
+  };
 }

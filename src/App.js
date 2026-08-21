@@ -22,7 +22,7 @@ import { transcribe } from "./voice.js";
 import { lockedInput } from "./grading.js";
 import { createRecognizer, voiceSupported } from "./recognizer.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
-import { committedCount, dueOrder, freshnessSum, streakOf } from "./progress.js";
+import { dueOrder } from "./progress.js";
 import { DEFAULT_MODE, LEARN, LEARN_SIZE, REVIEW, SESSION_SIZE } from "./review.js";
 import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "./exam.js";
 import {
@@ -87,6 +87,12 @@ const MINISTRY_CLOSE_MS = 120;
  * blocked CDN) nothing else would ever arrive to move the splash on. A late
  * answer still lands — the observer in componentDidMount keeps running. */
 const SPLASH_MAX_MS = 8000;
+
+/* How long a fetched leaderboard roster is reused before it is read again.
+ * The board is one press away in the header, and the figures on it move at the
+ * speed of somebody sitting down to review — not at the speed of a member
+ * clicking back and forth between screens. */
+const ROSTER_TTL_MS = 60000;
 
 /* The shortest time the opening splash stays up. Local data loads in a blink and
  * a restored Firebase session usually answers in well under a second, so without
@@ -584,31 +590,36 @@ export class App extends React.Component {
     this.setState({ progress: {}, log: {}, selection: [], selectAnchor: null, resetAsk: false });
   }
 
-  /* Pull every registered member and shape them into leaderboard rows. Self is
-   * dropped here and re-added from local state by the view-model, so "You"
-   * always reflects the newest, not-yet-synced progress. Members without a
-   * finished profile are skipped. Resolves to an empty roster when Firebase is
-   * unconfigured or unreachable, leaving the board as just "You". */
+  /* Pull the leaderboard roster. Self is dropped here and re-added from local
+   * state by the view-model, so "You" always reflects the newest, not-yet-synced
+   * progress. Members without a finished profile are skipped — a row with no
+   * ministry or class cannot be filtered or grouped, so it is not a row.
+   *
+   * The rows arrive already reduced to what the board ranks (see
+   * firebase.fetchRoster and standings.summarize); nothing here reads anyone
+   * else's record, because nothing here is sent one.
+   *
+   * Resolves to an empty roster when Firebase is unconfigured or unreachable,
+   * leaving the board as just "You". */
   async loadRoster() {
+    // The board is reached from the header, so it is easy to open three times
+    // in a minute, and it used to re-read the whole collection each time. The
+    // figures move on the scale of a review, not a click.
+    const now = Date.now();
+    if (this.rosterAt && now - this.rosterAt < ROSTER_TTL_MS) return;
+    this.rosterAt = now;
     let rows;
     try {
-      rows = await fetchRoster();
+      rows = await fetchRoster(now);
     } catch {
+      this.rosterAt = 0;
       return;
     }
     const myUid = this.state.auth.user && this.state.auth.user.uid;
     this.setState({
       peers: rows
-        .filter((r) => r.uid !== myUid && isProfileComplete(r.profile))
-        .map((r) => ({
-          name: r.profile.name || r.name || r.email || copy.app.anonymousMember,
-          count: committedCount(r.progress),
-          freshnessScore: freshnessSum(r.progress),
-          streak: streakOf(r.log),
-          ministryGroup: r.profile.ministryGroup,
-          gender: r.profile.gender,
-          gradClass: r.profile.gradClass,
-        })),
+        .filter((r) => r.uid !== myUid && isProfileComplete(r))
+        .map((r) => ({ ...r, name: r.name || copy.app.anonymousMember })),
     });
   }
 

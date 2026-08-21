@@ -49,10 +49,10 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   const roster = (state.peers || []).concat([
     {
       name: copy.leaderboard.you,
-      // Every category, matching the peer rows above — those come from
-      // committedCount(r.progress) in App.loadRoster, which knows nothing about
-      // the goal category. totals.memorized is the goal's own count and would
-      // have quietly under-reported you against everybody else.
+      // Every category, matching the peer rows above — a peer's count is the
+      // committed verses in their summary (standings.summarize), which knows
+      // nothing about the goal category. totals.memorized is the goal's own
+      // count and would have quietly under-reported you against everybody else.
       count: totals.committedAll,
       freshnessScore: myFreshnessScore,
       streak: myStreak,
