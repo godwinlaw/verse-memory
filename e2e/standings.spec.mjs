@@ -40,7 +40,7 @@ test("the groups can be ranked against each other, per member", async ({ app, pa
   // The board opens on people, as it always has.
   await expect(page.getByRole("cell", { name: "Grace Hopper" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Ministry groups" }).click();
+  await page.getByRole("button", { name: "Ministry", exact: true }).click();
   await expect(page.getByText("a small group is not out-run by a large one")).toBeVisible();
 
   // USF holds 3 + 1 across two members; Kairos holds 2 across one. Per member
@@ -61,11 +61,11 @@ test("and by the other two things a member says about themselves", async ({ app,
   await app.boot({ progress: {}, firebase: { session: MEMBER, roster: ROSTER } });
   await stats(app);
 
-  await page.getByRole("button", { name: "Male vs female" }).click();
-  await expect(page.getByRole("row", { name: /Female/ })).toBeVisible();
-  await expect(page.getByRole("row", { name: /Male/ })).toBeVisible();
+  await page.getByRole("button", { name: "Bros & Sis" }).click();
+  await expect(page.getByRole("row", { name: /Sister/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Brother/ })).toBeVisible();
 
-  await page.getByRole("button", { name: "Graduating classes" }).click();
+  await page.getByRole("button", { name: "Class", exact: true }).click();
   await expect(page.getByRole("row", { name: /2025/ })).toBeVisible();
   await expect(page.getByRole("row", { name: /2026/ })).toBeVisible();
 });
@@ -74,7 +74,7 @@ test("filtering and ranking compose rather than replacing each other", async ({ 
   await app.boot({ progress: {}, firebase: { session: MEMBER, roster: ROSTER } });
   await stats(app);
 
-  await page.getByRole("button", { name: "Ministry groups" }).click();
+  await page.getByRole("button", { name: "Ministry", exact: true }).click();
   await expect(page.getByRole("row", { name: /USF/ })).toBeVisible();
   await expect(page.getByRole("row", { name: /Kairos/ })).toBeVisible();
 
@@ -91,10 +91,10 @@ test("going back to people gives back the board it has always been", async ({ ap
   // The column heading, not the podium caption beside it — both say the same
   // thing, which is the point, so this has to name which one it means.
   const perMemberColumn = page.getByRole("columnheader", { name: "Committed each" });
-  await page.getByRole("button", { name: "Ministry groups" }).click();
+  await page.getByRole("button", { name: "Ministry", exact: true }).click();
   await expect(perMemberColumn).toBeVisible();
 
-  await page.getByRole("button", { name: "People", exact: true }).click();
+  await page.getByRole("button", { name: "Individuals", exact: true }).click();
   await expect(perMemberColumn).toHaveCount(0);
   await expect(page.getByRole("cell", { name: "Grace Hopper" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "You", exact: true })).toBeVisible();

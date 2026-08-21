@@ -99,7 +99,7 @@ test("ranking people is the absence of a grouping, not a fourth one", () => {
   assert.deepEqual(standingsBy([member("Kairos", 10, 9)], null), []);
   // An unknown key falls back to people rather than throwing.
   assert.equal(rankFieldFor("nonsense"), null);
-  assert.equal(RANK_BY[0].key, "people");
+  assert.equal(RANK_BY.at(-1).key, "people");
 });
 
 test("an empty roster is an empty board, not a crash", () => {

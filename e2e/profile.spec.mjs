@@ -30,7 +30,7 @@ test("a member with no profile fills one in before the app", async ({ app, page 
   await page.getByPlaceholder("Your full name").fill("Grace Hopper");
   await page.getByPlaceholder("Start typing to search…").fill("Kai");
   await page.getByRole("button", { name: "Kairos" }).click();
-  await page.getByRole("button", { name: "Female" }).click();
+  await page.getByRole("button", { name: "Sister" }).click();
   await page.getByPlaceholder("e.g. 2016").fill("2027");
 
   await expect(save).toBeEnabled();
@@ -69,7 +69,7 @@ test("signing up never asks how reviews should work", async ({ app, page }) => {
   await page.getByPlaceholder("Your full name").fill("Grace Hopper");
   await page.getByPlaceholder("Start typing to search…").fill("Kai");
   await page.getByRole("button", { name: "Kairos" }).click();
-  await page.getByRole("button", { name: "Female" }).click();
+  await page.getByRole("button", { name: "Sister" }).click();
   await page.getByPlaceholder("e.g. 2016").fill("2027");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page.getByRole("button", { name: "Start learning right away" }).click();

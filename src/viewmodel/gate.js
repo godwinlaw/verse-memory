@@ -148,7 +148,7 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
     })),
 
     genders: GENDERS.map((g) => ({
-      label: g,
+      label: copy.gender[g] || g,
       style: genderButtonStyle(draft.gender === g),
       onClick: () => actions.setProfileField("gender", g),
     })),
