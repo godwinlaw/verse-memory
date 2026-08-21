@@ -27,8 +27,10 @@ export default [
     },
   },
   {
-    // Node tooling: build scripts and the node:test suite.
-    files: ["scripts/**/*.mjs", "test/**/*.mjs", "eslint.config.js"],
+    // Node tooling: build scripts, the offline generators, and the node:test
+    // suite. tools/ holds the two things that run by hand at authoring time —
+    // the ESV fetch and the keyword generator's JS side.
+    files: ["scripts/**/*.mjs", "tools/**/*.mjs", "test/**/*.mjs", "eslint.config.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",

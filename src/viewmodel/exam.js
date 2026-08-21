@@ -9,6 +9,7 @@
  * disjoint from the review session's. */
 
 import { copy } from "../copy.js";
+import { categoryOptions } from "./category.js";
 import { freshColor } from "../srs.js";
 import { committedCount } from "../progress.js";
 import {
@@ -73,6 +74,12 @@ function setupVals({ state, actions, now }) {
   const questions = plannedQuestions(chosen.length, setup.activities);
 
   return {
+    setupCategories: categoryOptions({
+      selected: setup.category,
+      onPick: (key) => actions.setExamSetup({ category: key }),
+      style: segButton,
+    }),
+
     setupSizes: SIZE_OPTIONS.map((n) => ({
       key: String(n),
       label: n === 0 ? copy.common.all : String(n),

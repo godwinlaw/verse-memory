@@ -80,3 +80,60 @@ test("chunksFor splits a passage into ordered chunks that rejoin to the text", (
     assert.equal(chunks.join(" ").replace(/\s+/g, " ").trim(), p.text.replace(/\s+/g, " ").trim());
   }
 });
+
+/* ── verse-unit chunking ──────────────────────────────────────────────────── */
+
+/* Nine verses, the shape of one section of a long chapter (Hebrews 11:8-16).
+ * Deliberately written so every verse is long enough that punctuation alone
+ * would cut them into far more pieces than there are verses — which is exactly
+ * the difference the verse path exists to make. */
+const VERSES = Array.from({ length: 9 }, (_, i) => `Verse ${i + 1} says one thing, and then it says another thing.`);
+const VERSE_TEXT = VERSES.join(" ");
+
+const COARSE = 0;
+const MEDIUM = 1;
+const FINE = 2;
+
+test("a verse-structured passage is cut on its verses, one per chunk at the finest level", () => {
+  const chunks = chunksFor(VERSE_TEXT, FINE, VERSES);
+  assert.deepEqual(chunks, VERSES);
+});
+
+test("the coarser levels group verses rather than splitting them", () => {
+  const medium = chunksFor(VERSE_TEXT, MEDIUM, VERSES);
+  const coarse = chunksFor(VERSE_TEXT, COARSE, VERSES);
+  assert.equal(medium.length, 5); // nine verses, two at a time
+  assert.equal(coarse.length, 3); // three at a time
+  assert.equal(medium[0], VERSES[0] + " " + VERSES[1]);
+  assert.equal(coarse[0], VERSES.slice(0, 3).join(" "));
+});
+
+test("every level puts the whole passage back, in order", () => {
+  for (const level of [COARSE, MEDIUM, FINE]) {
+    assert.equal(chunksFor(VERSE_TEXT, level, VERSES).join(" "), VERSE_TEXT, `level ${level} lost text`);
+  }
+});
+
+test("a chapter longer than the level's cap is grouped up until it fits", () => {
+  // Forty verses at the finest level would be forty tiles to place; the
+  // maxChunks fold the punctuation path already had applies here too.
+  const many = Array.from({ length: 40 }, (_, i) => `Verse ${i + 1} of it.`);
+  const chunks = chunksFor(many.join(" "), FINE, many);
+  assert.ok(chunks.length <= SCRAMBLE_LEVELS[FINE].maxChunks, `got ${chunks.length} chunks`);
+  assert.equal(chunks.join(" "), many.join(" "));
+});
+
+test("a passage with no verses chunks exactly as it did before", () => {
+  const text = "For God so loved the world, that he gave his only Son, that whoever believes in him should not perish.";
+  for (const level of [COARSE, MEDIUM, FINE]) {
+    assert.deepEqual(chunksFor(text, level, null), chunksFor(text, level));
+  }
+});
+
+test("a passage of one or two verses takes the punctuation path", () => {
+  // Two verses would be two tiles — a choice between two, which is no exercise.
+  // Under the threshold the punctuation cut gives a real one.
+  const two = ["The Lord is my shepherd; I shall not want.", "He makes me lie down in green pastures."];
+  const text = two.join(" ");
+  assert.deepEqual(chunksFor(text, FINE, two), chunksFor(text, FINE));
+});

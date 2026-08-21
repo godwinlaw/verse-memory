@@ -8,10 +8,12 @@
  * a review sitting and a learn sitting but never mix them. */
 
 import { copy } from "../copy.js";
+import { categoryOf, normalizeCategory } from "../categories.js";
 import { FADING_R, freshBar, freshColor } from "../srs.js";
 import { selectionPools, STATUS_LABEL } from "../progress.js";
 import { LEARN, REVIEW } from "../review.js";
 import { checkBox, filterTab, muted, statusTag } from "../ui/tokens.js";
+import { categoryOptions } from "./category.js";
 
 /* Filter tabs, in display order. `status` null means "no status filter"; the
  * rest reuse the member-facing status wording so the tabs and the row pills
@@ -44,8 +46,9 @@ function rangeBetween(shown, anchor, id) {
   return shown.slice(Math.min(from, to), Math.max(from, to) + 1);
 }
 
-function matches(passage, status, query) {
+function matches(passage, status, category, query) {
   if (status && status !== passage.status) return false;
+  if (category && categoryOf(passage) !== category) return false;
   if (!query) return true;
   return passage.ref.toLowerCase().includes(query) || passage.text.toLowerCase().includes(query);
 }
@@ -69,10 +72,11 @@ function sitting(kind, label, verses, actions) {
 
 export function listVals({ state, prog, actions }) {
   const active = FILTERS.find((f) => f.label === state.filter) || FILTERS[0];
+  const category = normalizeCategory(state.listCategory);
   const query = state.search.trim().toLowerCase();
   const rows = state.passages
     .map((p) => ({ ...p, status: prog.statusOf(p.id) }))
-    .filter((p) => matches(p, active.status, query));
+    .filter((p) => matches(p, active.status, category, query));
 
   const selection = state.selection || [];
   const picked = new Set(selection);
@@ -98,6 +102,12 @@ export function listVals({ state, prog, actions }) {
 
   return {
     shownCount: rows.length,
+    // Counted over the whole set, not over the goal category. This screen shows
+    // every shelf, so borrowing the board's goal-scoped figures would have read
+    // "183 shown · 0 committed · 167 untouched" and left sixteen passages
+    // apparently unaccounted for.
+    listCommitted: state.passages.filter((p) => prog.statusOf(p.id) === "memorized").length,
+    listUntouched: state.passages.filter((p) => prog.statusOf(p.id) === "new").length,
     search: state.search,
     onSearch: (e) => actions.setSearch(e.target.value),
 
@@ -106,6 +116,12 @@ export function listVals({ state, prog, actions }) {
       onClick: () => actions.setFilter(f.label),
       style: filterTab(state.filter === f.label),
     })),
+
+    categoryTabs: categoryOptions({
+      selected: category,
+      onPick: (key) => actions.setListCategory(key),
+      style: filterTab,
+    }),
 
     // ── the selection ─────────────────────────────────────────────────────
     selectionCount: count,
@@ -134,12 +150,20 @@ export function listVals({ state, prog, actions }) {
           : [...selection, ...shown.filter((id) => !picked.has(id))],
       ),
 
-    rows: rows.map((p) => {
+    rows: rows.map((p, i) => {
       const reviewed = prog.isReviewed(p.id);
       const fresh = prog.freshness(p.id);
       const selected = picked.has(p.id);
+      // A long chapter ships as several sections sharing one `group` (see
+      // tools/new-passages.json), and the heading is what puts them back
+      // together on screen. Taken from the row *above this one in the list as
+      // it is currently shown*, so a search or a filter that breaks a run still
+      // labels the piece the member can see rather than silently dropping the
+      // heading with the row that used to carry it.
+      const prevGroup = i > 0 ? rows[i - 1].group : null;
       return {
         id: p.id,
+        groupLabel: p.group && p.group !== prevGroup ? copy.list.groupHeading(p.group) : "",
         selected,
         selectMark: selected ? "✓" : "",
         selectStyle: checkBox(selected),

@@ -8,9 +8,11 @@
  * (see srs.commitsVerse). */
 
 import { copy } from "../copy.js";
+import { inCategory, normalizeCategory } from "../categories.js";
 import { learnPool } from "../progress.js";
 import { LEARN_SIZE, QUEUE_PREVIEW_ROWS } from "../review.js";
 import { segButton } from "../ui/tokens.js";
+import { categoryOptions } from "./category.js";
 
 /* Sittings a member can bite off. 0 is "All", the same convention the review
  * setup uses for its size picker. */
@@ -19,11 +21,23 @@ const SIZES = [1, 3, 5, 10, 0];
 export function learnSetupVals({ state, prog, actions }) {
   const size = (state.learnSetup && state.learnSetup.size) !== undefined ? state.learnSetup.size : LEARN_SIZE;
 
-  const pool = learnPool(state.passages, state.progress);
+  // Narrowed before the pool, never inside it: learnPool() stays the one
+  // definition of what is not yet committed, and a category only decides which
+  // passages it is handed. "All" (the default) hands it everything.
+  const category = normalizeCategory(state.learnSetup && state.learnSetup.category);
+  const shelf = inCategory(state.passages, category);
+
+  const pool = learnPool(shelf, state.progress);
   const verses = size === 0 ? pool : pool.slice(0, size);
   const started = pool.filter((p) => prog.statusOf(p.id) === "learning").length;
 
   return {
+    learnSetupCategories: categoryOptions({
+      selected: category,
+      onPick: (key) => actions.setLearnSetup({ category: key }),
+      style: segButton,
+    }),
+
     learnSetupSizes: SIZES.map((n) => ({
       key: String(n),
       label: n === 0 ? copy.common.all : String(n),

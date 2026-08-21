@@ -309,3 +309,44 @@ test("an untested verse is untouched, and an unseen one starts from scratch", ()
   assert.equal(next[99].hits, 1);
   assert.equal(freshness(migrate(next[99]), NOW), 80);
 });
+
+/* ── categories ───────────────────────────────────────────────────────────── */
+
+test("normalizeSetup keeps a real category and forgets one that has gone", () => {
+  assert.equal(normalizeSetup({ category: "psalms" }).category, "psalms");
+  // A shelf removed from a later build must read as "All" — a setup pointing at
+  // nothing would otherwise build an empty paper the member cannot explain.
+  assert.equal(normalizeSetup({ category: "apocrypha" }).category, null);
+  assert.equal(normalizeSetup({}).category, null);
+  assert.equal(DEFAULT_SETUP.category, null);
+});
+
+test("a category narrows the verses a paper can cover", () => {
+  const all = eligiblePassages(passages, progress, setup(), NOW);
+  const psalms = eligiblePassages(passages, progress, setup({ category: "psalms" }), NOW);
+  assert.ok(psalms.length > 0);
+  assert.ok(psalms.length < all.length);
+  assert.ok(
+    psalms.every((p) => p.category === "psalms"),
+    "a verse from another shelf reached the paper",
+  );
+});
+
+test("the decoy references still come from the whole set", () => {
+  // The paper is one shelf, but a wrong reference is only worth reasoning about
+  // if it could have come from anywhere — so buildExam is handed every passage
+  // for its distractors even when eligiblePassages has narrowed the verses.
+  const exam = buildExam({
+    passages,
+    progress,
+    setup: setup({ category: "psalms", activities: ["pick-ref"], size: 0 }),
+    now: NOW,
+    seed: 5,
+  });
+  const offered = exam.questions.flatMap((q) => (q.options || []).map((o) => o.label));
+  assert.ok(offered.length > 0, "no multiple-choice questions were built");
+  assert.ok(
+    offered.some((label) => label !== NONE_OF_THE_ABOVE && !label.startsWith("Psalm")),
+    "every reference offered was a psalm, so the choice gives the answer away",
+  );
+});

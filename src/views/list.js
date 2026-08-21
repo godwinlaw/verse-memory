@@ -3,7 +3,7 @@
  * them as a review or a learn session. */
 
 import { copy } from "../copy.js";
-import { html, sx, corners } from "../dom.js";
+import { html, sx, corners, React } from "../dom.js";
 import { muted } from "../ui/tokens.js";
 
 /* Shift-clicking ticks a run of rows (see viewmodel/list.js), and the browser's
@@ -58,7 +58,7 @@ export function listView(v) {
       <div>
         <h2 style=${sx("margin:0")}>${copy.list.title}</h2>
         <div style=${sx(`font-size:13px;color:${muted(55)}`)}>
-          ${copy.list.summary(v.shownCount, v.memorized, v.remaining)}
+          ${copy.list.summary(v.shownCount, v.listCommitted, v.listUntouched)}
         </div>
       </div>
       <div style=${sx("margin-left:auto;display:flex;gap:12px;align-items:center")}>
@@ -69,6 +69,9 @@ export function listView(v) {
           onChange=${v.onSearch}
           style=${sx("width:260px")}
         />
+        <div className="seg">
+          ${v.categoryTabs.map((t) => html`<button key=${t.key} className="seg-btn" title=${t.title} onClick=${t.onClick} style=${sx(t.style)}>${t.label}</button>`)}
+        </div>
         <div className="seg">
           ${v.statusTabs.map((t) => html`<button key=${t.label} className="seg-btn" onClick=${t.onClick} style=${sx(t.style)}>${t.label}</button>`)}
         </div>
@@ -101,56 +104,72 @@ export function listView(v) {
       </div>
       ${v.rows.map(
         (r, i) =>
-          html` <div
-            key=${r.id}
-            className="item-in"
-            style=${sx(
-              `display:grid;${COLUMNS};align-items:center;padding:11px 18px;--stagger-i:${i}` +
-                (i ? `;border-top:1px solid ${muted(8)}` : ""),
-            )}
-          >
-            <div>
-              <button
-                className="tick"
-                onClick=${r.onSelect}
-                onMouseDown=${noTextSelect}
-                title=${r.selectTitle}
-                aria-label=${r.selectTitle}
-                aria-pressed=${r.selected}
-                style=${sx(r.selectStyle)}
+          html`<${React.Fragment} key=${r.id}>
+            ${
+              r.groupLabel &&
+              html`<div
+                style=${sx(
+                  "padding:14px 18px 6px;font-family:var(--font-heading);font-weight:600;font-size:12px;" +
+                    `letter-spacing:.12em;text-transform:uppercase;color:${muted(50)};` +
+                    (i ? "border-top:1px solid var(--color-divider)" : ""),
+                )}
               >
-                ${r.selectMark}
-              </button>
-            </div>
-            <div style=${sx(`font-family:var(--font-heading);font-size:12px;letter-spacing:.08em;color:${muted(45)}`)}>
-              ${r.num}
-            </div>
-            <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:17px")}>${r.ref}</div>
+                ${r.groupLabel}
+              </div>`
+            }
             <div
-              style=${sx(`font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${muted(62)};padding-right:20px`)}
+              className="item-in"
+              style=${sx(
+                `display:grid;${COLUMNS};align-items:center;padding:11px 18px;--stagger-i:${i}` +
+                  (i ? `;border-top:1px solid ${muted(8)}` : ""),
+              )}
             >
-              ${r.snippet}
-            </div>
-            <div style=${sx("padding-right:20px;display:flex;flex-direction:column;gap:4px")}>
-              <span style=${sx("font-family:var(--font-heading);font-size:12px;font-weight:600;color:" + r.freshColor)}
-                >${r.freshLabel}</span
+              <div>
+                <button
+                  className="tick"
+                  onClick=${r.onSelect}
+                  onMouseDown=${noTextSelect}
+                  title=${r.selectTitle}
+                  aria-label=${r.selectTitle}
+                  aria-pressed=${r.selected}
+                  style=${sx(r.selectStyle)}
+                >
+                  ${r.selectMark}
+                </button>
+              </div>
+              <div
+                style=${sx(`font-family:var(--font-heading);font-size:12px;letter-spacing:.08em;color:${muted(45)}`)}
               >
-              <div style=${sx(r.freshBarStyle)}></div>
-            </div>
-            <div style=${sx("display:flex;align-items:center;gap:6px")}>
-              <span style=${sx(r.tagStyle)}>${r.statusLabel}</span>
-              ${r.fading ? html`<span style=${sx(r.fadingStyle)}>${copy.list.fading}</span>` : null}
-            </div>
-            <div style=${sx("display:flex;gap:8px;justify-content:flex-end")}>
-              <button
-                className="btn btn-secondary"
-                onClick=${r.onAction}
-                style=${sx("font-size:12px;padding:4px 10px")}
+                ${r.num}
+              </div>
+              <div style=${sx("font-family:var(--font-heading);font-weight:600;font-size:17px")}>${r.ref}</div>
+              <div
+                style=${sx(`font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${muted(62)};padding-right:20px`)}
               >
-                ${r.actionLabel}
-              </button>
+                ${r.snippet}
+              </div>
+              <div style=${sx("padding-right:20px;display:flex;flex-direction:column;gap:4px")}>
+                <span
+                  style=${sx("font-family:var(--font-heading);font-size:12px;font-weight:600;color:" + r.freshColor)}
+                  >${r.freshLabel}</span
+                >
+                <div style=${sx(r.freshBarStyle)}></div>
+              </div>
+              <div style=${sx("display:flex;align-items:center;gap:6px")}>
+                <span style=${sx(r.tagStyle)}>${r.statusLabel}</span>
+                ${r.fading ? html`<span style=${sx(r.fadingStyle)}>${copy.list.fading}</span>` : null}
+              </div>
+              <div style=${sx("display:flex;gap:8px;justify-content:flex-end")}>
+                <button
+                  className="btn btn-secondary"
+                  onClick=${r.onAction}
+                  style=${sx("font-size:12px;padding:4px 10px")}
+                >
+                  ${r.actionLabel}
+                </button>
+              </div>
             </div>
-          </div>`,
+          <//>`,
       )}
     </div>
   </div>`;

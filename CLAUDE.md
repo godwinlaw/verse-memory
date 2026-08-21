@@ -21,6 +21,7 @@ npm run lint           # ESLint (flat config)
 npm run format         # Prettier write   (format:check for CI-style check)
 npm run build          # assemble ./dist (scripts/build.mjs) — the deployable static tree
 npm run keywords       # regenerate data/keywords.js via spaCy (needs: pip install spacy + en_core_web_sm)
+ESV_API_KEY=… node tools/fetch_passages.mjs             # add passages listed in tools/new-passages.json (authoring only)
 npm run deploy         # build + wrangler deploy (Cloudflare Workers static assets)
 firebase deploy --only firestore:rules                 # deploy deploy/firestore.rules
 ```
@@ -75,6 +76,72 @@ The set is divided in two by one rule, and most of the app's shape follows from 
 That rule splits the set into the two pools in `progress.js`, which are the single definition of what each sitting draws from: `reviewPool()` (committed and faded to the threshold or below) and `learnPool()` (everything not committed, verses already started first). The board's two sections and both setup screens read these, so they cannot disagree.
 
 The passage list is the one screen that does not deal from a pool: rows can be ticked and taken as a sitting directly. That is a choice of _which_ verses, not of the rule — `selectionPools()` divides the ticked ids the same way (committed → review, the rest → learn), so a hand-picked sitting is still two sittings when the picks straddle both halves, and a review session still cannot reach an uncommitted verse. The one thing it relaxes is freshness: a verse picked by hand is taken however fresh it reads, where `reviewPool()` would leave it alone. The ticks live in `state.selection` (device-local, never persisted) and survive a sitting, so the member clears them, not the app. A run of rows is ticked at once by shift-clicking: `state.selectAnchor` holds the last row ticked on its own, and a shift-click applies _that row's_ state to everything between it and the row clicked — ticked anchor ticks the run, a just-cleared anchor clears it. The run is cut from the rows currently on screen, so a search or filter bounds it; `viewmodel/list.js` works out which ids that is (as it does for the header tick box) and `App.selectRange` only adds or removes them.
+
+### The three shelves
+
+The set is divided into three categories — the core **Verses Every Self
+Respecting Christian Should Know** (the original 167), **Psalms**, and **DT
+Passages** — and `src/categories.js` is the only definition of them. Names sit
+beside keys there rather than in `copy.js`, for the same reason `MODES` and
+`ACTIVITIES` keep theirs: the key is written into every passage record and into
+the saved setup forms, so it is data.
+
+**A category is a shelf, not a rule.** It says nothing about what commits a
+verse, what a sitting draws from, or how anything is scheduled — `reviewPool()`,
+`learnPool()` and `eligiblePassages()` remain the single definition of each, and
+a category only narrows the passage list handed to them. Every screen that
+offers one also offers "All" and opens on it, so with nothing chosen the app
+behaves exactly as it did when there was one flat set — which is also what keeps
+the setup screens and the board from disagreeing. `inCategory(list, null)`
+returns the list untouched, and that is what lets callers apply it
+unconditionally instead of branching round it. `categoryOf()` reads a missing
+category as `core`, because every record predates the field and all of them were
+the goal. The review setup narrows **both** its due queue and its manual
+controls, so the picker means the same thing to a member who is behind and one
+who is caught up. The test setup narrows what is _examined_ but deliberately not
+the `passages` `buildExam()` hands to `pickRefQuestion`/`matchQuestion`: a wrong
+reference is only worth reasoning about if it could have come from anywhere.
+
+**The goal is one category, not the set** (`viewmodel/totals.js`). The deadline
+was set against the core verses, so `goal`, `pct`, `perWeek`, `memorized`,
+`learning` and `remaining` are all measured over `inCategory(passages,
+GOAL_CATEGORY)` — adding two shelves must not drop a member's percentage without
+anyone forgetting a word. Two figures span everything instead: `committedAll`,
+which the leaderboard's "You" row uses so it matches the peer rows (those come
+from `committedCount(r.progress)` in `App.loadRoster`, which knows nothing about
+categories), and `totalCount`, the size of the list. Reading the board's figure
+off `committedAll` would let a member show "170 of 167".
+
+**A long chapter ships as sections.** Hebrews 11 is six passage records and 2
+Corinthians 4 is three, each sharing a `group`. Each section is an ordinary
+passage that commits on its own, so nothing in `srs`, `progress` or `exam`
+needed to learn what a chapter is; the `group` only gathers them under one
+heading on the list, and `viewmodel/list.js` puts that heading on the first row
+of a run **as currently shown**, so a search that breaks the run still labels
+what is left. Sections are also what keep a record inside the ESV licence and
+inside what a member can give back in one sitting.
+
+**A long passage carries its verses.** Records fetched by
+`tools/fetch_passages.mjs` have a `verses` array with `text` as the flat join,
+so grading, blanks, keywords and the exam never learn about it. The one reader
+is `chunksFor(t, level, verses)`: with three or more verses it cuts on verse
+boundaries at `verseGroup` per chunk (fine 1, medium 2, coarse 3) and then falls
+through the same `maxChunks` fold as before, so a forty-verse chapter still
+cannot deal forty tiles. Cutting a chapter on punctuation gave dozens of
+look-alike fragments — a jigsaw rather than a recall — where a verse is the unit
+a member actually holds one of. Passages without `verses` are byte-identical to
+before.
+
+**The ESV text is fetched once, at authoring time.** `tools/fetch_passages.mjs`
+reads `tools/new-passages.json` and `ESV_API_KEY` from the environment; the app
+never calls an API and there is no key in the build. `data/passages.js` must
+stay a **single JSON array literal** — `tools/gen_keywords.py` slices it between
+the first `[` and the last `]` and hands that to `json.loads`, so a second
+`export const` in that file would break the generator, which is why the category
+table lives in `src/`. Crossway's storage limits (half a book, 500 consecutive
+verses) are asserted over the shipped set by `test/passages.test.mjs`, and their
+required notice is rendered in `views/footer.js` — the terms ask for it wherever
+the text appears, not only in the README.
 
 ### Reciting aloud
 
@@ -143,7 +210,7 @@ The wording is `copy.guide` (including the diagram labels and the sample passage
 
 ### Data + the keyword generator
 
-`data/passages.js` and `data/keywords.js` are ES modules exporting the verse set and per-passage keyword indices. **`data/keywords.js` is generated — do not hand-edit it.** `tools/gen_keywords.py` runs each passage through spaCy and writes indices that are **aligned to `text.split(" ")`**. Consequently, if you change a passage's text you must re-run `npm run keywords`, or the blanks will misalign. `blanks.js` prefers these precomputed indices and falls back to a lexical heuristic only for passages without data.
+`data/passages.js` and `data/keywords.js` are ES modules exporting the verse set and per-passage keyword indices. **Both are generated — do not hand-edit either.** Passages come from `tools/fetch_passages.mjs` (see The three shelves); `data/keywords.js` comes from spaCy. `tools/gen_keywords.py` runs each passage through spaCy and writes indices that are **aligned to `text.split(" ")`**. Consequently, if you change a passage's text you must re-run `npm run keywords`, or the blanks will misalign. `blanks.js` prefers these precomputed indices and falls back to a lexical heuristic only for passages without data.
 
 ### Persistence, then optional cloud overlay
 

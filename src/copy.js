@@ -56,6 +56,18 @@ export const copy = {
     startOver: "Start over",
   },
 
+  /* The words around choosing a category. The category *names* are not here —
+   * they sit beside their keys in categories.js, for the same reason MODES and
+   * ACTIVITIES keep theirs — so this is only the wording that frames the
+   * choice, shared by the passage list and all three setup screens. */
+  category: {
+    label: "Which passages",
+    /* Said under the picker on a setup screen, because narrowing the shelf
+     * narrows what the sitting can possibly offer. */
+    note: "Narrows this sitting to one part of the set.",
+    emptyFor: (name) => "Nothing in " + name + " matches these settings.",
+  },
+
   /* The member-facing name of each status. Quoted by the board, the list's
    * filter tabs and row pills, and the queue previews, so it is said once. */
   status: {
@@ -97,6 +109,13 @@ export const copy = {
     url: "https://forms.gle/H3YGDEJ4XXtN4Aoz5",
     prompt: "🐛 Spotted bugs or got a feature request?",
     link: "Fill out this form.",
+    /* Crossway's required notice, which has to appear where the text does and
+     * not only in the repo's README. The footer is under every signed-in
+     * screen, so this is the one place in the app that shows scripture without
+     * also being a card the member is working. */
+    esv:
+      "Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), " +
+      "© 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.",
   },
 
   /* ── the gates ──────────────────────────────────────────────────────────── */
@@ -311,7 +330,7 @@ export const copy = {
     paceLearn: "Learn a passage",
     paceReview: "Review",
     paceTest: "Take a test",
-    paceBrowse: (goal) => "Browse all " + goal,
+    paceBrowse: (total) => "Browse all " + total,
     paceGuide: "How this works",
   },
 
@@ -332,6 +351,8 @@ export const copy = {
     fading: "Fading",
     /* A passage never reviewed has no freshness to show. */
     freshNone: "—",
+    /* The heading above a run of sections cut from one long chapter. */
+    groupHeading: (group) => group,
 
     selectionLabel: (count, hidden) =>
       plural(count, "verse selected", "verses selected") + (hidden ? " · " + hidden + " not shown" : ""),
@@ -663,7 +684,7 @@ export const copy = {
     empty: "No one matches these filters yet.",
     places: ["First", "Second", "Third"],
     you: "You",
-    podiumOf: (goal) => "of " + goal,
+    podiumOf: (total) => "of " + total,
     podiumAvg: "avg freshness",
     streakDays: (n) => n + " days",
     colRank: "#",

@@ -6,7 +6,7 @@
  * whole thing is configured through. */
 
 import { test, expect } from "./fixtures.mjs";
-import { GOAL, PROFILE, committed } from "./helpers/seed.mjs";
+import { PROFILE, TOTAL, committed } from "./helpers/seed.mjs";
 import { MEMBER } from "./helpers/firebase-stub.mjs";
 
 test("the splash names the set, then hands the member to their board", async ({ app, page }) => {
@@ -16,7 +16,7 @@ test("the splash names the set, then hands the member to their board", async ({ 
   await expect(page.locator(".splash-wordmark")).toHaveText("VERSE MASTERY");
   // The one thing on it drawn from data, and it comes from the passage module
   // rather than from state — which is still loading behind it.
-  await expect(page.locator(".splash-cycle")).toContainText(`Indexing ${GOAL} passages`);
+  await expect(page.locator(".splash-cycle")).toContainText(`Indexing ${TOTAL} passages`);
   // The cycle is drawn but not announced; the truthful line is read instead.
   await expect(page.getByRole("status")).toHaveText("Checking your session…");
 

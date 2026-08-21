@@ -1,0 +1,51 @@
+{
+  "_comment": [
+    "Passages to fetch from api.esv.org, in the order they should be added to",
+    "data/passages.js. Run: ESV_API_KEY=... node tools/fetch_passages.mjs",
+    "",
+    "A long chapter is listed as several sections sharing one `group`: each is an",
+    "ordinary passage that commits on its own (see srs.commitsVerse), and the",
+    "group is only what holds them together on the list. `ref`, `book` and",
+    "`testament` match the fields the existing 167 records carry -- `book` is the",
+    "decoy key exam.js reasons with, so 'Psalm' matches the set's own spelling."
+  ],
+  "passages": [
+    { "ref": "Psalm 1", "book": "Psalm", "testament": "OT", "category": "psalms" },
+    { "ref": "Psalm 8", "book": "Psalm", "testament": "OT", "category": "psalms" },
+    { "ref": "Psalm 16", "book": "Psalm", "testament": "OT", "category": "psalms" },
+    { "ref": "Psalm 23", "book": "Psalm", "testament": "OT", "category": "psalms" },
+    { "ref": "Psalm 32", "book": "Psalm", "testament": "OT", "category": "psalms" },
+    { "ref": "Psalm 37:1-9", "book": "Psalm", "testament": "OT", "category": "psalms" },
+
+    { "ref": "Isaiah 9:1-7", "book": "Isaiah", "testament": "OT", "category": "dt" },
+
+    {
+      "ref": "2 Corinthians 4:1-6",
+      "book": "2 Corinthians",
+      "testament": "NT",
+      "category": "dt",
+      "group": "2 Corinthians 4"
+    },
+    {
+      "ref": "2 Corinthians 4:7-12",
+      "book": "2 Corinthians",
+      "testament": "NT",
+      "category": "dt",
+      "group": "2 Corinthians 4"
+    },
+    {
+      "ref": "2 Corinthians 4:13-18",
+      "book": "2 Corinthians",
+      "testament": "NT",
+      "category": "dt",
+      "group": "2 Corinthians 4"
+    },
+
+    { "ref": "Hebrews 11:1-7", "book": "Hebrews", "testament": "NT", "category": "dt", "group": "Hebrews 11" },
+    { "ref": "Hebrews 11:8-16", "book": "Hebrews", "testament": "NT", "category": "dt", "group": "Hebrews 11" },
+    { "ref": "Hebrews 11:17-22", "book": "Hebrews", "testament": "NT", "category": "dt", "group": "Hebrews 11" },
+    { "ref": "Hebrews 11:23-31", "book": "Hebrews", "testament": "NT", "category": "dt", "group": "Hebrews 11" },
+    { "ref": "Hebrews 11:32-38", "book": "Hebrews", "testament": "NT", "category": "dt", "group": "Hebrews 11" },
+    { "ref": "Hebrews 11:39-40", "book": "Hebrews", "testament": "NT", "category": "dt", "group": "Hebrews 11" }
+  ]
+}

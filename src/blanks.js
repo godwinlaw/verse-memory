@@ -96,9 +96,32 @@ export const BLANK_PARITIES = [
 // used when punctuation alone leaves too few pieces. wordGroup, when set, cuts
 // strictly into fixed-size word groups — ignoring punctuation so phrases get
 // broken apart mid-clause.
+//
+// verseGroup is the same idea one unit up, and it only applies to a passage
+// that knows where its verses are (see chunksFor). Cutting a chapter on
+// punctuation gives dozens of fragments that all look alike, and putting them
+// back is a jigsaw rather than a recall of the passage; a verse is the unit a
+// member actually holds one of. So the finest cut of a long passage is one
+// verse, and the coarser levels group them.
 export const SCRAMBLE_LEVELS = [
-  { key: "coarse", label: "Coarse", desc: "a few long phrases", minWords: 6, maxChunks: 5, fallback: 8 },
-  { key: "medium", label: "Medium", desc: "balanced phrases", minWords: 2, maxChunks: 13, fallback: 3 },
+  {
+    key: "coarse",
+    label: "Coarse",
+    desc: "a few long phrases",
+    minWords: 6,
+    maxChunks: 5,
+    fallback: 8,
+    verseGroup: 3,
+  },
+  {
+    key: "medium",
+    label: "Medium",
+    desc: "balanced phrases",
+    minWords: 2,
+    maxChunks: 13,
+    fallback: 3,
+    verseGroup: 2,
+  },
   {
     key: "fine",
     label: "Fine",
@@ -107,6 +130,7 @@ export const SCRAMBLE_LEVELS = [
     maxChunks: 40,
     fallback: 3,
     wordGroup: 3,
+    verseGroup: 1,
   },
 ];
 
@@ -171,11 +195,29 @@ export function keyBlankSet(text, id, level = 1, parity = 0) {
   return chosen;
 }
 
-/* Cut a passage into shufflable phrase chunks at the given granularity. */
-export function chunksFor(t, level = 1) {
+/* Smallest number of verses worth cutting on. Under this the passage is short
+ * enough that verse-sized chunks would be two or three pieces of a jigsaw with
+ * nothing to work out, so punctuation gives the better exercise. */
+const MIN_VERSES_TO_CUT = 3;
+
+/* Cut a passage into shufflable phrase chunks at the given granularity.
+ *
+ * `verses` is optional and only the long passages carry it (see
+ * tools/fetch_passages.mjs). When it is there, the cut is made on verse
+ * boundaries instead of on punctuation — a verse is the unit a member learns a
+ * chapter in, and it is the one the issue asked for. Everything else is
+ * unchanged: the 167 one- and two-verse passages have no `verses` and take the
+ * punctuation path exactly as they always did. */
+export function chunksFor(t, level = 1, verses = null) {
   const cfg = SCRAMBLE_LEVELS[level] || SCRAMBLE_LEVELS[1];
   let out;
-  if (cfg.wordGroup) {
+  if (verses && verses.length >= MIN_VERSES_TO_CUT && cfg.verseGroup) {
+    // Verses, taken verseGroup at a time. The maxChunks fold below still
+    // applies, so a forty-verse chapter cannot deal forty tiles at the fine
+    // level — it groups them up until it fits.
+    out = [];
+    for (let i = 0; i < verses.length; i += cfg.verseGroup) out.push(verses.slice(i, i + cfg.verseGroup).join(" "));
+  } else if (cfg.wordGroup) {
     // Cut strictly by word count, ignoring punctuation, so phrases are broken apart.
     const w = t.split(" ");
     out = [];
