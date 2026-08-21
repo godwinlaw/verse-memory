@@ -510,6 +510,7 @@ export class App extends React.Component {
     };
     if (!isProfileComplete(next)) return;
     this.saveProfile(next);
+    if (isSignUp) logAnalyticsEvent("sign_up");
     this.setState({ editingProfile: false, profileDraft: null, welcomePrompt: isSignUp });
   }
 
@@ -663,6 +664,7 @@ export class App extends React.Component {
         : dueOrder(this.state.passages, this.state.progress)
             .slice(0, SESSION_SIZE)
             .map((p) => p.id);
+    logAnalyticsEvent("session_start", { session_kind: kind, size: queue.length });
     this.setState({
       view: "review",
       sessionKind: kind,
@@ -786,6 +788,14 @@ export class App extends React.Component {
 
   /* Walk to a card in the queue, ending the session past its end. */
   goCard(qi) {
+    if (qi >= this.state.queue.length) {
+      const results = Object.values(this.state.results);
+      logAnalyticsEvent("session_complete", {
+        session_kind: this.state.sessionKind,
+        cards_completed: results.length,
+        verses_committed: results.filter((r) => r.committed).length,
+      });
+    }
     this.setState((s) => ({ qi, view: qi >= s.queue.length ? "done" : "review" }));
     this.resetCard();
   }
@@ -919,6 +929,11 @@ export class App extends React.Component {
     const today = dayKey(new Date());
     log[today] = (log[today] || 0) + rows.length;
     this.save(progress, log);
+    logAnalyticsEvent("test_complete", {
+      size: scored.total,
+      right: scored.right,
+      pass_rate: scored.total ? scored.right / scored.total : 0,
+    });
     this.setState({ view: "test-done", examResult: { ...scored, rows } });
   }
 
