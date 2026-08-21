@@ -37,7 +37,16 @@ import {
 import { appConfig } from "./config.js";
 import { detectMobile } from "./device.js";
 import { DEFAULT_THEME, applyTheme, normalizeTheme, watchSystemTheme } from "./theme.js";
-import { initAuth, signIn, signOutUser, fetchRoster, retrySync, onPushError } from "./firebase.js";
+import {
+  initAuth,
+  initAnalytics,
+  logAnalyticsEvent,
+  signIn,
+  signOutUser,
+  fetchRoster,
+  retrySync,
+  onPushError,
+} from "./firebase.js";
 import { passages } from "../data/passages.js";
 import {
   buildViewModel,
@@ -310,6 +319,9 @@ export class App extends React.Component {
     this.startAuth();
     // A write the member cannot see fail is a write they will assume happened.
     onPushError((sync) => this.setState({ sync }));
+    // Independent of the auth/sync seam above: an unconfigured or unreachable
+    // Analytics is invisible to the member, same as an unconfigured Firebase.
+    initAnalytics();
   }
 
   /* Begin (or begin again) the account half of the boot. Separated from
@@ -600,6 +612,19 @@ export class App extends React.Component {
     const today = dayKey(new Date());
     log[today] = (log[today] || 0) + 1;
     this.save(progress, log);
+    // Only an actual submission — never the flashcard's unmarked auto-record
+    // (moveCard calls record(id) with no score), which the member never chose
+    // to hand in.
+    if (score != null) {
+      const newlyCommitted = prev.status !== "memorized" && committed;
+      logAnalyticsEvent("verse_attempt", {
+        passage_id: id,
+        session_kind: ctx.sessionKind,
+        mode: ctx.mode,
+        committed: newlyCommitted,
+      });
+      if (newlyCommitted) logAnalyticsEvent("verse_memorized", { passage_id: id, mode: ctx.mode });
+    }
     this.setState((s) => ({
       sessionCount: s.sessionCount + 1,
       results: {
