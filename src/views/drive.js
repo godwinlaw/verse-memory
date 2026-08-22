@@ -6,7 +6,7 @@
  * is chosen before the first press. */
 
 import { html, sx } from "../dom.js";
-import { LABEL_SECTION, SCREEN_TITLE, muted, segButton } from "../ui/tokens.js";
+import { CALLOUT_ERROR, LABEL_SECTION, SCREEN_TITLE, muted, segButton } from "../ui/tokens.js";
 
 const FIELD = "display:flex;flex-direction:column;gap:9px";
 const BIG_REF = "font-family:var(--font-heading);font-weight:600;font-size:52px;letter-spacing:.02em;line-height:1.1";
@@ -49,6 +49,7 @@ export function driveView(v) {
           <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${v.driveQueueLabel}</span>
         </div>
         ${v.driveEmpty && html`<p style=${sx(`margin:0;font-size:14px;color:${muted(70)}`)}>${v.driveEmpty}</p>`}
+        ${v.driveError && html`<p role="status" style=${sx(`margin:0;${CALLOUT_ERROR}`)}>${v.driveError}</p>`}
         ${
           !v.driveEmpty &&
           html`<div>

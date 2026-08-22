@@ -67,6 +67,13 @@ export function createBeat() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
   let ctx = null;
   let master = null;
+  /* Every drum and bass note is played into a bus rather than straight at the
+   * master gain, and the bus is thrown away whenever the beat restarts. With
+   * two seconds of music always booked ahead (see SCHEDULE_AHEAD_S), switching
+   * preset would otherwise lay the new pattern over two seconds of the old one
+   * — notes already handed to the audio clock cannot be recalled, but a bus
+   * they are playing into can be unplugged. */
+  let bus = null;
   let noiseBuf = null;
   let timer = null;
   let preset = BEAT_PRESETS[0];
@@ -84,6 +91,15 @@ export function createBeat() {
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const data = noiseBuf.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    freshBus();
+  };
+
+  /* Unplug whatever is still playing and start a clean bus. */
+  const freshBus = () => {
+    if (bus) bus.disconnect();
+    bus = ctx.createGain();
+    bus.gain.value = 1;
+    bus.connect(master);
   };
 
   const kick = (t) => {
@@ -93,7 +109,7 @@ export function createBeat() {
     osc.frequency.exponentialRampToValueAtTime(45, t + 0.12);
     g.gain.setValueAtTime(1, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    osc.connect(g).connect(master);
+    osc.connect(g).connect(bus);
     osc.start(t);
     osc.stop(t + 0.3);
   };
@@ -107,7 +123,7 @@ export function createBeat() {
     const g = ctx.createGain();
     g.gain.setValueAtTime(gain, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    src.connect(filter).connect(g).connect(master);
+    src.connect(filter).connect(g).connect(bus);
     src.start(t);
     src.stop(t + dur + 0.05);
   };
@@ -123,7 +139,7 @@ export function createBeat() {
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
     filter.frequency.value = 400;
-    osc.connect(filter).connect(g).connect(master);
+    osc.connect(filter).connect(g).connect(bus);
     osc.start(t);
     osc.stop(t + 0.22);
   };
@@ -155,6 +171,7 @@ export function createBeat() {
        * a beat that never plays. So the first note is placed once the context
        * is really running. */
       const begin = () => {
+        freshBus(); // whatever the last pattern still had booked is unplugged
         step = 0;
         nextTime = ctx.currentTime + 0.05;
         master.gain.setValueAtTime(BEAT_GAIN, ctx.currentTime);

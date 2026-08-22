@@ -863,6 +863,13 @@ export const copy = {
     missedWords: (words) => "You missed: " + words.join(", ") + ".",
     verseSpoken: (n, pct) => "Verse " + n + ": " + pct + " percent.",
     nothingHeard: "I did not hear anything. Moving on.",
+    /* A drive session that ends because the microphone was refused looks
+     * exactly like one the member stopped, so it says which it was. The
+     * sentences are the review screen's — one microphone, one set of words for
+     * what can go wrong with it. */
+    micError: (code) => copy.review.voiceErrors[code] || copy.review.voiceErrors.failed,
+    noMic: "This browser cannot listen, so a drive session has nothing to hear. Chrome can.",
+    endedNote: "The session stopped.",
   },
 
   /* run mode */

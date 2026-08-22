@@ -272,6 +272,11 @@ function initialState() {
       phase: "idle", // idle | prompt | listen | feedback
       heard: "", // the settled transcript of the current recital
       lastResult: null, // feedbackFor()'s verdict on the last recital
+      /* Why a session ended, when it ended by itself. A drive session that
+       * stops because the microphone was refused looks exactly like one the
+       * member stopped — the screen simply goes back to the setup — and a
+       * driver has no way to find that out. */
+      error: "",
     },
     scrambleOrder: [],
     scrambleWrong: -1,
@@ -807,15 +812,15 @@ export class App extends React.Component {
     // One speaker for the whole session — the Start press is the user gesture
     // the browser's audio policy wants, and everything after it is hands-free.
     this.driveSpeaker = createSpeaker();
-    this.driveSet({ running: true, queue, index: 0, phase: "prompt", heard: "", lastResult: null }, () =>
+    this.driveSet({ running: true, queue, index: 0, phase: "prompt", heard: "", lastResult: null, error: "" }, () =>
       this.drivePrompt(),
     );
   }
 
-  stopDrive() {
+  stopDrive(error = "") {
     this.driveTeardown();
     this.driveSpeaker = null;
-    this.driveSet({ running: false, phase: "idle" });
+    this.driveSet({ running: false, phase: "idle", error });
   }
 
   drivePassage() {
@@ -858,9 +863,9 @@ export class App extends React.Component {
       // A real failure (mic denied, no microphone, network) can never resolve
       // itself mid-drive — grading past it would loop "I did not hear
       // anything" over the whole queue forever. Stop the session instead.
-      onError: () => this.stopDrive(),
+      onError: (err) => this.stopDrive(copy.drive.micError(err)),
     });
-    if (!this.driveRec) return this.stopDrive();
+    if (!this.driveRec) return this.stopDrive(copy.drive.noMic);
     this.driveRec.start();
     // A fallback so a recital that never starts still moves the loop on.
     this.driveArmSilence(DRIVE_MAX_WAIT_MS);

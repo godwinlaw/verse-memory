@@ -63,6 +63,9 @@ export function driveVals({ state, actions, now = Date.now() }) {
     })),
     driveQueueLabel: copy.drive.queueCount(d.running ? d.queue.length : pool.length),
     driveEmpty: !d.running && pool.length === 0 ? copy.drive.empty : "",
+    /* Why a session ended by itself — a refused microphone otherwise looks
+     * exactly like the member pressing Stop. */
+    driveError: !d.running && d.error ? d.error : "",
     driveScoreLabel: last ? copy.drive.lastScore(last.pct) : "",
     drivePerVerse: last && last.perVerse ? last.perVerse.map((v) => copy.drive.verseSpoken(v.verse, v.pct)) : [],
     driveMissed: last && last.missed ? last.missed.slice(0, 12).join(", ") : "",

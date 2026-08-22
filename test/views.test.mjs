@@ -66,6 +66,19 @@ test("a browser with no WebAudio still gets the playlist", () => {
   assert.match(markup, /Psalms memory playlist/);
 });
 
+/* ── drive mode ───────────────────────────────────────────────────────────── */
+
+test("a session the microphone ended says so, rather than just going quiet", () => {
+  const markup = shown("drive/stopped-by-mic");
+  assert.match(markup, /microphone was blocked/i);
+  // And it is still offering the way back in — the screen is not a dead end.
+  assert.match(markup, /Start driving session/);
+});
+
+test("an ordinary idle drive screen carries no alarm", () => {
+  assert.doesNotMatch(shown("drive/idle-supported"), /microphone was blocked/i);
+});
+
 /* No screen prints arithmetic that did not work out.
  *
  * This is cheap and it earns its place: the leaderboard quoted "NaN%" on every

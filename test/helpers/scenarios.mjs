@@ -673,6 +673,27 @@ export const scenarios = [
     }),
   },
 
+  {
+    /* A session the microphone ended, not the member — the one case where the
+     * screen going back to the setup needs a sentence beside it. */
+    name: "drive/stopped-by-mic",
+    state: baseState({
+      view: "drive",
+      drive: {
+        supported: true,
+        running: false,
+        mode: "passage",
+        source: "due",
+        queue: [],
+        index: 0,
+        phase: "idle",
+        heard: "",
+        lastResult: null,
+        error: "The microphone was blocked. Allow it in your browser, then try again.",
+      },
+    }),
+  },
+
   // ── the guide ──────────────────────────────────────────────────────────────
   { name: "guide/default", state: baseState({ view: "guide" }) },
   // Both ends of the freshness slider: day 0, where every curve reads 100%, and
