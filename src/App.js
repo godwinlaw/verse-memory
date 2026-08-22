@@ -192,10 +192,13 @@ const quietVoice = () => ({ status: "off", error: null, tail: 0, rest: 0 });
 function initialState() {
   return {
     // Settled once, at startup: what the app is being read on. A phone or a
-    // tablet is turned away before anything else happens (see device.js), and
-    // the answer cannot change under a member mid-session, so nothing ever
+    // tablet is shown a warning before anything else happens (see device.js),
+    // and the answer cannot change under a member mid-session, so nothing ever
     // asks again.
     isMobile: detectMobile(),
+    // Whether the member has pressed through the mobile warning. State-only and
+    // deliberately not persisted: the safety warning is re-shown each visit.
+    mobileAck: false,
     loaded: false,
     // The splash stands in front of everything until local data has loaded and
     // Firebase has said whether there is a session to restore — only then does
@@ -1298,16 +1301,21 @@ export class App extends React.Component {
       // leaderboard
       setLeaderFilter: (key, value) => this.setState((s) => ({ leaderFilter: { ...s.leaderFilter, [key]: value } })),
       setLeaderRankBy: (key) => this.setState({ leaderRankBy: key }),
+
+      /* mobile warning */
+      acknowledgeMobile: () => set({ mobileAck: true }),
     };
   }
 
   render() {
     const { isMobile, loaded, splashHold, auth, sync, profile, editingProfile, welcomePrompt } = this.state;
 
-    // Nothing is offered on a phone or a tablet — and the refusal comes before
-    // the splash, since a member who is not getting in should not be made to
-    // watch the boot first. It is a dead end, so no other screen follows it.
-    if (isMobile) return mobileGateView(mobileGateVals({ groupName: this.groupName() }));
+    // A phone or a tablet is warned before the app — and the warning comes
+    // before the splash, since it is the first thing worth saying. Continue
+    // passes through it for this visit; the acknowledgement is never saved,
+    // so the safety warning is shown again next time.
+    if (isMobile && !this.state.mobileAck)
+      return mobileGateView(mobileGateVals({ groupName: this.groupName(), actions: this.actions }));
 
     // The splash is up until the app knows where the member is going: their
     // board if Firebase restores a session, the sign-in screen if it does not.
