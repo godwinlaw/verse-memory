@@ -355,6 +355,10 @@ function initialState() {
       playing: false,
       nowRef: "",
       nowText: "",
+      /* The line being spoken and what the audio hardware says it is doing —
+       * both on screen, because silence is otherwise a symptomless fault. */
+      saying: "",
+      audio: "off",
       playlist: [],
     },
   };
@@ -1215,8 +1219,48 @@ export class App extends React.Component {
     if (!this.runBeat) this.runBeat = createBeat();
     if (this.runBeat) this.runBeat.start(this.state.run.preset, this.state.run.bpm);
     this.runToken = (this.runToken || 0) + 1;
-    this.setRun({ playing: true });
+    this.setRun({ playing: true, saying: "" });
+    this.holdScreenAwake();
+    this.watchRunAudio();
     if (queue.length) this.runCallout(queue, 0, this.runToken);
+  }
+
+  /* A run is spent looking anywhere but at the phone, so the screen is asked to
+   * stay awake — a locked screen is a background tab, and a background tab is
+   * where audio goes to die. The lock is a courtesy the browser may refuse
+   * (and always refuses without HTTPS), so nothing depends on it. */
+  holdScreenAwake() {
+    const nav = typeof navigator === "undefined" ? null : navigator;
+    if (!nav || !nav.wakeLock || this.wakeLock) return;
+    nav.wakeLock
+      .request("screen")
+      .then((lock) => {
+        this.wakeLock = lock;
+      })
+      .catch(() => {});
+  }
+
+  releaseScreen() {
+    if (this.wakeLock) {
+      try {
+        this.wakeLock.release();
+      } catch {
+        /* already gone */
+      }
+      this.wakeLock = null;
+    }
+  }
+
+  /* Report what the audio hardware is really doing, so a silent run has a
+   * symptom on the screen instead of just being silence. */
+  watchRunAudio() {
+    clearInterval(this.runAudioTimer);
+    const read = () => {
+      const audio = this.runBeat ? this.runBeat.state() : "off";
+      if (audio !== this.state.run.audio) this.setRun({ audio });
+    };
+    read();
+    this.runAudioTimer = setInterval(read, 1000);
   }
 
   /* Walk the callout queue, forever. `token` guards against a loop outliving
@@ -1233,11 +1277,20 @@ export class App extends React.Component {
         this.runCallout(queue, index + 1, token);
         return;
       }
-      if (this.runBeat) this.runBeat.duck(true);
-      speak(script[si].text, () => {
-        if (token !== this.runToken) return;
-        if (this.runBeat) this.runBeat.duck(false);
-        this.runTimer = setTimeout(() => sayFrom(si + 1), script[si].pauseAfterMs);
+      this.setRun({ saying: script[si].text });
+      speak(script[si].text, {
+        /* Ducked when the voice really starts, not when it is asked to: a
+         * browser that takes a moment to find its voice would otherwise play a
+         * quiet beat under nothing at all. */
+        onStart: () => {
+          if (token === this.runToken && this.runBeat) this.runBeat.duck(true);
+        },
+        onEnd: () => {
+          if (token !== this.runToken) return;
+          if (this.runBeat) this.runBeat.duck(false);
+          this.setRun({ saying: "" });
+          this.runTimer = setTimeout(() => sayFrom(si + 1), script[si].pauseAfterMs);
+        },
       });
     };
     sayFrom(0);
@@ -1246,9 +1299,20 @@ export class App extends React.Component {
   stopRun() {
     this.runToken = (this.runToken || 0) + 1;
     clearTimeout(this.runTimer);
+    clearInterval(this.runAudioTimer);
     stopSpeaking();
     if (this.runBeat) this.runBeat.stop();
-    if (this.state.run.playing) this.setRun({ playing: false, nowRef: "", nowText: "" });
+    this.releaseScreen();
+    if (this.state.run.playing) this.setRun({ playing: false, nowRef: "", nowText: "", saying: "", audio: "off" });
+  }
+
+  /* Two beeps on demand — the one thing that tells a member whether the fault
+   * is the app or the machine it is playing on. */
+  testRunSound() {
+    if (!this.runBeat) this.runBeat = createBeat();
+    if (this.runBeat) this.runBeat.testTone();
+    speak(copy.run.testSpoken, {});
+    this.watchRunAudio();
   }
 
   buildActions() {
@@ -1544,6 +1608,7 @@ export class App extends React.Component {
       /* run mode */
       startRun: () => this.startRun(),
       stopRun: () => this.stopRun(),
+      testRunSound: () => this.testRunSound(),
       setRunPreset: (key) => {
         this.setRun({ preset: key, bpm: presetByKey(key).bpm });
         if (this.runBeat && this.state.run.playing) this.runBeat.start(key, presetByKey(key).bpm);

@@ -877,5 +877,18 @@ export const copy = {
     idleNote: "Press start: the beat drops, a verse is read out, and you get a gap to say it back in your head.",
     playlistTitle: "Running playlist",
     psalmsPlaylist: "Psalms memory playlist (by Emily)",
+    testSound: "Test sound",
+    testSpoken: "Sound is working.",
+    /* Heard nothing? These are the two things worth knowing, and neither is
+     * visible without being told. */
+    audioState: (state) =>
+      state === "running"
+        ? "Beat playing"
+        : state === "suspended"
+          ? "Audio paused by the browser — press start again"
+          : "Beat off",
+    saying: (line) => "Saying: " + line,
+    backgroundNote:
+      "Keep this tab open and the screen on. A phone that locks or a tab left in the background can silence the audio.",
   },
 };

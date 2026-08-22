@@ -37,7 +37,7 @@ export function runView(v) {
           >
           <button className="btn btn-secondary" onClick=${v.runBpmUp} style=${sx("padding:6px 14px")}>+</button>
         </div>
-        <div>
+        <div style=${sx("display:flex;align-items:center;gap:14px;flex-wrap:wrap")}>
           <button
             className=${v.runPlaying ? "btn btn-secondary" : "btn btn-primary"}
             onClick=${v.runToggle}
@@ -45,13 +45,25 @@ export function runView(v) {
           >
             ${v.runToggleLabel}
           </button>
+          <button className="btn btn-secondary" onClick=${v.runTestSound} style=${sx("padding:10px 18px")}>
+            ${v.runTestLabel}
+          </button>
+          ${
+            v.runAudioNote &&
+            html`<span role="status" style=${sx(`font-size:13px;color:${muted(60)}`)}>${v.runAudioNote}</span>`
+          }
         </div>
+        <div style=${sx(`font-size:12px;color:${muted(50)};max-width:60ch`)}>${v.runBackgroundNote}</div>
         <div className="run-callout" style=${sx("min-height:140px;padding:24px;border:1px solid var(--color-divider)")}>
           ${
             v.runPlaying && v.runNowRef
               ? html`<div>
                   <div style=${sx(LABEL_SECTION)}>${v.runNowRef}</div>
                   <div style=${sx("font-size:24px;line-height:1.5;margin-top:10px")}>${v.runNowText}</div>
+                  ${
+                    v.runSayingNote &&
+                    html`<div style=${sx(`font-size:12px;color:${muted(55)};margin-top:12px`)}>${v.runSayingNote}</div>`
+                  }
                 </div>`
               : html`<div style=${sx(`font-size:14px;color:${muted(55)}`)}>${v.runIdleNote}</div>`
           }

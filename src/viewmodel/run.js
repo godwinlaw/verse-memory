@@ -12,6 +12,8 @@ const RUN_DEFAULTS = {
   playing: false,
   nowRef: "",
   nowText: "",
+  saying: "",
+  audio: "off",
   playlist: [],
   supported: true,
 };
@@ -41,6 +43,14 @@ export function runVals({ state, actions }) {
     runNowRef: run.nowRef,
     runNowText: run.nowText,
     runIdleNote: copy.run.idleNote,
+    /* The three things a silent run cannot otherwise tell anyone: what the
+     * audio hardware is doing, what is being said, and that a backgrounded tab
+     * is the usual culprit — plus the beeps that settle app-or-machine. */
+    runAudioNote: run.playing ? copy.run.audioState(run.audio) : "",
+    runSayingNote: run.saying ? copy.run.saying(run.saying) : "",
+    runBackgroundNote: copy.run.backgroundNote,
+    runTestLabel: copy.run.testSound,
+    runTestSound: actions.testRunSound,
     runPlaylistTitle: copy.run.playlistTitle,
     runPlaylistPinnedLabel: copy.run.psalmsPlaylist,
     runPlaylistPinnedUrl: "https://open.spotify.com/playlist/2J256T9x2D6ysT1zOwpNyE",
