@@ -328,7 +328,9 @@ export function speak(text, handlers = {}) {
      * still talking, so the loop gives every line a generous ceiling and then
      * carries on regardless. */
     watchdog = setTimeout(next, speechMs(chunks[i]) * 2.5 + 5000);
-    // A voice that never reports starting should not hold the beat ducked.
+    /* Not every browser reports an utterance starting. One that speaks without
+     * saying so would be talked over by a beat still at full height, so after a
+     * moment the duck is taken anyway; `started` keeps it to once. */
     if (!started && onStart) setTimeout(() => u.onstart && u.onstart(), 400);
   };
 
