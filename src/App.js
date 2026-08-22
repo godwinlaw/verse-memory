@@ -1115,7 +1115,12 @@ export class App extends React.Component {
 
       // account + profile
       signIn: () => this.signIn(),
-      signOut: () => signOutUser().catch(() => {}),
+      signOut: () => {
+        // Signing out replaces the shell without going through goto, so a
+        // running beat would keep playing behind the gate.
+        this.stopRun();
+        signOutUser().catch(() => {});
+      },
       /* Try the cloud again, for a member sitting behind the sync gate or under
        * its banner. Which half to retry depends on how far the boot got: a
        * member who is signed in has a document to re-read, while one whose SDK
@@ -1133,7 +1138,12 @@ export class App extends React.Component {
         await this.startAuth();
         this.setState({ syncRetrying: false });
       },
-      editProfile: () => set({ editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false }),
+      editProfile: () => {
+        // The settings form renders over the shell while state.view stays put,
+        // so leaving for it must stop a running beat like goto would.
+        this.stopRun();
+        set({ editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false });
+      },
       cancelEditProfile: () => set({ editingProfile: false, profileDraft: null, resetAsk: false }),
       submitProfile: () => this.submitProfile(),
       dismissWelcome: (view) => {
