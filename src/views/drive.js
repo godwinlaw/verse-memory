@@ -29,34 +29,38 @@ export function driveView(v) {
           <span style=${sx(LABEL_SECTION)}>${v.driveModeLabel}</span>
           <div style=${sx("display:flex;gap:8px")}>
             ${v.driveModes.map(
-            (m) =>
-              html`<button key=${m.key} className="seg-btn" onClick=${m.onClick} style=${sx(segButton(m.active))}>
-                ${m.label}
-              </button>`,
-          )}
+              (m) =>
+                html`<button key=${m.key} className="seg-btn" onClick=${m.onClick} style=${sx(segButton(m.active))}>
+                  ${m.label}
+                </button>`,
+            )}
           </div>
         </div>
         <div style=${sx(FIELD)}>
           <span style=${sx(LABEL_SECTION)}>${v.driveSourceLabel}</span>
           <div style=${sx("display:flex;gap:8px")}>
             ${v.driveSources.map(
-            (s) =>
-              html`<button key=${s.key} className="seg-btn" onClick=${s.onClick} style=${sx(segButton(s.active))}>
-                ${s.label}
-              </button>`,
-          )}
+              (s) =>
+                html`<button key=${s.key} className="seg-btn" onClick=${s.onClick} style=${sx(segButton(s.active))}>
+                  ${s.label}
+                </button>`,
+            )}
           </div>
           <span style=${sx(`font-size:12px;color:${muted(55)}`)}>${v.driveQueueLabel}</span>
         </div>
         ${v.driveEmpty && html`<p style=${sx(`margin:0;font-size:14px;color:${muted(70)}`)}>${v.driveEmpty}</p>`}
         ${
-        !v.driveEmpty &&
-        html`<div>
-          <button className="btn btn-primary" onClick=${v.onDriveStart} style=${sx("font-size:16px;padding:12px 22px")}>
-            ${v.driveStartLabel}
-          </button>
-        </div>`
-      }
+          !v.driveEmpty &&
+          html`<div>
+            <button
+              className="btn btn-primary"
+              onClick=${v.onDriveStart}
+              style=${sx("font-size:16px;padding:12px 22px")}
+            >
+              ${v.driveStartLabel}
+            </button>
+          </div>`
+        }
       </div>`
     }
     ${
@@ -69,13 +73,13 @@ export function driveView(v) {
         </div>
         <div style=${sx(BIG_REF)}>${v.driveRef}</div>
         ${
-        v.driveScoreLabel &&
-        html`<div style=${sx("display:flex;flex-direction:column;gap:8px")}>
-          <div style=${sx(BIG_SCORE)}>${v.driveScoreLabel}</div>
-          ${v.driveMissed && html`<div style=${sx(`font-size:14px;color:${muted(65)}`)}>${v.driveMissed}</div>`}
-          ${v.drivePerVerse.map((line, i) => html`<div key=${i} style=${sx("font-size:15px")}>${line}</div>`)}
-        </div>`
-      }
+          v.driveScoreLabel &&
+          html`<div style=${sx("display:flex;flex-direction:column;gap:8px")}>
+            <div style=${sx(BIG_SCORE)}>${v.driveScoreLabel}</div>
+            ${v.driveMissed && html`<div style=${sx(`font-size:14px;color:${muted(65)}`)}>${v.driveMissed}</div>`}
+            ${v.drivePerVerse.map((line, i) => html`<div key=${i} style=${sx("font-size:15px")}>${line}</div>`)}
+          </div>`
+        }
         <button className="btn btn-secondary" onClick=${v.onDriveStop} style=${sx("font-size:15px;padding:10px 20px")}>
           ${v.driveStopLabel}
         </button>

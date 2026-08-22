@@ -830,7 +830,10 @@ export class App extends React.Component {
         // settled phrase — the timer is here, not in the pure module.
         if (this.driveHeardSettled) this.driveArmSilence(DRIVE_SILENCE_MS);
       },
-      onError: () => this.driveGrade(),
+      // A real failure (mic denied, no microphone, network) can never resolve
+      // itself mid-drive — grading past it would loop "I did not hear
+      // anything" over the whole queue forever. Stop the session instead.
+      onError: () => this.stopDrive(),
     });
     if (!this.driveRec) return this.stopDrive();
     this.driveRec.start();
