@@ -12,7 +12,7 @@ const NAV = [
   { key: "list", label: copy.nav.list },
   { key: "leaderboard", label: copy.nav.leaderboard },
   { key: "guide", label: copy.nav.guide },
-  { key: "drive", label: copy.drive.nav },
+  { key: "speak", label: copy.speak.nav },
   { key: "run", label: copy.nav.run },
 ];
 

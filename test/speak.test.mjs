@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { feedbackFor, nextIndex, nextPhase, promptFor } from "../src/drive.js";
+import { feedbackFor, nextIndex, nextPhase, promptFor } from "../src/speak.js";
 
 const SHORT = { id: 1, ref: "John 11:35", text: "Jesus wept." };
 const MULTI = {

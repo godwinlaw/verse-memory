@@ -630,13 +630,13 @@ export const scenarios = [
     }),
   },
 
-  // ── drive mode ─────────────────────────────────────────────────────────────
-  { name: "drive/idle", state: baseState({ view: "drive" }) },
+  // ── speak mode ─────────────────────────────────────────────────────────────
+  { name: "speak/idle", state: baseState({ view: "speak" }) },
   {
-    name: "drive/idle-supported",
+    name: "speak/idle-supported",
     state: baseState({
-      view: "drive",
-      drive: {
+      view: "speak",
+      speak: {
         supported: true,
         running: false,
         mode: "word",
@@ -650,10 +650,10 @@ export const scenarios = [
     }),
   },
   {
-    name: "drive/running-feedback",
+    name: "speak/running-feedback",
     state: baseState({
-      view: "drive",
-      drive: {
+      view: "speak",
+      speak: {
         supported: true,
         running: true,
         mode: "verse",
@@ -676,10 +676,10 @@ export const scenarios = [
   {
     /* A session the microphone ended, not the member — the one case where the
      * screen going back to the setup needs a sentence beside it. */
-    name: "drive/stopped-by-mic",
+    name: "speak/stopped-by-mic",
     state: baseState({
-      view: "drive",
-      drive: {
+      view: "speak",
+      speak: {
         supported: true,
         running: false,
         mode: "passage",

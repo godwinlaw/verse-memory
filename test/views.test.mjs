@@ -66,17 +66,17 @@ test("a browser with no WebAudio still gets the playlist", () => {
   assert.match(markup, /Psalms memory playlist/);
 });
 
-/* ── drive mode ───────────────────────────────────────────────────────────── */
+/* ── speak mode ───────────────────────────────────────────────────────────── */
 
 test("a session the microphone ended says so, rather than just going quiet", () => {
-  const markup = shown("drive/stopped-by-mic");
+  const markup = shown("speak/stopped-by-mic");
   assert.match(markup, /microphone was blocked/i);
   // And it is still offering the way back in — the screen is not a dead end.
-  assert.match(markup, /Start driving session/);
+  assert.match(markup, /Start speaking/);
 });
 
-test("an ordinary idle drive screen carries no alarm", () => {
-  assert.doesNotMatch(shown("drive/idle-supported"), /microphone was blocked/i);
+test("an ordinary idle speak screen carries no alarm", () => {
+  assert.doesNotMatch(shown("speak/idle-supported"), /microphone was blocked/i);
 });
 
 /* No screen prints arithmetic that did not work out.

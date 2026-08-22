@@ -128,7 +128,7 @@
     <main>
       <h1>Seed local test data</h1>
       <p class="lead">
-        Developer tool for Verse Mastery. Drive mode and Run mode both deal from what the member has actually committed,
+        Developer tool for Verse Mastery. Speak mode and Run mode both deal from what the member has actually committed,
         so on a fresh browser there is nothing for either of them to queue. These buttons write a plausible record so
         the two modes have something to run on.
       </p>
@@ -163,7 +163,7 @@
     </main>
 
     <script type="module">
-      /* Seeding a local record, for looking at Drive mode and Run mode without
+      /* Seeding a local record, for looking at Speak mode and Run mode without
        * first earning a hundred reviews by hand.
        *
        * This file can never ship. `scripts/build.mjs` copies exactly four things
@@ -208,7 +208,7 @@
       }
 
       /* A verse opened but never given back in full — what a Learn sitting draws
-       * first, and what makes "whole set" differ from "committed" on the Drive
+       * first, and what makes "whole set" differ from "committed" on the Speak
        * source switch. */
       function started(fresh = 0.5, { step = 0, hits = 1, now = Date.now() } = {}) {
         const stability = stabilityFor(step);
@@ -243,8 +243,8 @@
       const FRESH = [0.99, 0.97, 0.96, 0.94, 0.93, 0.91, 0.9, 0.89, 0.88];
       const FADED = [0.72, 0.7, 0.68, 0.65, 0.62, 0.6, 0.57, 0.54, 0.51, 0.48, 0.45, 0.41, 0.38, 0.34, 0.31, 0.28];
 
-      /* Drive mode's verse-by-verse feedback only says anything on a passage that
-       * carries a `verses` array of more than one (see `drive.feedbackFor`), so a
+      /* Speak mode's verse-by-verse feedback only says anything on a passage that
+       * carries a `verses` array of more than one (see `speak.feedbackFor`), so a
        * seed that puts every such passage in the fresh bucket cannot exercise it:
        * the source switch opens on **due**, and a fresh verse is not due. Half of
        * these therefore go in faded, on purpose. */
@@ -327,7 +327,7 @@
 
         lines.push(`Wrote mv.progress: ${fresh.length + faded.length} committed verses`);
         lines.push(`  ${fresh.length} still fresh (88–99%) — above the 75% due mark, so not in the review queue`);
-        lines.push(`  ${faded.length} faded (28–72%) — at or below the mark, so Drive's "Due" queue has real content`);
+        lines.push(`  ${faded.length} faded (28–72%) — at or below the mark, so Speak's "Due" queue has real content`);
         lines.push(`Wrote mv.log: six days of reviews, so the board shows a streak`);
         return lines;
       }
@@ -361,7 +361,7 @@
       /* The figures are read back out of the app's own modules rather than
        * counted from the batch that was just written, so what this page reports
        * is what the app will say — including the due count, which is computed
-       * with exactly the expression `viewmodel/drive.js` uses for its "N passages
+       * with exactly the expression `viewmodel/speak.js` uses for its "N passages
        * in the queue" label. */
       function summary() {
         const progress = storage.loadProgress();
@@ -380,7 +380,7 @@
           `In progress, uncommitted:          ${learning.length}`,
           `Profile complete:                  ${isProfileComplete(profile)}`,
           "",
-          "Drive mode → the three sources deal:",
+          "Speak mode → the three sources deal:",
           `  Due        ${due.length}`,
           `  Committed  ${committedCount(progress)}`,
           `  All        ${passages.length}`,
@@ -390,13 +390,13 @@
         ];
 
         if (seededVerseBearing.length) {
-          lines.push("Multi-verse passages committed (Drive's verse-by-verse mode has something to say on these):");
+          lines.push("Multi-verse passages committed (Speak's verse-by-verse mode has something to say on these):");
           seededVerseBearing.forEach((p) => {
             const state = dueVerseBearing.includes(p) ? "due now" : "still fresh";
             lines.push(`  ${p.ref} — ${p.verses.length} verses, ${read.freshness(p.id)}% fresh, ${state}`);
           });
         } else {
-          lines.push("No multi-verse passages committed — Drive's verse-by-verse mode has nothing to slice.");
+          lines.push("No multi-verse passages committed — Speak's verse-by-verse mode has nothing to slice.");
         }
         return lines;
       }

@@ -2,7 +2,7 @@
  *
  * A phone is no longer refused — it is warned. The app was designed for a desk
  * sitting and is at its best on a computer, so a phone gets one screen saying
- * so, with the Drive-mode safety warning on it and a single Continue button
+ * so, with the Speak-mode safety warning on it and a single Continue button
  * through. What these check is that the warning is first — it arrives before
  * anything else, whatever the member has already done — that Continue really
  * does reach the app, and that the acknowledgement is deliberately not saved,

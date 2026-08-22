@@ -74,10 +74,10 @@ import { examView } from "./views/exam.js";
 import { examDoneView } from "./views/exam-done.js";
 import { leaderboardView } from "./views/leaderboard.js";
 import { guideView } from "./views/guide.js";
-import { driveView } from "./views/drive.js";
+import { speakView } from "./views/speak.js";
 import { createSpeaker, speechSupported } from "./speaker.js";
-import { feedbackFor, nextIndex, promptFor } from "./drive.js";
-import { drivePool } from "./viewmodel/drive.js";
+import { feedbackFor, nextIndex, promptFor } from "./speak.js";
+import { speakPool } from "./viewmodel/speak.js";
 import { runView } from "./views/run.js";
 import { authGateView } from "./views/auth-gate.js";
 import { profileFormView } from "./views/profile-form.js";
@@ -196,10 +196,10 @@ function focusRecall() {
  * begins in `typed` (see voice.js); at rest there is no such phrase. */
 const quietVoice = () => ({ status: "off", error: null, tail: 0, rest: 0 });
 
-/* Drive mode's two clocks: quiet after a settled phrase that means "I'm done",
+/* Speak mode's two clocks: quiet after a settled phrase that means "I'm done",
  * and the most a turn waits on a recital that never starts. */
-const DRIVE_SILENCE_MS = 2500;
-const DRIVE_MAX_WAIT_MS = 20000;
+const SPEAK_SILENCE_MS = 2500;
+const SPEAK_MAX_WAIT_MS = 20000;
 
 function initialState() {
   return {
@@ -259,23 +259,23 @@ function initialState() {
     // the rest is the running microphone. See voice.js for where the words go.
     voice: { supported: false, ...quietVoice() },
 
-    /* Drive mode: the hands-free recitation loop. Practice only — a drive
+    /* Speak mode: the hands-free recitation loop. Practice only — a speak
      * session never calls record() or touches progress; SRS credit for a
-     * clean drive recital is follow-up work. Nothing here is persisted. */
-    drive: {
+     * clean spoken recital is follow-up work. Nothing here is persisted. */
+    speak: {
       supported: false, // settled at startup: needs both a voice and an ear
       running: false,
-      mode: "passage", // 'passage' | 'word' | 'verse' — see src/drive.js
+      mode: "passage", // 'passage' | 'word' | 'verse' — see src/speak.js
       source: "due", // 'due' | 'committed' | 'all'
       queue: [], // passage ids, wrapped forever until Stop
       index: 0,
       phase: "idle", // idle | prompt | listen | feedback
       heard: "", // the settled transcript of the current recital
       lastResult: null, // feedbackFor()'s verdict on the last recital
-      /* Why a session ended, when it ended by itself. A drive session that
+      /* Why a session ended, when it ended by itself. A speak session that
        * stops because the microphone was refused looks exactly like one the
        * member stopped — the screen simply goes back to the setup — and a
-       * driver has no way to find that out. */
+       * speakr has no way to find that out. */
       error: "",
     },
     scrambleOrder: [],
@@ -400,8 +400,8 @@ export class App extends React.Component {
       typeFirstLetter: storage.loadTypeFirstLetter(this.state.typeFirstLetter),
       // Asked once, here, because it is a question about the browser.
       voice: { ...this.state.voice, supported: voiceSupported() },
-      // Drive needs both halves of the conversation: a voice and an ear.
-      drive: { ...this.state.drive, supported: voiceSupported() && speechSupported() },
+      // Speak needs both halves of the conversation: a voice and an ear.
+      speak: { ...this.state.speak, supported: voiceSupported() && speechSupported() },
       scrambleLevel: storage.loadScrambleLevel(defaultDiff, SCRAMBLE_LEVELS.length),
       examSetup: normalizeSetup(storage.loadExamSetup()),
       reviewSetup: storage.loadReviewSetup(this.state.reviewSetup),
@@ -769,9 +769,9 @@ export class App extends React.Component {
   /* ── review session ─────────────────────────────────────────────────────── */
 
   goto(view) {
-    // Walking off the drive screen is the same press as Stop: a session that
+    // Walking off the speak screen is the same press as Stop: a session that
     // kept talking to an empty screen would be a bug, not a feature.
-    if (this.state.drive && this.state.drive.running && view !== "drive") this.stopDrive();
+    if (this.state.speak && this.state.speak.running && view !== "speak") this.stopSpeak();
     if (this.state.view === "run" && view !== "run") this.stopRun();
     this.setState({ view });
     if (view === "leaderboard") this.loadRoster();
@@ -779,114 +779,114 @@ export class App extends React.Component {
   }
 
   /* ------------------------------------------------------------------ */
-  /* Drive mode: the hands-free loop. The cycle itself is modelled in
-   * src/drive.js; what lives here is only what needs a browser — the
+  /* Speak mode: the hands-free loop. The cycle itself is modelled in
+   * src/speak.js; what lives here is only what needs a browser — the
    * speaker, the recognizer, and the silence timer that decides the
    * member has finished reciting. Half-duplex is the one hard rule: the
    * recognizer is torn down before the speaker opens its mouth and only
    * rebuilt after onDone, or the microphone transcribes the TTS voice. */
 
-  driveSet(patch, then) {
-    this.setState((s) => ({ drive: { ...s.drive, ...patch } }), then);
+  speakSet(patch, then) {
+    this.setState((s) => ({ speak: { ...s.speak, ...patch } }), then);
   }
 
-  driveTeardown() {
-    if (this.driveRec) {
-      this.driveRec.stop();
-      this.driveRec = null;
+  speakTeardown() {
+    if (this.speakRec) {
+      this.speakRec.stop();
+      this.speakRec = null;
     }
-    if (this.driveTimer) {
-      clearTimeout(this.driveTimer);
-      this.driveTimer = null;
+    if (this.speakTimer) {
+      clearTimeout(this.speakTimer);
+      this.speakTimer = null;
     }
-    if (this.driveSpeaker) this.driveSpeaker.cancel();
+    if (this.speakVoice) this.speakVoice.cancel();
   }
 
-  startDrive() {
-    const d = this.state.drive;
+  startSpeak() {
+    const d = this.state.speak;
     if (!d.supported || d.running) return;
-    const queue = drivePool(d.source, this.state.passages, this.state.progress, this.state.profile, Date.now()).map(
+    const queue = speakPool(d.source, this.state.passages, this.state.progress, this.state.profile, Date.now()).map(
       (p) => p.id,
     );
     if (!queue.length) return;
     // One speaker for the whole session — the Start press is the user gesture
     // the browser's audio policy wants, and everything after it is hands-free.
-    this.driveSpeaker = createSpeaker();
-    this.driveSet({ running: true, queue, index: 0, phase: "prompt", heard: "", lastResult: null, error: "" }, () =>
-      this.drivePrompt(),
+    this.speakVoice = createSpeaker();
+    this.speakSet({ running: true, queue, index: 0, phase: "prompt", heard: "", lastResult: null, error: "" }, () =>
+      this.speakPrompt(),
     );
   }
 
-  stopDrive(error = "") {
-    this.driveTeardown();
-    this.driveSpeaker = null;
-    this.driveSet({ running: false, phase: "idle", error });
+  stopSpeak(error = "") {
+    this.speakTeardown();
+    this.speakVoice = null;
+    this.speakSet({ running: false, phase: "idle", error });
   }
 
-  drivePassage() {
-    const d = this.state.drive;
+  speakPassage() {
+    const d = this.state.speak;
     return this.state.passages.find((p) => p.id === d.queue[d.index % d.queue.length]) || null;
   }
 
   /* Speak with the microphone closed, then hand control on. */
-  driveSpeak(text, then) {
-    this.driveTeardown();
-    if (!this.driveSpeaker) return;
-    this.driveSpeaker.speak(text, () => {
-      if (this.state.drive.running) then();
+  sayThen(text, then) {
+    this.speakTeardown();
+    if (!this.speakVoice) return;
+    this.speakVoice.speak(text, () => {
+      if (this.state.speak.running) then();
     });
   }
 
-  drivePrompt() {
-    const p = this.drivePassage();
-    if (!p) return this.stopDrive();
-    this.driveSet({ phase: "prompt", heard: "" });
-    this.driveSpeak(promptFor(p), () => this.driveListen());
+  speakPrompt() {
+    const p = this.speakPassage();
+    if (!p) return this.stopSpeak();
+    this.speakSet({ phase: "prompt", heard: "" });
+    this.sayThen(promptFor(p), () => this.speakListen());
   }
 
-  driveListen() {
-    this.driveSet({ phase: "listen", heard: "" });
-    this.driveHeardSettled = "";
-    this.driveRec = createRecognizer({
+  speakListen() {
+    this.speakSet({ phase: "listen", heard: "" });
+    this.speakHeardSettled = "";
+    this.speakRec = createRecognizer({
       onStatus: () => {},
       onText: (text, settled) => {
-        if (!this.state.drive.running || this.state.drive.phase !== "listen") return;
+        if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
         if (settled) {
-          this.driveHeardSettled = (this.driveHeardSettled + " " + text).trim();
-          this.driveSet({ heard: this.driveHeardSettled });
+          this.speakHeardSettled = (this.speakHeardSettled + " " + text).trim();
+          this.speakSet({ heard: this.speakHeardSettled });
         }
         // Any sound, settled or not, is the member still going: push the
         // silence deadline back. Grading waits for ~2.5s of quiet after a
         // settled phrase — the timer is here, not in the pure module.
-        if (this.driveHeardSettled) this.driveArmSilence(DRIVE_SILENCE_MS);
+        if (this.speakHeardSettled) this.speakArmSilence(SPEAK_SILENCE_MS);
       },
       // A real failure (mic denied, no microphone, network) can never resolve
-      // itself mid-drive — grading past it would loop "I did not hear
+      // itself mid-speak — grading past it would loop "I did not hear
       // anything" over the whole queue forever. Stop the session instead.
-      onError: (err) => this.stopDrive(copy.drive.micError(err)),
+      onError: (err) => this.stopSpeak(copy.speak.micError(err)),
     });
-    if (!this.driveRec) return this.stopDrive(copy.drive.noMic);
-    this.driveRec.start();
+    if (!this.speakRec) return this.stopSpeak(copy.speak.noMic);
+    this.speakRec.start();
     // A fallback so a recital that never starts still moves the loop on.
-    this.driveArmSilence(DRIVE_MAX_WAIT_MS);
+    this.speakArmSilence(SPEAK_MAX_WAIT_MS);
   }
 
-  driveArmSilence(ms) {
-    if (this.driveTimer) clearTimeout(this.driveTimer);
-    this.driveTimer = setTimeout(() => this.driveGrade(), ms);
+  speakArmSilence(ms) {
+    if (this.speakTimer) clearTimeout(this.speakTimer);
+    this.speakTimer = setTimeout(() => this.speakGrade(), ms);
   }
 
-  driveGrade() {
-    if (!this.state.drive.running || this.state.drive.phase !== "listen") return;
-    const p = this.drivePassage();
-    if (!p) return this.stopDrive();
-    const result = feedbackFor(p, this.driveHeardSettled || "", this.state.drive.mode);
-    this.driveSet({ phase: "feedback", lastResult: result });
-    this.driveSpeak(result.spokenFeedback, () => {
+  speakGrade() {
+    if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
+    const p = this.speakPassage();
+    if (!p) return this.stopSpeak();
+    const result = feedbackFor(p, this.speakHeardSettled || "", this.state.speak.mode);
+    this.speakSet({ phase: "feedback", lastResult: result });
+    this.sayThen(result.spokenFeedback, () => {
       // NEXT: advance the queue, wrap around, and go again. Deliberately no
-      // record() call — see the drive slice in initialState.
-      this.driveSet({ index: nextIndex(this.state.drive.index, this.state.drive.queue.length) }, () =>
-        this.drivePrompt(),
+      // record() call — see the speak slice in initialState.
+      this.speakSet({ index: nextIndex(this.state.speak.index, this.state.speak.queue.length) }, () =>
+        this.speakPrompt(),
       );
     });
   }
@@ -1605,11 +1605,11 @@ export class App extends React.Component {
       setLeaderFilter: (key, value) => this.setState((s) => ({ leaderFilter: { ...s.leaderFilter, [key]: value } })),
       setLeaderRankBy: (key) => this.setState({ leaderRankBy: key }),
 
-      /* drive mode */
-      setDriveMode: (mode) => this.driveSet({ mode }),
-      setDriveSource: (source) => this.driveSet({ source }),
-      startDrive: () => this.startDrive(),
-      stopDrive: () => this.stopDrive(),
+      /* speak mode */
+      setSpeakMode: (mode) => this.speakSet({ mode }),
+      setSpeakSource: (source) => this.speakSet({ source }),
+      startSpeak: () => this.startSpeak(),
+      stopSpeak: () => this.stopSpeak(),
       /* run mode */
       startRun: () => this.startRun(),
       stopRun: () => this.stopRun(),
@@ -1719,7 +1719,7 @@ export class App extends React.Component {
       ${v.isReviewSetup && reviewSetupView(v)} ${v.isLearnSetup && learnSetupView(v)} ${v.isReview && reviewView(v)}
       ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)}
       ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)}
-      ${v.isDrive && driveView(v)} ${v.isRun && runView(v)} ${footerView(v)}
+      ${v.isSpeak && speakView(v)} ${v.isRun && runView(v)} ${footerView(v)}
     </div>`;
   }
 }

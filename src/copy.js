@@ -129,7 +129,7 @@ export const copy = {
     lead: "This app is designed for a sitting at a desk, and it is at its best on a computer.",
     caveat: "It works on a phone, but it is not the experience it was built for.",
     safety:
-      "Please be careful with Drive mode — never look at or touch the screen while driving. " +
+      "Please be careful with Speak mode — never look at or touch the screen while driving. " +
       "Keep your eyes on the road; let the audio do the work.",
     continueCta: "Continue",
   },
@@ -841,34 +841,34 @@ export const copy = {
     start: "Start learning",
   },
 
-  /* drive mode */
-  drive: {
-    nav: "Drive",
-    title: "Drive mode",
+  /* speak mode */
+  speak: {
+    nav: "Speak",
+    title: "Speak mode",
     lead: "Hands-free practice. The app reads out a reference, you recite the passage, and it tells you how you did — then moves straight on to the next one until you stop.",
     modeLabel: "Feedback",
     modes: { passage: "Whole passage", word: "Word by word", verse: "Verse by verse" },
     sourceLabel: "Queue",
     sources: { due: "Due for review", committed: "All committed", all: "Whole set" },
-    start: "Start driving session",
+    start: "Start speaking",
     stop: "Stop",
     phases: { idle: "Ready", prompt: "Reading reference", listen: "Listening", feedback: "How you did" },
     queueCount: (n) => n + (n === 1 ? " passage" : " passages") + " in the queue",
     lastScore: (pct) => pct + "% correct",
-    unsupported: "This browser cannot speak or listen, so Drive mode is not available here. Chrome can.",
+    unsupported: "This browser cannot speak or listen, so Speak mode is not available here. Chrome can.",
     empty: "Nothing in this queue. Pick another queue, or learn some verses first.",
-    practiceNote: "Practice only — drive sessions do not move your review schedule.",
+    practiceNote: "Practice only — a speaking session does not move your review schedule.",
     prompt: (ref) => "Recite " + ref + ".",
     scoreSpoken: (pct) => pct + " percent correct.",
     missedWords: (words) => "You missed: " + words.join(", ") + ".",
     verseSpoken: (n, pct) => "Verse " + n + ": " + pct + " percent.",
     nothingHeard: "I did not hear anything. Moving on.",
-    /* A drive session that ends because the microphone was refused looks
+    /* A speaking session that ends because the microphone was refused looks
      * exactly like one the member stopped, so it says which it was. The
      * sentences are the review screen's — one microphone, one set of words for
      * what can go wrong with it. */
     micError: (code) => copy.review.voiceErrors[code] || copy.review.voiceErrors.failed,
-    noMic: "This browser cannot listen, so a drive session has nothing to hear. Chrome can.",
+    noMic: "This browser cannot listen, so a speaking session has nothing to hear. Chrome can.",
     endedNote: "The session stopped.",
   },
 

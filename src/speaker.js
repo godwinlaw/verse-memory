@@ -1,7 +1,7 @@
 /* The browser's own speech synthesis, wrapped.
  *
  * Written like recognizer.js: an optional overlay the app runs happily
- * without. `speechSupported()` coming back false just means Drive mode is not
+ * without. `speechSupported()` coming back false just means Speak mode is not
  * offered on this browser. Kept thin on purpose — what is said, and when,
  * lives with the callers; this file only knows how to say it. */
 
@@ -9,7 +9,7 @@ export const speechSupported = () => typeof window !== "undefined" && !!window.s
 
 /* How long a line ought to take to say, with a floor for the short ones — the
  * ceiling the watchdog below is armed with. It is a second copy of the estimate
- * in beat.js rather than a shared import, because this file is the seam Drive
+ * in beat.js rather than a shared import, because this file is the seam Speak
  * mode is written against and run mode's beat is not part of that contract. */
 export function speechMs(text) {
   const words = String(text || "")

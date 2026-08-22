@@ -1,4 +1,4 @@
-/* Drive mode: the hands-free recitation loop, as a pure module.
+/* Speak mode: the hands-free recitation loop, as a pure module.
  *
  * The session is a cycle — PROMPT (speak the reference) → LISTEN (the member
  * recites) → GRADE → FEEDBACK (speak how it went) → NEXT (advance the queue,
@@ -10,24 +10,24 @@
  * Grading reuses gradeWritten() against the raw transcript: an engine hands
  * back lowercase unpunctuated words, and norm() already makes the comparison
  * blind to case and punctuation, so the recital is marked by exactly the rule
- * a typed attempt is. Drive mode is practice only — nothing here (or in its
+ * a typed attempt is. Speak mode is practice only — nothing here (or in its
  * callers) writes progress or moves a verse along the ladder. Giving a clean
- * drive recital SRS credit is follow-up work. */
+ * spoken recital SRS credit is follow-up work. */
 
 import { gradeWritten } from "./grading.js";
 import { copy } from "./copy.js";
 
-export const DRIVE_MODES = ["passage", "word", "verse"];
-export const DRIVE_PHASES = ["idle", "prompt", "listen", "feedback"];
+export const SPEAK_MODES = ["passage", "word", "verse"];
+export const SPEAK_PHASES = ["idle", "prompt", "listen", "feedback"];
 
 /* What the speaker says to open a turn. */
-export const promptFor = (passage) => copy.drive.prompt(passage.ref);
+export const promptFor = (passage) => copy.speak.prompt(passage.ref);
 
 /* The queue wraps rather than ends — the loop runs until the member stops it. */
 export const nextIndex = (index, queueLength) => (queueLength ? (index + 1) % queueLength : 0);
 
 /* The phase after this one. GRADE is instantaneous (it happens between LISTEN
- * and FEEDBACK, inside feedbackFor), so the cycle the driver walks is three
+ * and FEEDBACK, inside feedbackFor), so the cycle the speakr walks is three
  * phases long; leaving FEEDBACK is also what advances the queue. */
 export function nextPhase({ phase, index, queueLength }) {
   if (phase === "prompt") return { phase: "listen", index };
@@ -65,22 +65,22 @@ export function feedbackFor(passage, transcript, mode) {
   const result = { score: graded.score, pct, spokenFeedback: "" };
 
   if (!said) {
-    result.spokenFeedback = copy.drive.nothingHeard;
+    result.spokenFeedback = copy.speak.nothingHeard;
     return result;
   }
 
-  const parts = [copy.drive.scoreSpoken(pct)];
+  const parts = [copy.speak.scoreSpoken(pct)];
   if (mode === "word") {
     result.perWord = graded.diff.map((w) => ({ word: w.word, hit: w.hit }));
     const missed = graded.diff.filter((w) => !w.hit).map((w) => w.word);
     result.missed = missed;
     // Cap what is read aloud — a badly missed chapter should not be recited
     // back at the member word by word while they drive.
-    if (missed.length) parts.push(copy.drive.missedWords(missed.slice(0, MAX_SPOKEN_MISSES)));
+    if (missed.length) parts.push(copy.speak.missedWords(missed.slice(0, MAX_SPOKEN_MISSES)));
   }
   if (mode === "verse" && Array.isArray(passage.verses) && passage.verses.length > 1) {
     result.perVerse = perVerseOf(graded.diff, passage.verses);
-    result.perVerse.forEach((v) => parts.push(copy.drive.verseSpoken(v.verse, v.pct)));
+    result.perVerse.forEach((v) => parts.push(copy.speak.verseSpoken(v.verse, v.pct)));
   }
   result.spokenFeedback = parts.join(" ");
   return result;
