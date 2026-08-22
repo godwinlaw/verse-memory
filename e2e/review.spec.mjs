@@ -196,6 +196,28 @@ test("a peek shows the passage while it is held, and is counted", async ({ app, 
   await expect(page.getByText("1 peek · −5%")).toBeVisible();
 });
 
+/* The half of the latch a unit test cannot show: it is still on, and still
+ * revealing, after the member has moved to another verse. */
+test("the latch keeps the passage up across the sitting, at a peek a card", async ({ app, page }) => {
+  await app.boot({ progress: PROGRESS });
+  await startReview(app);
+  await page.getByRole("button", { name: "Blanks", exact: true }).click();
+
+  await page.getByRole("button", { name: "Keep shown" }).click();
+  const first = await currentPassage(page);
+  await expect(page.locator(".reveal-in")).toContainText(first.text.slice(0, 40));
+  await expect(page.getByText("1 peek · −5%")).toBeVisible();
+
+  await page.getByRole("button", { name: "Submit" }).click();
+  await page.getByRole("button", { name: /Next passage|Finish session/ }).click();
+
+  const next = await currentPassage(page);
+  expect(next.id, "a different verse").not.toBe(first.id);
+  await expect(page.getByRole("button", { name: "Keep shown" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".reveal-in")).toContainText(next.text.slice(0, 40));
+  await expect(page.getByText("1 peek · −5%")).toBeVisible();
+});
+
 test("walking off an unsubmitted card is confirmed first", async ({ app, page }) => {
   await app.boot({ progress: PROGRESS });
   await startReview(app);

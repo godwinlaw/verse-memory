@@ -121,16 +121,32 @@ const isMap = (v) => v != null && typeof v === "object" && !Array.isArray(v);
  * the question the reload is asking. */
 const DOC_KEY = "e2e:doc";
 
-function store() {
+/* Keyed by path, because a push now writes two documents: the member's record
+ * and the small summary the leaderboard reads (see src/standings.js). A single
+ * slot would have the second land on top of the first. Only the record is
+ * seeded from the scenario — a summary is derived, never authored. */
+const RECORD = "users";
+
+function docs() {
   const raw = sessionStorage.getItem(DOC_KEY);
   if (raw != null) return JSON.parse(raw);
-  const seeded = scenario().remote || null;
-  put(seeded);
+  const seeded = { [RECORD]: scenario().remote || null };
+  sessionStorage.setItem(DOC_KEY, JSON.stringify(seeded));
   return seeded;
 }
 
-function put(doc) {
-  sessionStorage.setItem(DOC_KEY, JSON.stringify(doc == null ? null : doc));
+const pathKey = (ref) => String((ref && ref.path) || RECORD).split("/")[0];
+
+function store(ref) {
+  const all = docs();
+  const key = pathKey(ref);
+  return key in all ? all[key] : null;
+}
+
+function put(ref, doc) {
+  const all = docs();
+  all[pathKey(ref)] = doc == null ? null : doc;
+  sessionStorage.setItem(DOC_KEY, JSON.stringify(all));
 }
 
 /* setDoc's merge is a field mask, and modelling it exactly is the point: for a
@@ -153,17 +169,16 @@ function applyMerge(target, payload) {
 
 function commit(ref, data, options) {
   (window.__E2E_WRITES__ = window.__E2E_WRITES__ || []).push({ path: ref.path, data, options });
-  put(options && options.merge ? applyMerge(store(), data) : data);
+  put(ref, options && options.merge ? applyMerge(store(ref), data) : data);
 }
 
 export function setDoc(ref, data, options) {
-  store();
   commit(ref, data, options);
   return Promise.resolve();
 }
 
-const snapshot = () => {
-  const doc = store();
+const snapshot = (ref) => {
+  const doc = store(ref);
   return { exists: () => doc != null, data: () => doc };
 };
 
@@ -176,7 +191,7 @@ export function runTransaction(db, updateFunction) {
   const tx = {
     get: (ref) => {
       const refused = refusal();
-      return refused ? Promise.reject(refused) : Promise.resolve(snapshot());
+      return refused ? Promise.reject(refused) : Promise.resolve(snapshot(ref));
     },
     set: (ref, data, options) => {
       pending.push({ ref, data, options });
@@ -199,10 +214,10 @@ export function runTransaction(db, updateFunction) {
  * distinct from what is really stored. A scenario that sets it is asserting
  * that the app reads the server, because reading the local view is
  * indistinguishable from being a new member. */
-export function getDocFromServer() {
+export function getDocFromServer(ref) {
   const refused = refusal();
   if (refused) return Promise.reject(refused);
-  return Promise.resolve(snapshot());
+  return Promise.resolve(snapshot(ref));
 }
 
 /* A read the rules refuse, or the network cannot make. Shared by every reader
@@ -215,17 +230,23 @@ function refusal() {
   return err;
 }
 
-export function getDoc() {
+export function getDoc(ref) {
   const stale = scenario().localView;
   if (stale) return Promise.resolve({ exists: () => true, data: () => stale });
 
   const refused = refusal();
   if (refused) return Promise.reject(refused);
-  return Promise.resolve(snapshot());
+  return Promise.resolve(snapshot(ref));
 }
 
-export function getDocs() {
-  const rows = scenario().roster || [];
+/* A collection read, of which the app makes exactly two — the leaderboard's
+ * scan of \`standings\`, and the fallback scan of \`users\` it makes only while
+ * that collection is empty (see src/firebase.js, fetchRoster). Answered by
+ * name, so a scenario chooses which of the two the board is reading by which
+ * of \`standings\` / \`roster\` it sets. */
+export function getDocs(ref) {
+  const s = scenario();
+  const rows = ((ref && ref.name) === "standings" ? s.standings : s.roster) || [];
   return Promise.resolve({
     forEach: (fn) => rows.forEach((r, i) => fn({ id: r.uid || "peer-" + i, data: () => r })),
   });

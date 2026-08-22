@@ -13,6 +13,9 @@
  *   • Every local save is debounced and folded into the user's doc — the push
  *     reads before it writes, using the same merges as the pull, so a device
  *     holding an older copy of a verse cannot write it over a newer one.
+ *   • The same push also writes standings/{uid}, a small summary of that record
+ *     for the leaderboard to read instead of the record itself (see
+ *     standings.summarize, and fetchRoster below for why).
  *
  * The Firebase modular SDK is imported from the gstatic CDN so the app keeps its
  * no-build, ES-module setup. If Firebase is unreachable/misconfigured the app
@@ -32,6 +35,7 @@
 import { firebaseConfig, isFirebaseConfigured } from "./config.js";
 import { registerRemoteSync, mergeProgress, mergeLog } from "./storage.js";
 import { cleanDisplayName, mergeProfile } from "./profile.js";
+import { rowFromSummary, summarize } from "./standings.js";
 
 const SDK_VERSION = "11.6.1";
 const SDK = `https://www.gstatic.com/firebasejs/${SDK_VERSION}`;
@@ -263,6 +267,7 @@ export async function signOutUser() {
 function registerPush(s, user) {
   const { doc, setDoc } = s.dbMod;
   const userDoc = doc(s.db, "users", user.uid);
+  const boardDoc = doc(s.db, "standings", user.uid);
   const identity = { name: cleanDisplayName(user.displayName), email: user.email || "" };
 
   /* An ordinary save folds into the stored record (see mergeIntoRemote). A wipe
@@ -283,8 +288,10 @@ function registerPush(s, user) {
     const replace = pendingReplace;
     pendingReplace = false;
     const write = replace
-      ? setDoc(userDoc, { ...identity, ...record, updatedAt: Date.now() })
-      : mergeIntoRemote(s, userDoc, record);
+      ? setDoc(userDoc, { ...identity, ...record, updatedAt: Date.now() }).then(() =>
+          setDoc(boardDoc, summarize({ name: identity.name, ...record })),
+        )
+      : mergeIntoRemote(s, userDoc, boardDoc, record, identity.name);
     write.catch((e) => {
       /* A wipe is an ordinary offline-queued write, so only the merging path is
        * worth retrying: it reads first, and a read is what a dropped connection
@@ -324,7 +331,7 @@ function registerPush(s, user) {
  * the two directions cannot settle a record differently. A transaction is what
  * makes read-then-write safe: Firestore reruns it if the document changed
  * underneath, so two devices saving at once cannot lose one another's work. */
-function mergeIntoRemote(s, userDoc, record) {
+function mergeIntoRemote(s, userDoc, boardDoc, record, name) {
   const { runTransaction } = s.dbMod;
   return runTransaction(s.db, async (tx) => {
     const snap = await tx.get(userDoc);
@@ -336,6 +343,13 @@ function mergeIntoRemote(s, userDoc, record) {
       updatedAt: Date.now(),
     };
     tx.set(userDoc, mergeable(merged), { merge: true });
+    /* The summary is written from the *merged* record, not from this device's
+     * payload — otherwise a device that had not caught up yet would publish a
+     * board row missing the verses another device committed. It is written
+     * whole rather than merged, because it is a derived statement about the
+     * record as a whole: folding an old `fresh` into a new one would leave
+     * verses on the board that are no longer committed. */
+    tx.set(boardDoc, summarize({ name, ...merged }));
   });
 }
 
@@ -406,13 +420,28 @@ async function pullRemote(s, user, onRemoteData) {
   onRemoteData({ progress: data.progress || {}, log: data.log || {}, profile: data.profile || {} });
 }
 
-/* Read every registered member for the leaderboard. Returns one row per user
- * ({ uid, name, email, profile, progress, log }); the caller derives committed
- * counts and streaks. Firestore rules permit any signed-in Acts member to read
- * the users collection for exactly this. Resolves to [] when Firebase is
- * unconfigured or the read is refused (e.g. before sign-in), so the UI degrades
- * to a solo board rather than erroring. */
-export async function fetchRoster() {
+/* Read the leaderboard's roster. One row per member, in the shape
+ * viewmodel/leaderboard.js ranks: { uid, name, count, freshnessScore, streak }
+ * plus the three profile fields it filters and groups by.
+ *
+ * It reads the `standings` collection — the small per-member summaries the push
+ * above keeps — rather than the members' records themselves. That is the whole
+ * point of those summaries: this is the one read in the app whose cost grows
+ * with the size of the group, and it used to pull every verse of every member's
+ * progress and every day of their log to arrive at three numbers each. See
+ * standings.summarize for the shape and why freshness is still computed here
+ * rather than stored.
+ *
+ * Falling back to the full scan when `standings` is empty is for exactly one
+ * day: the one this ships on, before any member has pushed. A member's summary
+ * is written by their first save — and a sign-in that pulls saves what it
+ * merged — so the collection fills as members open the app, and the board is
+ * whole again once each of them has. Note that a member who has not been back
+ * since then would have been on the board with stale figures anyway.
+ *
+ * Resolves to [] when Firebase is unconfigured or the read is refused (e.g.
+ * before sign-in), so the UI degrades to a solo board rather than erroring. */
+export async function fetchRoster(now = Date.now()) {
   if (!isFirebaseConfigured()) return [];
   let s;
   try {
@@ -422,24 +451,35 @@ export async function fetchRoster() {
   }
   const { collection, getDocs } = s.dbMod;
   try {
-    const snap = await getDocs(collection(s.db, "users"));
+    const snap = await getDocs(collection(s.db, "standings"));
     const rows = [];
-    snap.forEach((d) => {
-      const data = d.data() || {};
-      rows.push({
-        uid: d.id,
-        name: data.name || "",
-        email: data.email || "",
-        profile: data.profile || {},
-        progress: data.progress || {},
-        log: data.log || {},
-      });
-    });
-    return rows;
+    snap.forEach((d) => rows.push({ uid: d.id, ...rowFromSummary(d.data() || {}, now) }));
+    return rows.length ? rows : await fetchRosterFromRecords(s, now);
   } catch (e) {
     console.warn("Roster fetch failed:", e);
     return [];
   }
+}
+
+/* The old read, kept only as the fallback fetchRoster describes: every member's
+ * whole record, summarised on arrival. Throws like any other failed read, so
+ * fetchRoster's own catch reports it. */
+async function fetchRosterFromRecords(s, now) {
+  const { collection, getDocs } = s.dbMod;
+  const snap = await getDocs(collection(s.db, "users"));
+  const rows = [];
+  snap.forEach((d) => {
+    const data = d.data() || {};
+    const summary = summarize({
+      name: data.name || data.email || "",
+      profile: data.profile,
+      progress: data.progress,
+      log: data.log,
+      now,
+    });
+    rows.push({ uid: d.id, ...rowFromSummary(summary, now) });
+  });
+  return rows;
 }
 
 function debounce(fn, ms) {

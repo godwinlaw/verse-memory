@@ -21,5 +21,15 @@ service cloud.firestore {
       allow read: if isActsUser();
       allow write: if isActsUser() && request.auth.uid == uid;
     }
+
+    // Per-user leaderboard summaries: standings/{uid} = the few figures the
+    // board ranks, written from the record above by its owner (see
+    // src/standings.js, summarize). Same access as users/{uid} — everyone
+    // reads, each member writes only their own — but this is the collection
+    // the board actually scans, so the read is a fraction of the size.
+    match /standings/{uid} {
+      allow read: if isActsUser();
+      allow write: if isActsUser() && request.auth.uid == uid;
+    }
   }
 }

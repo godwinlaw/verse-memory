@@ -146,6 +146,39 @@ test("a word that was wrong is left exactly as it was heard", () => {
   assert.match(typed, /the LORD is one/, "the words after it still line up");
 });
 
+/* ── what the engine misheard ─────────────────────────────────────────────── */
+
+test("a word the engine spelled wrong is corrected to the passage's", () => {
+  // Both reported by a member: the engine hears the sound and guesses the
+  // grammar, and these are the guesses it gets wrong.
+  const jew = reciteInto("Salvation is from the Jew first", ["salvation is from the jews first", true]);
+  assert.equal(jew.typed, "Salvation is from the Jew first");
+
+  const sow = reciteInto("Whatever one sows, that will he also reap", [
+    "whatever one sews that will he also reap",
+    true,
+  ]);
+  assert.equal(sow.typed, "Whatever one sows, that will he also reap");
+});
+
+test("a corrected word still earns its punctuation, and the ones after it line up", () => {
+  const { typed } = reciteInto(SHEMA, ["hear o israel", true], ["the lord our gods the lord is one", true]);
+  assert.match(typed, /our God, the LORD is one/, "the plural is dropped and the comma is earned");
+});
+
+test("but a different word is still a different word", () => {
+  // Two edits apart, and left alone — the leniency is for a misspelling of the
+  // right word, not for a near neighbour of it.
+  const { typed } = reciteInto(SHEMA, ["hear o israel", true], ["the lord our dog", true]);
+  assert.match(typed, /our dog/);
+});
+
+test("and a short word is compared strictly, where one edit is most of it", () => {
+  const passage = "Be still and know";
+  const { typed } = reciteInto(passage, ["he still and know", true]);
+  assert.match(typed, /^He still/, '"he" is not "be", however close it is spelled');
+});
+
 test("an apostrophe nobody pronounced is put back", () => {
   const passage = "He bore us on eagles’ wings";
   const { typed } = reciteInto(passage, ["he bore us on eagles wings", true]);

@@ -49,6 +49,13 @@ function selectionBar(v) {
   </div>`;
 }
 
+/* The table's head — the column labels, and above them the selection bar once
+ * rows are ticked — is one sticky element rather than two stacked ones (see
+ * styles.css, .list-head). Both halves are wanted on screen while a member
+ * scrolls a long list, and the bar is the half that matters more: it holds what
+ * ticking the rows was for, and it used to scroll away leaving a selection with
+ * nothing to do about it. Stacking two sticky boxes would mean the lower one
+ * knowing the height of the upper, which changes as the bar wraps. */
 export function listView(v) {
   return html`<div
     className="screen"
@@ -79,28 +86,31 @@ export function listView(v) {
     </div>
 
     <div className="blueprint" style=${sx("padding:0")}>
-      ${corners()} ${v.selectionCount > 0 && selectionBar(v)}
-      <div
-        style=${sx(`display:grid;${COLUMNS};padding:10px 18px;border-bottom:1px solid var(--color-divider);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${muted(55)}`)}
-      >
-        <div>
-          <button
-            className="tick"
-            onClick=${v.onSelectAll}
-            title=${v.selectAllTitle}
-            aria-label=${v.selectAllTitle}
-            aria-pressed=${v.selectAllOn}
-            style=${sx(v.selectAllStyle)}
-          >
-            ${v.selectAllMark}
-          </button>
+      ${corners()}
+      <div className="list-head">
+        ${v.selectionCount > 0 && selectionBar(v)}
+        <div
+          style=${sx(`display:grid;${COLUMNS};padding:10px 18px;border-bottom:1px solid var(--color-divider);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${muted(55)}`)}
+        >
+          <div>
+            <button
+              className="tick"
+              onClick=${v.onSelectAll}
+              title=${v.selectAllTitle}
+              aria-label=${v.selectAllTitle}
+              aria-pressed=${v.selectAllOn}
+              style=${sx(v.selectAllStyle)}
+            >
+              ${v.selectAllMark}
+            </button>
+          </div>
+          <div>${copy.list.colNum}</div>
+          <div>${copy.list.colRef}</div>
+          <div>${copy.list.colSnippet}</div>
+          <div>${copy.list.colFreshness}</div>
+          <div>${copy.list.colStatus}</div>
+          <div style=${sx("text-align:right")}>${copy.list.colAction}</div>
         </div>
-        <div>${copy.list.colNum}</div>
-        <div>${copy.list.colRef}</div>
-        <div>${copy.list.colSnippet}</div>
-        <div>${copy.list.colFreshness}</div>
-        <div>${copy.list.colStatus}</div>
-        <div style=${sx("text-align:right")}>${copy.list.colAction}</div>
       </div>
       ${v.rows.map(
         (r, i) =>

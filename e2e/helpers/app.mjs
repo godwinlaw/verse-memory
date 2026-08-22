@@ -262,9 +262,16 @@ export class AppHarness {
   }
 
   /* The member's document as it now stands in the cloud — what another device
-   * signing in would read. */
+   * signing in would read. The stub keys its documents by collection, since a
+   * push writes the record and the leaderboard summary beside it; this is the
+   * record, which is what a spec means by "the cloud". */
   async cloudDoc() {
-    return this.page.evaluate(() => JSON.parse(sessionStorage.getItem("e2e:doc") || "null"));
+    return this.page.evaluate(() => (JSON.parse(sessionStorage.getItem("e2e:doc") || "null") || {}).users || null);
+  }
+
+  /* The leaderboard summary the same push wrote (see src/standings.js). */
+  async cloudSummary() {
+    return this.page.evaluate(() => (JSON.parse(sessionStorage.getItem("e2e:doc") || "null") || {}).standings || null);
   }
 
   /* Another device, writing while this one is open. The patch is folded into
@@ -280,8 +287,8 @@ export class AppHarness {
         }
         return out;
       };
-      const stored = JSON.parse(sessionStorage.getItem("e2e:doc") || "null");
-      sessionStorage.setItem("e2e:doc", JSON.stringify(merge(stored || {}, p)));
+      const stored = JSON.parse(sessionStorage.getItem("e2e:doc") || "null") || {};
+      sessionStorage.setItem("e2e:doc", JSON.stringify({ ...stored, users: merge(stored.users || {}, p) }));
     }, patch);
   }
 }

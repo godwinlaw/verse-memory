@@ -156,6 +156,33 @@ test("a device that has not pulled yet never pushes an empty slice", async ({ ap
   }
 });
 
+/* The board reads a summary of each member rather than each member's record
+ * (see src/standings.js). The summary is derived, so the thing to assert is
+ * that the push keeps it in step with the record it is derived from — and that
+ * it carries only what the board ranks. */
+
+test("a push writes the board's summary alongside the record", async ({ app }) => {
+  await app.boot({
+    progress: { 1: committed(0.9), 2: committed(0.9), 4: started(0.5) },
+    firebase: { ...signedIn, remote: { profile: PROFILE, progress: {}, log: {} } },
+  });
+  await expect(app.board).toBeVisible();
+
+  await expect(async () => {
+    expect(await app.cloudSummary(), "no summary was written").not.toBe(null);
+  }).toPass();
+
+  const summary = await app.cloudSummary();
+  expect(summary.fresh.length, "two committed verses, two numbers each — the third is not committed").toBe(4);
+  expect(summary.ministryGroup).toBe(PROFILE.ministryGroup);
+  expect(summary.progress, "the record itself is exactly what the board no longer reads").toBe(undefined);
+  expect(summary.log).toBe(undefined);
+  expect(summary.email).toBe(undefined);
+
+  // And the record it was derived from is still whole beside it.
+  expect(Object.keys((await app.cloudDoc()).progress).sort()).toEqual(["1", "2", "4"]);
+});
+
 test("the cloud profile survives a fresh device signing in", async ({ app, page }) => {
   await app.boot({
     progress: {},

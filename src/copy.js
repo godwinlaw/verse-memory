@@ -457,6 +457,7 @@ export const copy = {
     position: (i, n) => "Passage " + i + " of " + n,
     meta: (testament, words) => (testament === "OT" ? "Old Testament" : "New Testament") + " · " + words + " words",
     peek: "Peek",
+    peekStick: "Keep shown",
 
     /* flashcard */
     flipFront: "Reference",

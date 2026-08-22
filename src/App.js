@@ -22,7 +22,7 @@ import { transcribe } from "./voice.js";
 import { lockedInput } from "./grading.js";
 import { createRecognizer, voiceSupported } from "./recognizer.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
-import { committedCount, dueOrder, freshnessSum, streakOf } from "./progress.js";
+import { dueOrder } from "./progress.js";
 import { DEFAULT_MODE, LEARN, LEARN_SIZE, REVIEW, SESSION_SIZE } from "./review.js";
 import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "./exam.js";
 import {
@@ -88,6 +88,12 @@ const MINISTRY_CLOSE_MS = 120;
  * answer still lands — the observer in componentDidMount keeps running. */
 const SPLASH_MAX_MS = 8000;
 
+/* How long a fetched leaderboard roster is reused before it is read again.
+ * The board is one press away in the header, and the figures on it move at the
+ * speed of somebody sitting down to review — not at the speed of a member
+ * clicking back and forth between screens. */
+const ROSTER_TTL_MS = 60000;
+
 /* The shortest time the opening splash stays up. Local data loads in a blink and
  * a restored Firebase session usually answers in well under a second, so without
  * a floor the mark would be a flicker rather than a screen. The figure is
@@ -123,6 +129,42 @@ function caretAfterRecitation(rest) {
   const at = Math.max(0, el.value.length - rest);
   el.setSelectionRange(at, at);
   if (rest) (el.blur(), el.focus(), el.setSelectionRange(at, at));
+}
+
+/* Publish the app header's height as --app-header-h, for the sticky things
+ * that have to stop underneath it (styles.css, .list-head).
+ *
+ * The header is sticky and its height is not a constant: it wraps in a narrow
+ * window, and its type settles a little when the web font arrives. A number
+ * written into the stylesheet would be right for one of those and wrong for
+ * the rest, so it is measured. The observer is what covers the font, and
+ * `attach` — called again on every update — is what covers the header not
+ * being on the page yet: the splash and the sign-in gate come first, so at
+ * mount there is nothing to measure.
+ *
+ * Absent ResizeObserver (or a document at all, under node:test) the CSS
+ * fallback stands, which sticks the table head to the top of the window
+ * instead of below the header — degraded, not broken. */
+function watchHeaderHeight() {
+  if (typeof document === "undefined" || typeof ResizeObserver === "undefined") return { attach() {}, stop() {} };
+  let watched = null;
+  // The box, not offsetHeight: the header's height is rarely a whole number,
+  // and rounding it down leaves the sticky thing below it half a pixel under
+  // the header rather than against it.
+  const measure = (el) =>
+    document.documentElement.style.setProperty("--app-header-h", Math.ceil(el.getBoundingClientRect().height) + "px");
+  const observer = new ResizeObserver((entries) => entries.forEach((e) => measure(e.target)));
+  return {
+    attach() {
+      const el = document.querySelector(".app-header");
+      if (!el || el === watched) return;
+      if (watched) observer.unobserve(watched);
+      watched = el;
+      measure(el);
+      observer.observe(el);
+    },
+    stop: () => observer.disconnect(),
+  };
 }
 
 /* A session opens at the top of the page, so the mode switch — all four
@@ -180,6 +222,13 @@ function initialState() {
     reviewMoveAsk: null, // walking off an unsubmitted card: null | "prev" | "next"
     showHelp: false,
     peeks: 0, // presses of "Peek" on the card in front of us
+    // Peek latched on, so the passage stays up instead of needing to be held.
+    // Unlike `peeks` above this belongs to the SITTING, not the card: a member
+    // who has said they want the passage in front of them means it for the
+    // sitting, and having to say it again on every verse is the tired fingers
+    // the latch was asked for. It still costs each card a peek — see
+    // resetCard, where a latched card arrives having already seen its verse.
+    peekStick: false,
     revealed: false,
     flipLetters: false,
     answers: {},
@@ -326,6 +375,14 @@ export class App extends React.Component {
     // Independent of the auth/sync seam above: an unconfigured or unreachable
     // Analytics is invisible to the member, same as an unconfigured Firebase.
     initAnalytics();
+    this.headerHeight = watchHeaderHeight();
+    this.headerHeight.attach();
+  }
+
+  /* The header arrives on the page some renders after mount — see
+   * watchHeaderHeight for why this is where it is picked up. */
+  componentDidUpdate() {
+    if (this.headerHeight) this.headerHeight.attach();
   }
 
   /* Begin (or begin again) the account half of the boot. Separated from
@@ -351,6 +408,7 @@ export class App extends React.Component {
     clearTimeout(this.splashTimer);
     clearTimeout(this.authWaitTimer);
     if (this.unwatchTheme) this.unwatchTheme();
+    if (this.headerHeight) this.headerHeight.stop();
     this.stopListening();
   }
 
@@ -535,31 +593,36 @@ export class App extends React.Component {
     this.setState({ progress: {}, log: {}, selection: [], selectAnchor: null, resetAsk: false });
   }
 
-  /* Pull every registered member and shape them into leaderboard rows. Self is
-   * dropped here and re-added from local state by the view-model, so "You"
-   * always reflects the newest, not-yet-synced progress. Members without a
-   * finished profile are skipped. Resolves to an empty roster when Firebase is
-   * unconfigured or unreachable, leaving the board as just "You". */
+  /* Pull the leaderboard roster. Self is dropped here and re-added from local
+   * state by the view-model, so "You" always reflects the newest, not-yet-synced
+   * progress. Members without a finished profile are skipped — a row with no
+   * ministry or class cannot be filtered or grouped, so it is not a row.
+   *
+   * The rows arrive already reduced to what the board ranks (see
+   * firebase.fetchRoster and standings.summarize); nothing here reads anyone
+   * else's record, because nothing here is sent one.
+   *
+   * Resolves to an empty roster when Firebase is unconfigured or unreachable,
+   * leaving the board as just "You". */
   async loadRoster() {
+    // The board is reached from the header, so it is easy to open three times
+    // in a minute, and it used to re-read the whole collection each time. The
+    // figures move on the scale of a review, not a click.
+    const now = Date.now();
+    if (this.rosterAt && now - this.rosterAt < ROSTER_TTL_MS) return;
+    this.rosterAt = now;
     let rows;
     try {
-      rows = await fetchRoster();
+      rows = await fetchRoster(now);
     } catch {
+      this.rosterAt = 0;
       return;
     }
     const myUid = this.state.auth.user && this.state.auth.user.uid;
     this.setState({
       peers: rows
-        .filter((r) => r.uid !== myUid && isProfileComplete(r.profile))
-        .map((r) => ({
-          name: r.profile.name || r.name || r.email || copy.app.anonymousMember,
-          count: committedCount(r.progress),
-          freshnessScore: freshnessSum(r.progress),
-          streak: streakOf(r.log),
-          ministryGroup: r.profile.ministryGroup,
-          gender: r.profile.gender,
-          gradClass: r.profile.gradClass,
-        })),
+        .filter((r) => r.uid !== myUid && isProfileComplete(r))
+        .map((r) => ({ ...r, name: r.name || copy.app.anonymousMember })),
     });
   }
 
@@ -672,6 +735,10 @@ export class App extends React.Component {
     this.setState({
       view: "review",
       sessionKind: kind,
+      // The latch lasts the sitting and no longer: it is carried from card to
+      // card by resetCard, and a new sitting is a fresh answer to how the
+      // member wants to work.
+      peekStick: false,
       mode: mode || this.state.mode || DEFAULT_MODE,
       queue,
       qi: 0,
@@ -685,7 +752,14 @@ export class App extends React.Component {
 
   /* Clear everything that belongs to the card being left — including what it
    * cost, since peeks and wrong tries are per attempt. What a submitted card
-   * was worth lives in `results`, keyed by passage, and survives. */
+   * was worth lives in `results`, keyed by passage, and survives.
+   *
+   * The Peek latch is the exception, and the only thing here that outlives the
+   * card: it is the member saying how they want to work this sitting, not
+   * something they did to this verse. So it is carried over — and the card it
+   * carries onto opens with its passage on screen, which is a peek, and is
+   * charged as one. A latched sitting is a sitting where every card starts a
+   * peek down; it is not a way of reading the set for free. */
   resetCard() {
     // The microphone belongs to the attempt, not to the session: leaving it hot
     // across a card change would have the next passage recorded against the one
@@ -694,8 +768,8 @@ export class App extends React.Component {
     this.setState((s) => ({
       revealed: false,
       flipLetters: false,
-      showHelp: false,
-      peeks: 0,
+      showHelp: s.peekStick,
+      peeks: s.peekStick ? 1 : 0,
       answers: {},
       blanksChecked: false,
       typed: "",
@@ -1052,8 +1126,28 @@ export class App extends React.Component {
         else if (this.cardOpenAgain()) this.retryCard();
       },
       // Peeking is counted, not prevented: each press costs the card freshness
-      // (see srs.reviewAward), so only the press is worth counting.
-      setPeek: (showHelp) => this.setState((s) => ({ showHelp, peeks: showHelp ? s.peeks + 1 : s.peeks })),
+      // (see srs.reviewAward), so only the press is worth counting. A peek that
+      // is already showing costs nothing further — that is only reachable with
+      // the latch on, and charging for pressing Peek at a passage already on
+      // screen would be charging for nothing.
+      //
+      // Releasing the button leaves the passage up while the latch holds it:
+      // hold-to-peek and keep-it-up are the same reveal, so a hold must not be
+      // the gesture that puts away what the latch is keeping.
+      setPeek: (showHelp) =>
+        this.setState((s) => ({
+          showHelp: showHelp || s.peekStick,
+          peeks: showHelp && !s.showHelp ? s.peeks + 1 : s.peeks,
+        })),
+      // The latch itself. Switching it on is a peek — it reveals the passage —
+      // and is charged as one; switching it off puts the passage away and
+      // refunds nothing, since it was seen.
+      togglePeekStick: () =>
+        this.setState((s) =>
+          s.peekStick
+            ? { peekStick: false, showHelp: false }
+            : { peekStick: true, showHelp: true, peeks: s.showHelp ? s.peeks : s.peeks + 1 },
+        ),
       submitCard: (score) => this.submitCard(score),
       retryCard: () => this.retryCard(),
       nextCard: () => this.moveCard(1),

@@ -431,6 +431,10 @@ export const scenarios = [
     }),
   },
   { name: "review/peeking", state: reviewing({ mode: "blanks", showHelp: true, peeks: 2 }) },
+  // The other way of looking: held open by the latch rather than by a finger,
+  // which is a state of the control as well as of the card (views/review.js,
+  // peekRow).
+  { name: "review/peek-latched", state: reviewing({ mode: "blanks", showHelp: true, peeks: 1, peekStick: true }) },
   // qi 1 → the card in front of us is passage 2, which is what `results` keys on.
   {
     name: "review/submitted",

@@ -6,7 +6,7 @@
 
 import { copy } from "../copy.js";
 import { html, sx, corners, React } from "../dom.js";
-import { COLOR_ERROR, LABEL_META, LABEL_SECTION, muted } from "../ui/tokens.js";
+import { COLOR_ERROR, CONTROL_ROW, LABEL_META, LABEL_SECTION, muted } from "../ui/tokens.js";
 
 /* Flashcard: a real two-sided card (styles.css, the two-sided card — the guide
  * demonstrates this same component). The reference is on the front and the
@@ -72,7 +72,7 @@ function flipPanel(v) {
 /* Fill the blanks: the passage with its key words replaced by inputs. */
 function blanksPanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:20px")}>
-    <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+    <div style=${sx(CONTROL_ROW)}>
       <span style=${sx(LABEL_SECTION)}>${copy.review.blanksLabel}</span>
       <div style=${sx("display:flex;gap:6px")}>
         ${v.blankLevels.map((lv) => html`<button key=${lv.key} className="seg-btn" onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
@@ -114,6 +114,10 @@ function blanksPanel(v) {
                     onChange=${w.onChange}
                     onKeyDown=${w.onKeyDown}
                     placeholder=${w.hint}
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck=${false}
                     style=${sx(w.inputStyle)}
                   />`
                 : w.word
@@ -136,7 +140,7 @@ function blanksPanel(v) {
  * here whose state cannot be seen by looking at it, and "switched on" is not
  * the same as "listening" — there is a permission prompt in between. */
 function voiceRow(v) {
-  return html`<div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+  return html`<div style=${sx(CONTROL_ROW)}>
     <span style=${sx(LABEL_SECTION)}>${v.voiceLabel}</span>
     <button className="seg-btn" onClick=${v.voiceToggle} disabled=${!v.voiceSupported} style=${sx(v.voiceStyle)}>
       ${v.voiceListening && html`<span className="mic-dot"></span>`}${v.voiceOn ? copy.common.on : copy.common.off}
@@ -172,7 +176,7 @@ const attemptWord = (key, w) =>
  * step, and there is nothing to recite. */
 function typePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:18px")}>
-    <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+    <div style=${sx(CONTROL_ROW)}>
       <span style=${sx(LABEL_SECTION)}>${copy.review.typeFirstLetterLabel}</span>
       <button className="seg-btn" onClick=${v.toggleTypeFirstLetter} style=${sx(v.typeFirstLetterStyle)}>
         ${v.typeFirstLetterOn ? copy.common.on : copy.common.off}
@@ -238,7 +242,7 @@ function typePanel(v) {
  * sequence. */
 function scramblePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:22px")}>
-    <div style=${sx("display:flex;align-items:center;gap:10px;flex-wrap:wrap")}>
+    <div style=${sx(CONTROL_ROW)}>
       <span style=${sx(LABEL_SECTION)}>${copy.review.scrambleLabel}</span>
       <div style=${sx("display:flex;gap:6px")}>
         ${v.scrambleLevels.map((lv) => html`<button key=${lv.key} className="seg-btn" onClick=${lv.onClick} style=${sx(lv.style)}>${lv.label}</button>`)}
@@ -261,6 +265,48 @@ function scramblePanel(v) {
       <div style=${sx(`font-size:13px;color:${muted(60)}`)}>${v.scrambleResult}</div>
       ${v.scrambleMissNote && html`<div style=${sx(`font-size:13px;color:${COLOR_ERROR}`)}>${v.scrambleMissNote}</div>`}
     </div>
+  </div>`;
+}
+
+/* Looking the passage up, directly above where it appears.
+ *
+ * It sits at the foot of the card rather than in its header, which is where it
+ * used to be: the reveal opens below the activity, so a control at the top of
+ * the card scrolled the answer it had just produced off the bottom of the
+ * screen. Beside what it reveals, the press and the passage are one place.
+ *
+ * Two ways to look, because they answer different questions. Holding the button
+ * is a glance — the passage while the finger is down — and is what the control
+ * has always been. The latch beside it is that glance held open, for a member
+ * checking themselves line by line who would otherwise be pressing the button
+ * once a line. Both cost the card the same single peek (App.setPeek,
+ * App.togglePeekStick); neither is a way of seeing the passage for free.
+ *
+ * Not shown on the flashcard, which is already a reveal. */
+function peekRow(v) {
+  return html`<div style=${sx(CONTROL_ROW)}>
+    <button
+      className="btn btn-ghost"
+      onMouseDown=${v.peekOn}
+      onMouseUp=${v.peekOff}
+      onMouseLeave=${v.peekOff}
+      onTouchStart=${v.peekOn}
+      onTouchEnd=${v.peekOff}
+      style=${sx("font-size:12px;user-select:none;touch-action:none")}
+    >
+      ${v.helpLabel}
+    </button>
+    <span style=${sx(LABEL_SECTION)}>${v.peekStickLabel}</span>
+    <button
+      className="seg-btn"
+      onClick=${v.togglePeekStick}
+      aria-label=${v.peekStickLabel}
+      aria-pressed=${v.peekStickOn}
+      style=${sx(v.peekStickStyle)}
+    >
+      ${v.peekStickOn ? copy.common.on : copy.common.off}
+    </button>
+    <span style=${sx(`font-size:12px;color:${v.peekSpent ? COLOR_ERROR : muted(50)}`)}>${v.peekNote}</span>
   </div>`;
 }
 
@@ -438,26 +484,9 @@ export function reviewView(v) {
       >
         <h2 style=${sx("margin:0")}>${v.curRef}</h2>
         <div style=${sx(LABEL_META)}>${v.curMeta}</div>
-        ${
-          !v.isFlip &&
-          html`<div style=${sx("margin-left:auto;display:flex;align-items:baseline;gap:10px")}>
-            <span style=${sx(`font-size:12px;color:${v.peekSpent ? COLOR_ERROR : muted(50)}`)}>${v.peekNote}</span>
-            <button
-              className="btn btn-ghost"
-              onMouseDown=${v.peekOn}
-              onMouseUp=${v.peekOff}
-              onMouseLeave=${v.peekOff}
-              onTouchStart=${v.peekOn}
-              onTouchEnd=${v.peekOff}
-              style=${sx("font-size:12px;user-select:none;touch-action:none")}
-            >
-              ${v.helpLabel}
-            </button>
-          </div>`
-        }
       </div>
 
-      ${activityPanel(v)}
+      ${activityPanel(v)} ${!v.isFlip && peekRow(v)}
       ${v.showHelp && html`<div className="reveal-in" style=${sx(`border-left:2px solid var(--color-accent);padding:4px 0 4px 16px;font-size:15px;line-height:1.65;color:${muted(70)};max-width:74ch`)}>${v.curText}</div>`}
       ${v.resultShown && (v.isLearn ? learnResultStrip(v) : resultStrip(v))}
 
