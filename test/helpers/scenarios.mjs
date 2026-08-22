@@ -630,6 +630,49 @@ export const scenarios = [
     }),
   },
 
+  // ── drive mode ─────────────────────────────────────────────────────────────
+  { name: "drive/idle", state: baseState({ view: "drive" }) },
+  {
+    name: "drive/idle-supported",
+    state: baseState({
+      view: "drive",
+      drive: {
+        supported: true,
+        running: false,
+        mode: "word",
+        source: "committed",
+        queue: [],
+        index: 0,
+        phase: "idle",
+        heard: "",
+        lastResult: null,
+      },
+    }),
+  },
+  {
+    name: "drive/running-feedback",
+    state: baseState({
+      view: "drive",
+      drive: {
+        supported: true,
+        running: true,
+        mode: "verse",
+        source: "all",
+        queue: [1, 2, 3],
+        index: 1,
+        phase: "feedback",
+        heard: "for god so loved the world",
+        lastResult: {
+          score: 0.5,
+          pct: 50,
+          spokenFeedback: "50 percent correct.",
+          missed: ["world"],
+          perVerse: [{ verse: 1, score: 0.5, pct: 50 }],
+        },
+      },
+    }),
+  },
+
   // ── the guide ──────────────────────────────────────────────────────────────
   { name: "guide/default", state: baseState({ view: "guide" }) },
   // Both ends of the freshness slider: day 0, where every curve reads 100%, and

@@ -834,4 +834,28 @@ export const copy = {
     },
     start: "Start learning",
   },
+
+  /* drive mode */
+  drive: {
+    nav: "Drive",
+    title: "Drive mode",
+    lead: "Hands-free practice. The app reads out a reference, you recite the passage, and it tells you how you did — then moves straight on to the next one until you stop.",
+    modeLabel: "Feedback",
+    modes: { passage: "Whole passage", word: "Word by word", verse: "Verse by verse" },
+    sourceLabel: "Queue",
+    sources: { due: "Due for review", committed: "All committed", all: "Whole set" },
+    start: "Start driving session",
+    stop: "Stop",
+    phases: { idle: "Ready", prompt: "Reading reference", listen: "Listening", feedback: "How you did" },
+    queueCount: (n) => n + (n === 1 ? " passage" : " passages") + " in the queue",
+    lastScore: (pct) => pct + "% correct",
+    unsupported: "This browser cannot speak or listen, so Drive mode is not available here. Chrome can.",
+    empty: "Nothing in this queue. Pick another queue, or learn some verses first.",
+    practiceNote: "Practice only — drive sessions do not move your review schedule.",
+    prompt: (ref) => "Recite " + ref + ".",
+    scoreSpoken: (pct) => pct + " percent correct.",
+    missedWords: (words) => "You missed: " + words.join(", ") + ".",
+    verseSpoken: (n, pct) => "Verse " + n + ": " + pct + " percent.",
+    nothingHeard: "I did not hear anything. Moving on.",
+  },
 };
