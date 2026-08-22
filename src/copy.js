@@ -858,6 +858,8 @@ export const copy = {
     missedWords: (words) => "You missed: " + words.join(", ") + ".",
     verseSpoken: (n, pct) => "Verse " + n + ": " + pct + " percent.",
     nothingHeard: "I did not hear anything. Moving on.",
+  },
+
   /* run mode */
   run: {
     title: "Run mode",
