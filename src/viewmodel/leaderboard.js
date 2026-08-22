@@ -131,10 +131,10 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
       // all of them hold between them. One decimal, because whole numbers
       // would make a group of seven look like a group of one.
       count: isGrouped ? p.avgCount.toFixed(1) : p.count,
-      // "of 183" is a claim about one person's set, so a group says what the
+      // "of 187" is a claim about one person's set, so a group says what the
       // figure is instead of what it is out of. Out of the whole set rather
       // than the goal category, because `count` above spans every category —
-      // against the goal's 167 a member could read "170 of 167".
+      // against the goal's 171 a member could read "174 of 171".
       caption: isGrouped ? copy.leaderboard.podiumEach : copy.leaderboard.podiumOf(totals.totalCount),
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",
       cardStyle:

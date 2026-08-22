@@ -206,7 +206,7 @@ const MIN_VERSES_TO_CUT = 3;
  * tools/fetch_passages.mjs). When it is there, the cut is made on verse
  * boundaries instead of on punctuation — a verse is the unit a member learns a
  * chapter in, and it is the one the issue asked for. Everything else is
- * unchanged: the 167 one- and two-verse passages have no `verses` and take the
+ * unchanged: the 171 one- and two-verse passages have no `verses` and take the
  * punctuation path exactly as they always did. */
 export function chunksFor(t, level = 1, verses = null) {
   const cfg = SCRAMBLE_LEVELS[level] || SCRAMBLE_LEVELS[1];
