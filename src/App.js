@@ -21,6 +21,8 @@ import { BLANK_LEVELS, BLANK_PARITIES, SCRAMBLE_LEVELS } from "./blanks.js";
 import { transcribe } from "./voice.js";
 import { lockedInput } from "./grading.js";
 import { createRecognizer, voiceSupported } from "./recognizer.js";
+import { beatSupported, createBeat, presetByKey, speak, stopSpeaking } from "./beat.js";
+import { calloutQueue, calloutScript } from "./run.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
 import { dueOrder } from "./progress.js";
 import { DEFAULT_MODE, LEARN, LEARN_SIZE, REVIEW, SESSION_SIZE } from "./review.js";
@@ -76,6 +78,7 @@ import { driveView } from "./views/drive.js";
 import { createSpeaker, speechSupported } from "./speaker.js";
 import { feedbackFor, nextIndex, promptFor } from "./drive.js";
 import { drivePool } from "./viewmodel/drive.js";
+import { runView } from "./views/run.js";
 import { authGateView } from "./views/auth-gate.js";
 import { profileFormView } from "./views/profile-form.js";
 import { syncBannerView, syncGateView } from "./views/sync-gate.js";
@@ -339,6 +342,18 @@ function initialState() {
     // paint, so this is the app catching up with the page it booted on rather
     // than the other way round (see theme.js).
     theme: DEFAULT_THEME,
+
+    /* run mode — the beat's settings, whether it is running, the verse being
+     * called out, and the Spotify playlist (loaded lazily; see loadRunPlaylist). */
+    run: {
+      supported: beatSupported(),
+      preset: "hype",
+      bpm: presetByKey("hype").bpm,
+      playing: false,
+      nowRef: "",
+      nowText: "",
+      playlist: [],
+    },
   };
 }
 
@@ -436,6 +451,7 @@ export class App extends React.Component {
     if (this.unwatchTheme) this.unwatchTheme();
     if (this.headerHeight) this.headerHeight.stop();
     this.stopListening();
+    this.stopRun();
   }
 
   /* ── reciting aloud ─────────────────────────────────────────────────────── */
@@ -744,8 +760,10 @@ export class App extends React.Component {
     // Walking off the drive screen is the same press as Stop: a session that
     // kept talking to an empty screen would be a bug, not a feature.
     if (this.state.drive && this.state.drive.running && view !== "drive") this.stopDrive();
+    if (this.state.view === "run" && view !== "run") this.stopRun();
     this.setState({ view });
     if (view === "leaderboard") this.loadRoster();
+    if (view === "run") this.loadRunPlaylist();
   }
 
   /* ------------------------------------------------------------------ */
@@ -1166,6 +1184,70 @@ export class App extends React.Component {
 
   /* ── the action table handed to the view-model ──────────────────────────── */
 
+  /* ── run mode ───────────────────────────────────────────────────────────── */
+
+  /* The playlist ships in the main tree, not on every branch — a static import
+   * of a missing module would white-screen the whole app (no bundler), so it
+   * is fetched lazily and its absence is an empty list. */
+  loadRunPlaylist() {
+    if (this.runPlaylistLoaded) return;
+    this.runPlaylistLoaded = true;
+    import("../data/run-playlist.js")
+      .then((m) => m.RUN_PLAYLIST)
+      .catch(() => [])
+      .then((list) => this.setRun({ playlist: list || [] }));
+  }
+
+  setRun(patch) {
+    this.setState((s) => ({ run: { ...s.run, ...patch } }));
+  }
+
+  /* One press starts everything — the gesture is what unlocks the AudioContext
+   * and speechSynthesis — and it runs hands-free until Stop: the beat under a
+   * loop of callouts (reference, verse, then an echo pause for the runner to
+   * say it back in their head), the beat ducked while the voice speaks. */
+  startRun() {
+    if (this.state.run.playing) return;
+    const queue = calloutQueue(this.state.passages, this.state.progress);
+    if (!this.runBeat) this.runBeat = createBeat();
+    if (this.runBeat) this.runBeat.start(this.state.run.preset, this.state.run.bpm);
+    this.runToken = (this.runToken || 0) + 1;
+    this.setRun({ playing: true });
+    if (queue.length) this.runCallout(queue, 0, this.runToken);
+  }
+
+  /* Walk the callout queue, forever. `token` guards against a loop outliving
+   * its run: every timer and utterance checks it before moving on, so Stop
+   * (or leaving the screen) really is the end. */
+  runCallout(queue, index, token) {
+    if (token !== this.runToken) return;
+    const passage = queue[index % queue.length];
+    const script = calloutScript(passage);
+    this.setRun({ nowRef: passage.ref, nowText: passage.text });
+    const sayFrom = (si) => {
+      if (token !== this.runToken) return;
+      if (si >= script.length) {
+        this.runCallout(queue, index + 1, token);
+        return;
+      }
+      if (this.runBeat) this.runBeat.duck(true);
+      speak(script[si].text, () => {
+        if (token !== this.runToken) return;
+        if (this.runBeat) this.runBeat.duck(false);
+        this.runTimer = setTimeout(() => sayFrom(si + 1), script[si].pauseAfterMs);
+      });
+    };
+    sayFrom(0);
+  }
+
+  stopRun() {
+    this.runToken = (this.runToken || 0) + 1;
+    clearTimeout(this.runTimer);
+    stopSpeaking();
+    if (this.runBeat) this.runBeat.stop();
+    if (this.state.run.playing) this.setRun({ playing: false, nowRef: "", nowText: "" });
+  }
+
   buildActions() {
     const set = (patch) => this.setState(patch);
     return {
@@ -1175,7 +1257,12 @@ export class App extends React.Component {
 
       // account + profile
       signIn: () => this.signIn(),
-      signOut: () => signOutUser().catch(() => {}),
+      signOut: () => {
+        // Signing out replaces the shell without going through goto, so a
+        // running beat would keep playing behind the gate.
+        this.stopRun();
+        signOutUser().catch(() => {});
+      },
       /* Try the cloud again, for a member sitting behind the sync gate or under
        * its banner. Which half to retry depends on how far the boot got: a
        * member who is signed in has a document to re-read, while one whose SDK
@@ -1193,7 +1280,12 @@ export class App extends React.Component {
         await this.startAuth();
         this.setState({ syncRetrying: false });
       },
-      editProfile: () => set({ editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false }),
+      editProfile: () => {
+        // The settings form renders over the shell while state.view stays put,
+        // so leaving for it must stop a running beat like goto would.
+        this.stopRun();
+        set({ editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false });
+      },
       cancelEditProfile: () => set({ editingProfile: false, profileDraft: null, resetAsk: false }),
       submitProfile: () => this.submitProfile(),
       dismissWelcome: (view) => {
@@ -1446,6 +1538,18 @@ export class App extends React.Component {
       setDriveSource: (source) => this.driveSet({ source }),
       startDrive: () => this.startDrive(),
       stopDrive: () => this.stopDrive(),
+      /* run mode */
+      startRun: () => this.startRun(),
+      stopRun: () => this.stopRun(),
+      setRunPreset: (key) => {
+        this.setRun({ preset: key, bpm: presetByKey(key).bpm });
+        if (this.runBeat && this.state.run.playing) this.runBeat.start(key, presetByKey(key).bpm);
+      },
+      setRunBpm: (bpm) => {
+        const clamped = Math.max(100, Math.min(220, bpm));
+        this.setRun({ bpm: clamped });
+        if (this.runBeat) this.runBeat.setBpm(clamped);
+      },
     };
   }
 
@@ -1538,7 +1642,7 @@ export class App extends React.Component {
       ${v.isReviewSetup && reviewSetupView(v)} ${v.isLearnSetup && learnSetupView(v)} ${v.isReview && reviewView(v)}
       ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)}
       ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)}
-      ${v.isDrive && driveView(v)} ${footerView(v)}
+      ${v.isDrive && driveView(v)} ${v.isRun && runView(v)} ${footerView(v)}
     </div>`;
   }
 }
