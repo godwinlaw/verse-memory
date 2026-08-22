@@ -111,18 +111,21 @@ test("turning the passage over asks for the other words", () => {
   assert.notEqual(shown("review/blanks-alternating"), shown("review/blanks-alternating-flipped"));
 });
 
-test("a phone is turned away before the app, and before the splash", () => {
+test("a phone is warned before the app, and before the splash", () => {
   const blocked = shown("device/mobile");
-  assert.match(blocked, /not available on a mobile device/);
+  assert.match(blocked, /at its best on a computer/);
+  assert.match(blocked, /never look at or touch the screen while driving/, "the safety warning is on it");
+  // The way through: a Continue button, and nothing else to press.
+  assert.match(blocked, /Continue<\/button>/);
   // Nothing behind the gate leaks past it: no board, no sign-in, no boot.
   assert.doesNotMatch(blocked, /passages committed/);
   assert.doesNotMatch(blocked, /Sign in with Google/);
   assert.doesNotMatch(blocked, /class="splash-mark"/);
 
-  // Still refused mid-boot: the decision does not wait on anything loading,
+  // Still warned mid-boot: the decision does not wait on anything loading,
   // since none of it changes the answer.
   const loading = shown("device/mobile-while-loading");
-  assert.match(loading, /not available on a mobile device/);
+  assert.match(loading, /at its best on a computer/);
   assert.doesNotMatch(loading, /class="splash-mark"/);
 });
 

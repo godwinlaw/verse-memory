@@ -121,12 +121,17 @@ export const copy = {
 
   /* ── the gates ──────────────────────────────────────────────────────────── */
 
-  /* The first of them, and the only one a member can do nothing about: the app
-   * is not offered on a phone or a tablet (see src/device.js). It stands in
-   * front of the splash, so it is written first here too. */
+  /* The first of them: a warning for a phone or a tablet (see src/device.js).
+   * It stands in front of the splash, so it is written first here too. The app
+   * still works on a phone — the member just has to hear this first, every
+   * visit, because the safety line is worth saying each time. */
   mobileGate: {
-    message:
-      "This app is not available on a mobile device to reduce screen time. Access with a non-mobile device instead.",
+    lead: "This app is designed for a sitting at a desk, and it is at its best on a computer.",
+    caveat: "It works on a phone, but it is not the experience it was built for.",
+    safety:
+      "Please be careful with Drive mode — never look at or touch the screen while driving. " +
+      "Keep your eyes on the road; let the audio do the work.",
+    continueCta: "Continue",
   },
 
   /* The splash the app opens on, while it works out whether the member is
