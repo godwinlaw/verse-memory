@@ -42,6 +42,30 @@ function shown(name) {
 
 test.after(() => restore());
 
+/* ── run mode ─────────────────────────────────────────────────────────────── */
+
+test("the run screen offers the pinned Psalms playlist and the beat controls", () => {
+  const markup = shown("run/default");
+  assert.match(markup, /Psalms memory playlist \(by Emily\)/);
+  assert.match(markup, /open\.spotify\.com\/playlist\/2J256T9x2D6ysT1zOwpNyE/);
+  assert.match(markup, /Steady/);
+  assert.match(markup, /Hype/);
+  assert.match(markup, /Sprint/);
+});
+
+test("a playing run shows the verse being called out", () => {
+  const markup = shown("run/playing");
+  assert.match(markup, /John 11:35/);
+  assert.match(markup, /Jesus wept\./);
+  assert.match(markup, /Shane (&amp;|&) Shane/);
+});
+
+test("a browser with no WebAudio still gets the playlist", () => {
+  const markup = shown("run/unsupported");
+  assert.doesNotMatch(markup, /Steady/);
+  assert.match(markup, /Psalms memory playlist/);
+});
+
 /* No screen prints arithmetic that did not work out.
  *
  * This is cheap and it earns its place: the leaderboard quoted "NaN%" on every

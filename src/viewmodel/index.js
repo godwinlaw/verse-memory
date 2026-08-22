@@ -18,6 +18,7 @@ import { reviewVals, reviewSetupVals } from "./review.js";
 import { learnSetupVals } from "./learn.js";
 import { examVals } from "./exam.js";
 import { leaderboardVals } from "./leaderboard.js";
+import { runVals } from "./run.js";
 
 export function buildViewModel({ state, groupName, motto, deadline, actions, now = new Date() }) {
   const totals = deriveTotals({
@@ -51,6 +52,7 @@ export function buildViewModel({ state, groupName, motto, deadline, actions, now
     ...reviewVals({ state, prog, totals, actions }),
     ...examVals({ state, actions, now: now.getTime() }),
     ...leaderboardVals({ state, totals, myStreak, actions, now: now.getTime() }),
+    ...runVals({ state, actions }),
   };
 }
 

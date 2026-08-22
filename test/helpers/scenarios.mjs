@@ -636,4 +636,38 @@ export const scenarios = [
   // a month on, where the held passage is well under the member's mark.
   { name: "guide/day-zero", state: baseState({ view: "guide", guideDays: 0 }) },
   { name: "guide/month-later", state: baseState({ view: "guide", guideDays: 30 }) },
+
+  // ── run mode ───────────────────────────────────────────────────────────────
+  { name: "run/default", state: baseState({ view: "run" }) },
+  {
+    name: "run/playing",
+    state: baseState({
+      view: "run",
+      run: {
+        supported: true,
+        preset: "sprint",
+        bpm: 180,
+        playing: true,
+        nowRef: "John 11:35",
+        nowText: "Jesus wept.",
+        playlist: [
+          {
+            ref: "Psalm 23",
+            title: "The Lord Is My Shepherd",
+            artist: "Shane & Shane",
+            url: "https://open.spotify.com/track/x",
+          },
+        ],
+      },
+    }),
+  },
+  // A browser with no WebAudio: the beat controls give way to a note, the
+  // playlist stays.
+  {
+    name: "run/unsupported",
+    state: baseState({
+      view: "run",
+      run: { supported: false, preset: "hype", bpm: 165, playing: false, nowRef: "", nowText: "", playlist: [] },
+    }),
+  },
 ].map((s) => ({ props: PROPS, ...s }));

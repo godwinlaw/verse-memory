@@ -93,6 +93,7 @@ export const copy = {
     list: "Passages",
     leaderboard: "Stats",
     guide: "Guide",
+    run: "Run",
   },
 
   header: {
@@ -833,5 +834,19 @@ export const copy = {
       phrases: ["Hear, O Israel:", "The LORD our God,", "the LORD is one."],
     },
     start: "Start learning",
+  },
+
+  /* run mode */
+  run: {
+    title: "Run mode",
+    blurb: "Go for a run and keep memorizing: a beat keeps your cadence, and your verses are called out over it.",
+    unsupported: "This browser cannot play the beat. The playlist below still works.",
+    presetLabel: "Beat",
+    bpmLabel: "BPM",
+    start: "Start the run",
+    stop: "Stop",
+    idleNote: "Press start: the beat drops, a verse is read out, and you get a gap to say it back in your head.",
+    playlistTitle: "Running playlist",
+    psalmsPlaylist: "Psalms memory playlist (by Emily)",
   },
 };

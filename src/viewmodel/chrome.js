@@ -12,6 +12,7 @@ const NAV = [
   { key: "list", label: copy.nav.list },
   { key: "leaderboard", label: copy.nav.leaderboard },
   { key: "guide", label: copy.nav.guide },
+  { key: "run", label: copy.nav.run },
 ];
 
 const navStyle = (active, underlined) =>
@@ -56,6 +57,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     isReview: state.view === "review",
     isLeader: state.view === "leaderboard",
     isGuide: state.view === "guide",
+    isRun: state.view === "run",
     isDone: state.view === "done",
     isReviewSetup: state.view === "review-setup",
     isLearnSetup: state.view === "learn-setup",
