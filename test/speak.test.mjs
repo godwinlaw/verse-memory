@@ -164,3 +164,18 @@ test("no command word is a word of scripture on its own", () => {
   assert.ok(COMMANDS.includes("hint"));
   assert.ok(!COMMANDS.includes("help"), "help is in the Psalms — hint is the free word");
 });
+
+test("a word nobody was asked to say is never read back as missed", () => {
+  /* Four passages carry a scripture reference inside their own text, and those
+   * words are excused from the mark. Word mode used to read them back anyway,
+   * so a perfect recital of 1 Corinthians 6:19-20 was told it had missed "1". */
+  const leaky = ["Luke 12:32", "Isaiah 54:2-3", "Habakkuk 3:17-18", "1 Corinthians 6:19-20"];
+  for (const ref of leaky) {
+    const p = passages.find((x) => x.ref === ref);
+    if (!p) continue;
+    const r = feedbackFor(p, p.text, "word");
+    assert.equal(r.pct, 100, `${ref} scores itself`);
+    assert.deepEqual(r.missed, [], `${ref} names nothing missed`);
+    assert.doesNotMatch(r.spokenFeedback, /missed/i, `${ref} says nothing about misses`);
+  }
+});

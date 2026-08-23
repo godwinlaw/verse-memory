@@ -242,10 +242,15 @@ export function doubleMetaphone(word) {
   /* Bounds-safe lookups. A window that runs off the end must read as "no
    * letter" rather than as the empty string, or every `includes("")` test in
    * the rules below would answer true. */
-  const at = (i) => (i >= 0 && i < n ? s[i] : " ");
+  /* Out of bounds is a character that can never match rather than "", because
+   * an empty string is a substring of everything — `"AEIOU".includes("")` is
+   * true, and a sentinel that reads as a vowel off both ends of the word is a
+   * silent wrong answer. Written as an escape: a raw NUL in the source makes
+   * the file binary to half the tools that would otherwise read it. */
+  const at = (i) => (i >= 0 && i < n ? s[i] : " ");
   const span = (i, len) => (i >= 0 ? s.slice(i, i + len) : "");
   const vowel = (i) => VOWELS.includes(at(i));
-  const oneOf = (c, list) => c !== " " && list.includes(c);
+  const oneOf = (c, list) => c !== "" && list.includes(c);
 
   let i = 0;
 

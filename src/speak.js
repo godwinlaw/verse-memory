@@ -102,7 +102,12 @@ export function feedbackFor(passage, transcript, mode) {
   const parts = [];
   if (mode === "word") {
     result.perWord = graded.diff.map((w) => ({ word: w.word, hit: w.hit }));
-    const missed = graded.diff.filter((w) => !w.hit).map((w) => w.word);
+    /* A word nobody was ever asked to say is not a word they missed. Four
+     * passages carry a scripture reference inside their own text — a
+     * fetch-time leak, see recital.js — and those words are excused from the
+     * mark; reading them back would tell a member who recited perfectly that
+     * they had missed "1". */
+    const missed = graded.diff.filter((w) => !w.hit && !w.optional).map((w) => w.word);
     result.missed = missed;
     // Cap what is read aloud — a badly missed chapter should not be recited
     // back at the member word by word while they drive.
