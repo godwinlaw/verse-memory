@@ -862,7 +862,30 @@ export const copy = {
     scoreSpoken: (pct) => pct + " percent correct.",
     missedWords: (words) => "You missed: " + words.join(", ") + ".",
     verseSpoken: (n, pct) => "Verse " + n + ": " + pct + " percent.",
-    nothingHeard: "I did not hear anything. Moving on.",
+    nothingHeard: "Let's take this one together.",
+
+    /* What the app says about a recital, by band (see BANDS in speak.js).
+     *
+     * A percentage is not said aloud any more. It was a number with nothing
+     * attached: nobody at the wheel can act on "sixty-two percent", and hearing
+     * one after every verse made the session feel like a test being
+     * administered rather than a passage being learned. Three of these four
+     * lines hand the verse back instead, which is both the feedback and the
+     * next repetition. The figure is still on the screen for anyone who wants
+     * it. */
+    opening: (n) =>
+      (n === 1 ? "One verse" : n + " verses") +
+      ". I'll read the reference, you say the verse, then I'll read it back. If you get stuck, say hint.",
+    clean: "That's it.",
+    close: "Close. Here it is.",
+    shaky: "Not quite. Listen.",
+    nowYou: "Now you.",
+    lost: "Let's take this one together.",
+    /* The prompter's few words. Said as the verse says them, so a member hears
+     * the line rather than a list. */
+    prompter: (words) => (words ? "It goes, " + words + "…" : "Here it is."),
+    /* The same four verdicts, for the screen rather than the ear. */
+    bands: { clean: "That's it", close: "Close", shaky: "Not quite", lost: "Together" },
     /* A speaking session that ends because the microphone was refused looks
      * exactly like one the member stopped, so it says which it was. The
      * sentences are the review screen's — one microphone, one set of words for

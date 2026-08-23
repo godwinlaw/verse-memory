@@ -74,9 +74,13 @@ export function speakView(v) {
         </div>
         <div style=${sx(BIG_REF)}>${v.speakRef}</div>
         ${
-          v.speakScoreLabel &&
+          (v.speakBandLabel || v.speakScoreLabel) &&
           html`<div style=${sx("display:flex;flex-direction:column;gap:8px")}>
-            <div style=${sx(BIG_SCORE)}>${v.speakScoreLabel}</div>
+            ${v.speakBandLabel && html`<div style=${sx(BIG_SCORE)}>${v.speakBandLabel}</div>`}
+            ${
+              v.speakScoreLabel &&
+              html`<div style=${sx(`font-size:15px;color:${muted(65)}`)}>${v.speakScoreLabel}</div>`
+            }
             ${v.speakMissed && html`<div style=${sx(`font-size:14px;color:${muted(65)}`)}>${v.speakMissed}</div>`}
             ${v.speakPerVerse.map((line, i) => html`<div key=${i} style=${sx("font-size:15px")}>${line}</div>`)}
           </div>`

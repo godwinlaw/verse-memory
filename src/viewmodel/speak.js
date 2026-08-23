@@ -66,7 +66,13 @@ export function speakVals({ state, actions, now = Date.now() }) {
     /* Why a session ended by itself — a refused microphone otherwise looks
      * exactly like the member pressing Stop. */
     speakError: !d.running && d.error ? d.error : "",
-    speakScoreLabel: last ? copy.speak.lastScore(last.pct) : "",
+    /* The figure survives on the screen even though it is no longer said out
+     * loud — a member who is looking can act on it, and one who is driving
+     * cannot, which is the whole distinction the bands were drawn along. A
+     * recital the app could not make sense of shows no figure at all rather
+     * than a very confident nought. */
+    speakScoreLabel: last && !last.abstained && typeof last.pct === "number" ? copy.speak.lastScore(last.pct) : "",
+    speakBandLabel: d.band ? copy.speak.bands[d.band] : "",
     speakPerVerse: last && last.perVerse ? last.perVerse.map((v) => copy.speak.verseSpoken(v.verse, v.pct)) : [],
     speakMissed: last && last.missed ? last.missed.slice(0, 12).join(", ") : "",
     speakPracticeNote: copy.speak.practiceNote,

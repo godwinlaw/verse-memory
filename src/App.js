@@ -76,7 +76,8 @@ import { leaderboardView } from "./views/leaderboard.js";
 import { guideView } from "./views/guide.js";
 import { speakView } from "./views/speak.js";
 import { createSpeaker, speechSupported } from "./speaker.js";
-import { feedbackFor, nextIndex, promptFor } from "./speak.js";
+import { bandFor, commandIn, feedbackFor, nextIndex, promptFor, promptWordsFor, silenceMsFor } from "./speak.js";
+import { createEarcons } from "./earcon.js";
 import { speakPool } from "./viewmodel/speak.js";
 import { runView } from "./views/run.js";
 import { authGateView } from "./views/auth-gate.js";
@@ -196,10 +197,19 @@ function focusRecall() {
  * begins in `typed` (see voice.js); at rest there is no such phrase. */
 const quietVoice = () => ({ status: "off", error: null, tail: 0, rest: 0 });
 
-/* Speak mode's two clocks: quiet after a settled phrase that means "I'm done",
- * and the most a turn waits on a recital that never starts. */
+/* Speak mode's clocks. The two that matter are in `speak.js` — how long a
+ * silence runs before a recital counts as finished, which depends on how much
+ * of the passage has been heard. These are the rest:
+ *
+ *   STALL   how long a member gets before being offered the next few words
+ *   PROMPTS how many times that help is given before the verse is simply read
+ *   ENDPOINT the shortest the wait can be cut to when the engine says the
+ *            speech has ended — a floor, so its judgement can hurry the loop
+ *            along but never take the last word out of somebody's mouth */
 const SPEAK_SILENCE_MS = 2500;
-const SPEAK_MAX_WAIT_MS = 20000;
+const SPEAK_STALL_MS = 5000;
+const SPEAK_MAX_PROMPTS = 2;
+const SPEAK_ENDPOINT_MS = 1200;
 
 function initialState() {
   return {
@@ -812,15 +822,24 @@ export class App extends React.Component {
     // One speaker for the whole session — the Start press is the user gesture
     // the browser's audio policy wants, and everything after it is hands-free.
     this.speakVoice = createSpeaker();
-    this.speakSet({ running: true, queue, index: 0, phase: "prompt", heard: "", lastResult: null, error: "" }, () =>
-      this.speakPrompt(),
+    // Built on the same press, for the same reason: an AudioContext made
+    // outside a gesture starts silent.
+    this.speakEarcons = createEarcons();
+    this.speakRetried = false;
+    this.speakPrompts = 0;
+    this.speakSet(
+      { running: true, queue, index: 0, phase: "prompt", heard: "", lastResult: null, band: "", error: "" },
+      () => this.sayThen(copy.speak.opening(queue.length), () => this.speakPrompt()),
     );
   }
 
   stopSpeak(error = "") {
     this.speakTeardown();
     this.speakVoice = null;
-    this.speakSet({ running: false, phase: "idle", error });
+    if (this.speakEarcons) this.speakEarcons.dispose();
+    this.speakEarcons = null;
+    this.speakRetried = false;
+    this.speakSet({ running: false, phase: "idle", band: "", error });
   }
 
   speakPassage() {
@@ -844,21 +863,46 @@ export class App extends React.Component {
     this.sayThen(promptFor(p), () => this.speakListen());
   }
 
-  speakListen() {
-    this.speakSet({ phase: "listen", heard: "" });
-    this.speakHeardSettled = "";
+  /* Open the microphone for a turn.
+   *
+   * `resuming` is a turn the prompter interrupted: the member was already
+   * part-way through the verse, so what they have said is kept and no earcon is
+   * played. An earcon means "your turn", and being helped over a dry patch is
+   * the same turn continuing. */
+  speakListen(resuming = false) {
+    this.speakSet({ phase: "listen" });
+    if (!resuming) {
+      this.speakHeardSettled = "";
+      this.speakPrompts = 0;
+      this.speakSet({ heard: "" });
+    }
+    if (this.speakEarcons) this.speakEarcons.open();
     this.speakRec = createRecognizer({
       onStatus: () => {},
-      onText: (text, settled) => {
+      onText: (text, settled, alternatives) => {
         if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
         if (settled) {
-          this.speakHeardSettled = (this.speakHeardSettled + " " + text).trim();
+          /* A word said to the app rather than to the verse. Only ever read as
+           * a command when it is the whole of what was heard (see commandIn),
+           * so a recital is never mistaken for an instruction. */
+          const command = commandIn(text);
+          if (command && !this.speakHeardSettled) return this.speakCommand(command);
+          this.speakHeardSettled = this.speakBestReading(text, alternatives);
           this.speakSet({ heard: this.speakHeardSettled });
         }
         // Any sound, settled or not, is the member still going: push the
-        // silence deadline back. Grading waits for ~2.5s of quiet after a
-        // settled phrase — the timer is here, not in the pure module.
-        if (this.speakHeardSettled) this.speakArmSilence(SPEAK_SILENCE_MS);
+        // deadline back. How long that deadline is depends on how much of the
+        // passage has been heard — see silenceMsFor. The timer lives here
+        // rather than in the pure module, which holds no timers by design.
+        this.speakArmSilence(this.speakSilenceMs());
+      },
+      /* The engine's own view of when the speech ended. It has the audio and a
+       * voice model; the timer below has neither. Where it fires, it only
+       * shortens the wait — never lengthens it — so it can improve the loop's
+       * pace but never cut a member off earlier than the window allows. */
+      onEndpoint: () => {
+        if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
+        if (this.speakHeardSettled) this.speakArmSilence(Math.min(SPEAK_ENDPOINT_MS, this.speakSilenceMs()));
       },
       // A real failure (mic denied, no microphone, network) can never resolve
       // itself mid-speak — grading past it would loop "I did not hear
@@ -867,28 +911,118 @@ export class App extends React.Component {
     });
     if (!this.speakRec) return this.stopSpeak(copy.speak.noMic);
     this.speakRec.start();
-    // A fallback so a recital that never starts still moves the loop on.
-    this.speakArmSilence(SPEAK_MAX_WAIT_MS);
+    // A recital that never starts is a member who is stuck, not one who is
+    // finished, so the first thing that silence buys is a prompt.
+    this.speakArmSilence(SPEAK_STALL_MS, true);
   }
 
-  speakArmSilence(ms) {
+  /* Of everything the engine thought it heard, the reading closest to the verse
+   * in hand. The engine ranks its guesses by how sure it is the words were
+   * said; this app knows which words were *meant*, and can therefore break that
+   * tie better than the engine can. It only ever re-ranks readings the engine
+   * produced on its own, so it cannot credit a word nobody spoke. */
+  speakBestReading(text, alternatives) {
+    const p = this.speakPassage();
+    const prior = this.speakHeardSettled;
+    const readings = (alternatives && alternatives.length ? alternatives : [text]).filter(Boolean);
+    let best = readings[0];
+    if (p && readings.length > 1) {
+      let bestScore = -1;
+      readings.forEach((reading) => {
+        const trial = (prior + " " + reading).trim();
+        const score = feedbackFor(p, trial, "passage").score;
+        if (score > bestScore) {
+          bestScore = score;
+          best = reading;
+        }
+      });
+    }
+    return (prior + " " + best).trim();
+  }
+
+  speakSilenceMs() {
+    const p = this.speakPassage();
+    return p ? silenceMsFor(p, this.speakHeardSettled) : SPEAK_SILENCE_MS;
+  }
+
+  /* `stalled` distinguishes the two things a silence can mean: a member who has
+   * finished (grade it) and one who has dried up (prompt them). */
+  speakArmSilence(ms, stalled = false) {
     if (this.speakTimer) clearTimeout(this.speakTimer);
-    this.speakTimer = setTimeout(() => this.speakGrade(), ms);
+    this.speakTimer = setTimeout(() => (stalled ? this.speakStalled() : this.speakGrade()), ms);
   }
 
+  /* Nothing has been said and the silence has run long. Feed the next few words
+   * — the audio equivalent of the first-letter scaffold — and reopen the
+   * microphone on the same attempt. After two of those, read the verse and move
+   * on: a third prompt is the app reciting the passage to itself. */
+  speakStalled() {
+    if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
+    const p = this.speakPassage();
+    if (!p) return this.stopSpeak();
+    if (this.speakHeardSettled) return this.speakGrade();
+    if ((this.speakPrompts || 0) >= SPEAK_MAX_PROMPTS) return this.speakGrade();
+    this.speakPrompts = (this.speakPrompts || 0) + 1;
+    const words = promptWordsFor(p, this.speakHeardSettled);
+    if (!words) return this.speakGrade();
+    this.sayThen(copy.speak.prompter(words), () => this.speakListen(true));
+  }
+
+  /* A word spoken to the app. Each of these is a way out of being stuck that
+   * does not need the screen, which is the whole promise of the mode. */
+  speakCommand(command) {
+    const p = this.speakPassage();
+    if (!p) return this.stopSpeak();
+    if (command === "stop") return this.stopSpeak();
+    if (command === "skip") return this.speakAdvance();
+    if (command === "repeat" || command === "again") return this.speakPrompt();
+    if (command === "hint") {
+      const words = promptWordsFor(p, this.speakHeardSettled);
+      return this.sayThen(copy.speak.prompter(words), () => this.speakListen(true));
+    }
+    // "slower" and anything else: read the verse, then hand the turn back.
+    return this.sayThen(p.text, () => this.speakListen(true));
+  }
+
+  speakAdvance() {
+    this.speakSet({ index: nextIndex(this.state.speak.index, this.state.speak.queue.length) }, () =>
+      this.speakPrompt(),
+    );
+  }
+
+  /* Mark the recital and answer it.
+   *
+   * The answer is the verse itself on every turn that was not clean — see the
+   * note on BANDS in speak.js. A clean one is answered with speed, and a shaky
+   * one gets the passage read and then one more attempt at it, straight away,
+   * which is the only moment a second attempt is worth anything. */
   speakGrade() {
     if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
     const p = this.speakPassage();
     if (!p) return this.stopSpeak();
+    if (this.speakEarcons) this.speakEarcons.close();
+    this.speakTeardown();
+
     const result = feedbackFor(p, this.speakHeardSettled || "", this.state.speak.mode);
-    this.speakSet({ phase: "feedback", lastResult: result });
-    this.sayThen(result.spokenFeedback, () => {
-      // NEXT: advance the queue, wrap around, and go again. Deliberately no
-      // record() call — see the speak slice in initialState.
-      this.speakSet({ index: nextIndex(this.state.speak.index, this.state.speak.queue.length) }, () =>
-        this.speakPrompt(),
-      );
-    });
+    const band = result.abstained ? "lost" : bandFor(result.score);
+    const retried = this.speakRetried;
+    this.speakSet({ phase: "feedback", lastResult: result, band });
+
+    if (band === "clean") return this.sayThen(copy.speak.clean, () => this.speakAdvance());
+
+    if (band === "close") {
+      return this.sayThen(copy.speak.close + " " + p.text, () => this.speakAdvance());
+    }
+
+    if (band === "shaky" && !retried) {
+      // Hear it, then say it — once. Never twice: failing the same verse twice
+      // inside half a minute is how a session stops being worth doing.
+      this.speakRetried = true;
+      return this.sayThen(copy.speak.shaky + " " + p.text + " " + copy.speak.nowYou, () => this.speakListen());
+    }
+
+    this.speakRetried = false;
+    return this.sayThen(copy.speak.lost + " " + p.text, () => this.speakAdvance());
   }
 
   /* Start a session over `ids`, or over the stalest SESSION_SIZE passages.
