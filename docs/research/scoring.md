@@ -1,7 +1,7 @@
 # Scoring a spoken recitation — design
 
 Written 2026-08-22, against the repo as it stands. Companion to
-[`asr.md`](./asr.md), which is about getting words *out of* a microphone. This
+[`asr.md`](./asr.md), which is about getting words _out of_ a microphone. This
 one is about what to do with them once you have them.
 
 Everything below is measured against the shipped data — 183 passages in
@@ -19,7 +19,7 @@ current grader walks the passage with a cursor that never advances on a miss, so
 **any three consecutive words the recognizer inserts desynchronize it
 permanently and the rest of the passage scores zero**. A three-word false start
 — "Trust in the… Trust in the LORD with all your heart…", which is what real
-recitation sounds like — takes a *word-perfect* recital of Proverbs 3:5–6 from
+recitation sounds like — takes a _word-perfect_ recital of Proverbs 3:5–6 from
 100% to **14%**. That single failure mode is almost certainly what "really
 sucks" means.
 
@@ -27,8 +27,8 @@ The replacement is Needleman–Wunsch global alignment over normalized word
 sequences, with **asymmetric gap costs**: a reference word the member failed to
 produce costs a full point, and a heard word that isn't in the reference costs
 almost nothing. That asymmetry is the whole design. Fillers, false starts,
-self-corrections, doubled words and the recognizer's own noise become free *by
-construction* — no filler word-list is doing the work — while a genuinely
+self-corrections, doubled words and the recognizer's own noise become free _by
+construction_ — no filler word-list is doing the work — while a genuinely
 forgotten clause still costs exactly what it should.
 
 Three further pieces sit on top of it: a small tier of word-equivalence rules
@@ -70,15 +70,18 @@ cursor into the transcript tokens:
 ```js
 const at = tokens.indexOf(key, cursor);
 const hit = tokens[cursor] === key || (at > -1 && at < cursor + LOOKAHEAD);
-if (hit) { cursor = Math.max(cursor + 1, at + 1); hits++; }
+if (hit) {
+  cursor = Math.max(cursor + 1, at + 1);
+  hits++;
+}
 ```
 
 `LOOKAHEAD` is 3. Two properties follow, and the second is fatal.
 
 **The cursor never advances on a miss.** That is the right behaviour for a
-*deletion* — a word the member skipped — because the transcript token sitting at
+_deletion_ — a word the member skipped — because the transcript token sitting at
 the cursor is still owed to a later passage word. But it means the cursor can
-only ever be *pushed forward* by matches.
+only ever be _pushed forward_ by matches.
 
 **A match is only found within three tokens.** So if the recognizer emits three
 or more tokens the passage does not want at that point, every subsequent passage
@@ -89,27 +92,27 @@ The grader is stuck for the remainder of the passage.
 
 Measured on Proverbs 3:5-6 (`"Trust in the Lord with all your heart, and do not
 lean on your own understanding. In all your ways acknowledge him, and he will
-make straight your paths."`), inserting *n* junk tokens after word 3 into an
+make straight your paths."`), inserting _n_ junk tokens after word 3 into an
 otherwise perfect transcript:
 
 | inserted tokens | score today |
-| --- | --- |
-| 1 | 100% |
-| 2 | 100% |
-| **3** | **10%** |
-| 4 | 10% |
-| 5 | 10% |
+| --------------- | ----------- |
+| 1               | 100%        |
+| 2               | 100%        |
+| **3**           | **10%**     |
+| 4               | 10%         |
+| 5               | 10%         |
 
 There is no graceful degradation. It is a cliff at exactly `LOOKAHEAD`. And the
 things that push a transcript over it are the ordinary furniture of speech:
 
-| what the member did | today |
-| --- | --- |
-| said the verse perfectly | 100% |
-| said "um" first | 100% |
-| repeated the opening three words before continuing | **14%** |
-| started a clause, caught themselves, said it right | **24%** |
-| got six words into Psalm 23, restarted, then recited it perfectly | **8%** |
+| what the member did                                               | today   |
+| ----------------------------------------------------------------- | ------- |
+| said the verse perfectly                                          | 100%    |
+| said "um" first                                                   | 100%    |
+| repeated the opening three words before continuing                | **14%** |
+| started a clause, caught themselves, said it right                | **24%** |
+| got six words into Psalm 23, restarted, then recited it perfectly | **8%**  |
 
 The diff for the false-start case shows the stall directly — `+` is a hit:
 
@@ -123,7 +126,7 @@ Three hits at the front, one accidental hit later, and nothing else. The member
 recited Proverbs 3 correctly and was told they got one word in seven.
 
 This is worse in Speak mode than in the typed box for a structural reason: in
-Review the member is *looking at the textarea* and can repair a misheard word
+Review the member is _looking at the textarea_ and can repair a misheard word
 before submitting (see CLAUDE.md, "Reciting aloud" — backspace is backspace).
 Speak mode is hands-free by definition. Nobody repairs anything; the number
 stands.
@@ -131,7 +134,7 @@ stands.
 ### The replacement
 
 Global (Needleman–Wunsch) alignment over two token sequences: the passage's
-words `R` (length *n*) and the transcript's tokens `H` (length *m*), both put
+words `R` (length _n_) and the transcript's tokens `H` (length _m_), both put
 through `norm()`.
 
 ```
@@ -148,29 +151,29 @@ D[i][j] = min(
 
 Traceback from `D[n][m]` yields the operation list.
 
-**Global, not local.** Smith–Waterman would find the best-matching *substring*,
+**Global, not local.** Smith–Waterman would find the best-matching _substring_,
 which is precisely wrong here: a member who recites the first third of Psalm 23
 beautifully and then stops should not score 100% on a well-aligned fragment. The
 denominator is the whole passage, so the alignment must span the whole passage.
 
 #### The scoring matrix
 
-| operation | cost | why |
-| --- | --- | --- |
-| `sub` exact (`norm`-equal) | **0** | the same word |
-| `sub` homophone (curated table) | **0** | the member said the right *sound*; the recognizer picked a spelling |
-| `sub` within one edit | **0.15** | almost certainly a transcription error, but not free — a tie should prefer the exact reading |
-| `sub` phonetic (gated, §2) | **0.30** | plausible, and deliberately the most expensive match |
-| `sub` mismatch | **1.00** | a different word |
-| `omit` (reference word unmatched) | **1.00** | the thing being measured |
-| `ins` (heard token unmatched) | **0.20** | cheap on purpose — see below |
-| `merge` (one reference word ← two heard tokens) | **0.10** + tier | `steadfast` heard as "stead fast"; `eagles;they` heard as "eagles they" |
-| `split` (two reference words ← one heard token) | **0.10** + tier | `do not` heard as "don't" |
+| operation                                       | cost            | why                                                                                          |
+| ----------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------- |
+| `sub` exact (`norm`-equal)                      | **0**           | the same word                                                                                |
+| `sub` homophone (curated table)                 | **0**           | the member said the right _sound_; the recognizer picked a spelling                          |
+| `sub` within one edit                           | **0.15**        | almost certainly a transcription error, but not free — a tie should prefer the exact reading |
+| `sub` phonetic (gated, §2)                      | **0.30**        | plausible, and deliberately the most expensive match                                         |
+| `sub` mismatch                                  | **1.00**        | a different word                                                                             |
+| `omit` (reference word unmatched)               | **1.00**        | the thing being measured                                                                     |
+| `ins` (heard token unmatched)                   | **0.20**        | cheap on purpose — see below                                                                 |
+| `merge` (one reference word ← two heard tokens) | **0.10** + tier | `steadfast` heard as "stead fast"; `eagles;they` heard as "eagles they"                      |
+| `split` (two reference words ← one heard token) | **0.10** + tier | `do not` heard as "don't"                                                                    |
 
-**Why the asymmetry is the design.** The score answers one question: *how much
-of the passage did the member produce, in order?* A word the recognizer added is
+**Why the asymmetry is the design.** The score answers one question: _how much
+of the passage did the member produce, in order?_ A word the recognizer added is
 not evidence they forgot anything. Making insertion cheap means the aligner
-*prefers* to explain unexpected tokens by absorbing them rather than by shifting
+_prefers_ to explain unexpected tokens by absorbing them rather than by shifting
 the alignment or paying full-price substitutions. Run the false start through
 it: "trust in the" repeated costs 3 × 0.20 = **0.60** as insertions, against
 3 × 1.00 = **3.00** for the alternative of substituting them against
@@ -186,11 +189,11 @@ a transcript grow without bound at no cost, which is the gaming vector discussed
 in §4.
 
 **One constraint the numbers must satisfy.** For a genuine one-for-one word swap
-to be reported as a *substitution* rather than as an omission plus an insertion,
+to be reported as a _substitution_ rather than as an omission plus an insertion,
 you need `INS + omit > sub(mismatch)`: 0.20 + 1.00 = 1.20 > 1.00. ✓ It holds
-narrowly and deliberately. Both readings cost the same in the *score* (one
+narrowly and deliberately. Both readings cost the same in the _score_ (one
 uncredited reference word either way), but only the substitution reading lets
-the diff say "you said *hard* where the verse says *heart*", which is the
+the diff say "you said _hard_ where the verse says _heart_", which is the
 feedback worth giving. Assert this inequality in the test suite so a retune
 cannot silently break it.
 
@@ -206,11 +209,11 @@ first" rather than an interleaving.
 per-token records precomputed once (normalized form, stem, phonetic key) so each
 cell is a handful of comparisons:
 
-| case | cells | time |
-| --- | --- | --- |
-| median passage (35 words), clean transcript | 1,225 | **0.065 ms** |
-| a 100-word passage vs a 120-token transcript | 12,000 | **0.32 ms** |
-| worst in the set — Isaiah 9:1-7 (243 words) vs a 283-token transcript | 68,769 | **1.62 ms** |
+| case                                                                  | cells  | time         |
+| --------------------------------------------------------------------- | ------ | ------------ |
+| median passage (35 words), clean transcript                           | 1,225  | **0.065 ms** |
+| a 100-word passage vs a 120-token transcript                          | 12,000 | **0.32 ms**  |
+| worst in the set — Isaiah 9:1-7 (243 words) vs a 283-token transcript | 68,769 | **1.62 ms**  |
 
 Memory at the worst case: 271 KB for a `Float32Array` cost matrix plus 68 KB for
 a `Uint8Array` traceback. Both are transient.
@@ -243,13 +246,13 @@ rule. Adding Damerau would buy the last 2% and cost a dimension.
 
 ### The candidates
 
-| algorithm | year | key | verdict |
-| --- | --- | --- | --- |
-| **Soundex** | 1918, Russell & Odell | letter + 3 digits, fixed width | reject |
-| **Metaphone** | 1990, Lawrence Philips | variable-length consonant key | superseded |
-| **Double Metaphone** | 1998/2000, Philips | **two** keys, primary + alternate | **choose** |
-| **NYSIIS** | 1970, NY State ID & Intelligence System | 6-char, vowels kept as `A` | reject |
-| **Caverphone** | 2002/2004, David Hood | 10-char, padded with `1` | reject |
+| algorithm            | year                                    | key                               | verdict    |
+| -------------------- | --------------------------------------- | --------------------------------- | ---------- |
+| **Soundex**          | 1918, Russell & Odell                   | letter + 3 digits, fixed width    | reject     |
+| **Metaphone**        | 1990, Lawrence Philips                  | variable-length consonant key     | superseded |
+| **Double Metaphone** | 1998/2000, Philips                      | **two** keys, primary + alternate | **choose** |
+| **NYSIIS**           | 1970, NY State ID & Intelligence System | 6-char, vowels kept as `A`        | reject     |
+| **Caverphone**       | 2002/2004, David Hood                   | 10-char, padded with `1`          | reject     |
 
 **Soundex is disqualified by measurement, not by reputation.** Keeping only the
 first letter plus three consonant-class digits and truncating hard means a
@@ -264,8 +267,8 @@ buckets are catastrophic:
 - `L630` → `lord, lard, lured, laird`
 - `S200` → `seek, sees, says, sake, shows, such, sows, seas`
 
-Crediting on Soundex equality would hand a member "shall" for *Sheol* and
-"food" for *faith*. Not close.
+Crediting on Soundex equality would hand a member "shall" for _Sheol_ and
+"food" for _faith_. Not close.
 
 **NYSIIS** was tuned for American surnames on a police index; **Caverphone** was
 built for one New Zealand electoral roll and encodes NZ English vowel mergers.
@@ -274,7 +277,7 @@ congregation reading modern English. Both are also single-key.
 
 **Metaphone → Double Metaphone.** Metaphone is a genuine advance on Soundex —
 rule-based on English orthography, variable-length, no truncation-by-design. Its
-successor returns *two* keys precisely so that a word with more than one
+successor returns _two_ keys precisely so that a word with more than one
 plausible English pronunciation can carry both, and its rule table is written
 around **multiple-origin** pronunciation variants rather than around one
 dialect. That is what recommends it here: the hard vocabulary in this data set
@@ -283,8 +286,8 @@ is transliterated Hebrew and Greek — `Zebulun`, `Naphtali`, `Jephthah`, `Sheol
 "correct" English pronunciation is exactly the assumption that fails. NYSIIS and
 Caverphone each assume one, and it is not this one.
 
-(Two keys are also what lets the match rule be *any of the four cross-pairs
-equal*, which is a principled looseness rather than a tuned one.)
+(Two keys are also what lets the match rule be _any of the four cross-pairs
+equal_, which is a principled looseness rather than a tuned one.)
 
 ### The measurement that changes the recommendation
 
@@ -292,30 +295,30 @@ Having picked the algorithm, the more important question is **where to apply
 it** — and here the data overrules the obvious answer.
 
 **One caveat on the numbers in this section, stated up front.** The collision
-counts below were measured with a *simplified* Metaphone-class key of my own —
+counts below were measured with a _simplified_ Metaphone-class key of my own —
 same family, same reduced consonant alphabet, same vowel handling — not with a
 reference Double Metaphone port. A real port will shift which specific pairs
 collide (real DM's `WH` rule separates `what`/`hate`, for instance, where the
 stand-in fuses them). It will not change the shape of the result, because the
 two load-bearing facts do not depend on the key at all: a phonetic tier gated to
-one edit adds nothing *by construction* — everything within one edit is already
+one edit adds nothing _by construction_ — everything within one edit is already
 the edit tier — and the proper-noun gate collapses the risk surface because it
 removes the competing vocabulary, not because of how the key is computed. What
 the caveat does mean is that **the eight-pair blocklist is a shape, not a final
-list**, and that test 8 in §6 — assert the blocklist is the *complete* set of
+list**, and that test 8 in §6 — assert the blocklist is the _complete_ set of
 collisions under the gate — is the thing that pins the real surface once a real
 port lands. Treat that test as a requirement rather than a nicety.
 
 Crediting a word whenever its phonetic key equals the reference word's key has
-an unacceptable false-positive rate on *this* vocabulary. Measured over the
+an unacceptable false-positive rate on _this_ vocabulary. Measured over the
 1,429 vocabulary words of four letters or more, requiring key equality **and** a
 Levenshtein gate:
 
-| gate | new pairs admitted beyond what the one-edit tier already catches |
-| --- | --- |
-| within 1 edit | **0** — contributes nothing |
-| within 2 edits | **194** |
-| within 3 edits | **440** |
+| gate           | new pairs admitted beyond what the one-edit tier already catches |
+| -------------- | ---------------------------------------------------------------- |
+| within 1 edit  | **0** — contributes nothing                                      |
+| within 2 edits | **194**                                                          |
+| within 3 edits | **440**                                                          |
 
 At two edits the admitted list contains genuine, distinct words a member could
 really confuse:
@@ -347,7 +350,7 @@ The gate:
 > letters, **and** the Double Metaphone keys match, **and** the two spellings are
 > within **two** edits, **and** the pair is not on the blocklist.
 
-Under that gate, the *entire* false-positive surface across the 55 proper nouns
+Under that gate, the _entire_ false-positive surface across the 55 proper nouns
 of five letters or more, checked against all 1,546 vocabulary words, is **eight
 pairs**:
 
@@ -362,24 +365,24 @@ the difference between a rule you can ship and a rule you have to trust.
 
 What it buys, measured against plausible recognizer output for names:
 
-| heard | reference | edit distance | rescued by |
-| --- | --- | --- | --- |
-| naftali | Naphtali | 2 | **phonetic tier** (`PH` → `F`) |
-| pharoah | Pharaoh | 2 | **phonetic tier** |
-| saira | Sarah | 2 | **phonetic tier** |
-| zebulon | Zebulun | 1 | edit tier (already) |
-| barack | Barak | 1 | edit tier |
-| gidyon | Gideon | 1 | edit tier |
-| midyan | Midian | 1 | edit tier |
-| shiol | Sheol | 1 | edit tier |
+| heard   | reference | edit distance | rescued by                     |
+| ------- | --------- | ------------- | ------------------------------ |
+| naftali | Naphtali  | 2             | **phonetic tier** (`PH` → `F`) |
+| pharoah | Pharaoh   | 2             | **phonetic tier**              |
+| saira   | Sarah     | 2             | **phonetic tier**              |
+| zebulon | Zebulun   | 1             | edit tier (already)            |
+| barack  | Barak     | 1             | edit tier                      |
+| gidyon  | Gideon    | 1             | edit tier                      |
+| midyan  | Midian    | 1             | edit tier                      |
+| shiol   | Sheol     | 1             | edit tier                      |
 
 Honest limits: `jeptha`/**Jephthah**, `jerico`/**Jericho** and `enock`/**Enoch**
-are *not* rescued, because `PH`≠`P` and `CH`→`X`≠`K` are real distinctions in
+are _not_ rescued, because `PH`≠`P` and `CH`→`X`≠`K` are real distinctions in
 the algorithm. Those stay misses. Hebrews 11:32-38, the proper-noun-densest
 passage in the set, will be the hardest card in the app and no amount of
 phonetics fixes it.
 
-**Conclusion for implementation order.** The phonetic tier is a *phase two*
+**Conclusion for implementation order.** The phonetic tier is a _phase two_
 item. It rescues three spellings out of eight in a test list, on 55 words out of
 1,546, and its correct scope was only discoverable by measurement. Ship
 alignment + normalization + homophones + the one-edit tier first; that is where
@@ -392,14 +395,14 @@ Yes, and the measurements say why. Edit distance alone misses `naphtali`/
 **Edit distance measures whether these are plausibly two transcriptions of one
 utterance; the phonetic key measures whether they sound alike.** Requiring both
 — a conjunction, not the disjunction that "OR" suggests — is what collapses 194
-false positives to 8. The tiers are then OR'd *as tiers*: exact OR homophone OR
+false positives to 8. The tiers are then OR'd _as tiers_: exact OR homophone OR
 one-edit OR (proper-noun AND key-equal AND within-two-edits).
 
 ### Double Metaphone, compactly
 
 Enough to implement, with the honest caveat that the full rule table runs to
 several hundred lines and should be ported from a reference implementation
-(Philips' original *C/C++ Users Journal* article, June 2000) rather than
+(Philips' original _C/C++ Users Journal_ article, June 2000) rather than
 reconstructed from prose. What matters is the shape and the dozen rules this
 vocabulary actually exercises.
 
@@ -407,32 +410,33 @@ vocabulary actually exercises.
 window that can look 1–4 characters back and forward. Emit codes into **two**
 accumulators — primary and alternate — which are identical except where a rule
 declares a pronunciation variant. Return `[primary, alternate]`; two words match
-if *any* of the four cross-pairs are equal.
+if _any_ of the four cross-pairs are equal.
 
 **Alphabet.** The emitted codes are a restricted set: `A B F H J K L M N P R S T
-X` plus `0` (theta, for *th*). Note `B` covers *b* and *p* is `P`; `D` emits
+X` plus `0` (theta, for _th_). Note `B` covers _b_ and _p_ is `P`; `D` emits
 `T`; `V` emits `F`; `Z` emits `S`. The reduction is aggressive, which is exactly
 why the tier needs the edit gate above.
 
 **Entry rules.**
+
 - Skip the first letter of an initial `GN`, `KN`, `PN`, `WR`, `PS` (silent).
 - Initial `X` → `S`.
 - A word-initial vowel emits `A`; every later vowel is skipped entirely.
 
 **The rules this corpus exercises.**
 
-| input | code | word here |
-| --- | --- | --- |
-| `PH` | `F` | **Naph**tali, **Ph**araoh, Je**ph**thah |
-| `TH` | `0` | fai**th**, **th**eir, Jeph**th**ah |
-| `CH` | `X` normally; `K` in Greek-derived contexts (`CHOR-`, `-ARCH-`, `CHEM-`, `CHIA-`) | **Ch**rist → `KRST`; Jeri**ch**o → `JRX` |
-| `SCH` | `SK`, or `X` before certain vowels | — |
-| initial `J` | `J` primary, `A` alternate (Spanish variant) | **J**esus, **J**acob, **J**ericho |
-| `C` before `I E Y` | `S`; otherwise `K` | mer**c**y, **c**reator |
-| `GH` | silent after a vowel | thou**gh**, bro**ugh**t |
-| `D` | `J` before `GE`/`GI`/`GY`, else `T` | **D**avid |
-| doubled letters | collapse to one | Abba, shall |
-| `W` | `R` in initial `WR`; `A` in initial `WH`; often silent | **wh**at, **wr**ath |
+| input              | code                                                                              | word here                                |
+| ------------------ | --------------------------------------------------------------------------------- | ---------------------------------------- |
+| `PH`               | `F`                                                                               | **Naph**tali, **Ph**araoh, Je**ph**thah  |
+| `TH`               | `0`                                                                               | fai**th**, **th**eir, Jeph**th**ah       |
+| `CH`               | `X` normally; `K` in Greek-derived contexts (`CHOR-`, `-ARCH-`, `CHEM-`, `CHIA-`) | **Ch**rist → `KRST`; Jeri**ch**o → `JRX` |
+| `SCH`              | `SK`, or `X` before certain vowels                                                | —                                        |
+| initial `J`        | `J` primary, `A` alternate (Spanish variant)                                      | **J**esus, **J**acob, **J**ericho        |
+| `C` before `I E Y` | `S`; otherwise `K`                                                                | mer**c**y, **c**reator                   |
+| `GH`               | silent after a vowel                                                              | thou**gh**, bro**ugh**t                  |
+| `D`                | `J` before `GE`/`GI`/`GY`, else `T`                                               | **D**avid                                |
+| doubled letters    | collapse to one                                                                   | Abba, shall                              |
+| `W`                | `R` in initial `WR`; `A` in initial `WH`; often silent                            | **wh**at, **wr**ath                      |
 
 **Do not truncate the key.** Philips' reference implementation caps at four
 codes because it was built to feed a database index. Here there is no index and
@@ -443,7 +447,7 @@ one-code key is a claim about almost nothing.
 **Verify the port against this vocabulary**, not against a generic test corpus.
 The test suite should pin the keys for `Naphtali`, `Zebulun`, `Jephthah`,
 `Sheol`, `Christ`, `Pharaoh`, `Jericho`, `Rahab`, `Abba`, `Midian`, and assert
-that the eight blocklisted pairs are the *complete* set of collisions between
+that the eight blocklisted pairs are the _complete_ set of collisions between
 the proper-noun list and the vocabulary. That last assertion is the one that
 matters: it turns "we chose a phonetic algorithm" into "we know exactly what it
 credits."
@@ -468,7 +472,7 @@ nothing today and needs no rule.** The brief expected this to be a high-value
 item; the data says it is already solved, and the place it is solved is
 `src/text.js`. Say so and move on.
 
-The one adjacent case that *is* real is the article — a recognizer routinely
+The one adjacent case that _is_ real is the article — a recognizer routinely
 writes "the Lord" where the reference has "LORD" alone, or drops it. That is an
 insertion or an omission of `the`, handled by the aligner, and costs 0.20 or
 1.00 respectively. No divine-name special case.
@@ -479,7 +483,7 @@ Measured: `\d` matches in exactly **four** passages, and in every one of them
 the digits are the embedded-reference leak described in the summary. **The
 passage side of this corpus contains no real numerals at all.**
 
-Number *words* do appear, all spelled out: `one` ×53, `first` ×5, `thousand` ×3,
+Number _words_ do appear, all spelled out: `one` ×53, `first` ×5, `thousand` ×3,
 `two` ×3, `three` ×2, `second` ×1, `seven` ×1.
 
 So the risk is entirely one-directional: the member says "one" and the
@@ -494,7 +498,7 @@ ordinals first–twentieth, plus the 1st / 2nd / 3rd / 4th surface forms
 hyphenated compounds: "32" → "thirty two", "thirty-two" → "thirty two"
 ```
 
-Expand to *tokens*, not to a single token: `"32"` becomes two tokens `thirty`
+Expand to _tokens_, not to a single token: `"32"` becomes two tokens `thirty`
 `two`, which the aligner's merge/split ops then reconcile against however the
 reference happens to write it. That way the table never has to know which side
 is which.
@@ -528,12 +532,12 @@ which is the commit bar, which means that passage is currently uncommittable by
 recitation.
 
 **Fix the data.** Until then, the scorer should mark a token run matching
-`[1-3]? Book Chapter:Verse[a-c]?` in the *reference* as **optional**: it costs 0
+`[1-3]? Book Chapter:Verse[a-c]?` in the _reference_ as **optional**: it costs 0
 to omit and is excluded from the denominator. Measured: Luke 12:32 then scores
 **100%** on a correct recital.
 
 Important: optional words stay **in the diff**, flagged `optional: true`, and
-only leave the *denominator*. That preserves the one-entry-per-reference-word
+only leave the _denominator_. That preserves the one-entry-per-reference-word
 invariant that per-verse slicing depends on (§7).
 
 ### 3e. Contractions and possessives — verified
@@ -558,8 +562,8 @@ Two ways to fix it, and both should ship:
 2. **A small expansion table** for the ones one edit cannot reach — `I'll` →
    `i will` is `ill` vs `iwill`, two edits. Table:
    `don't doesn't didn't isn't aren't wasn't won't can't couldn't shouldn't
-   wouldn't it's that's there's here's he's she's what's let's I'll you'll
-   we'll they'll I'm you're we're they've I've I'd you'd`.
+wouldn't it's that's there's here's he's she's what's let's I'll you'll
+we'll they'll I'm you're we're they've I've I'd you'd`.
 
 Measured with either: Proverbs 3:5-6 with `don't` scores **100%**.
 
@@ -590,19 +594,19 @@ fields, never in text.
 
 **Homophones actually present in the vocabulary**, checked pair by pair. These
 are the highest-value, lowest-risk entries in the whole document, because a true
-homophone is *not a recall error at all* — the member produced the correct
+homophone is _not a recall error at all_ — the member produced the correct
 sound and the recognizer chose a spelling:
 
-| in the set | note |
-| --- | --- |
-| `their` / `there` | both present, very common |
-| `no` / `know` | both present; **both under `MIN_FUZZY_LEN`**, so no other tier can reach them |
-| `to` / `two` / `too` | `to` and `two` both present |
-| `hear` / `here` | `Hear, O Israel` opens Deuteronomy 6:4 |
-| `soul` / `sole`, `peace` / `piece`, `way` / `weigh` | reference side present |
-| `led` / `lead`, `whole` / `hole`, `son` / `sun` | reference side present |
-| `wait` / `weight`, `right` / `write`, `heir` / `air`, `past` / `passed` | **both** members present |
-| `throne` / `thrown`, `would` / `wood`, `our` / `hour`, `knew` / `new` | mixed |
+| in the set                                                              | note                                                                          |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `their` / `there`                                                       | both present, very common                                                     |
+| `no` / `know`                                                           | both present; **both under `MIN_FUZZY_LEN`**, so no other tier can reach them |
+| `to` / `two` / `too`                                                    | `to` and `two` both present                                                   |
+| `hear` / `here`                                                         | `Hear, O Israel` opens Deuteronomy 6:4                                        |
+| `soul` / `sole`, `peace` / `piece`, `way` / `weigh`                     | reference side present                                                        |
+| `led` / `lead`, `whole` / `hole`, `son` / `sun`                         | reference side present                                                        |
+| `wait` / `weight`, `right` / `write`, `heir` / `air`, `past` / `passed` | **both** members present                                                      |
+| `throne` / `thrown`, `would` / `wood`, `our` / `hour`, `knew` / `new`   | mixed                                                                         |
 
 Ship this as a **curated, bidirectional allowlist**, not a rule. Curated is the
 point: every entry is a pair a human confirmed are genuinely homophones, so the
@@ -628,7 +632,7 @@ less harmless in the strict score, which is the number allowed near the commit
 rule. Raising `MIN_FUZZY_LEN` to 4 is not the fix — CLAUDE.md cites `Jews`/`Jew`
 (4 and 3 letters) as a case the current constant exists to catch, and raising it
 would break that. **The fix is the blocklist**, which is already being built for
-the phonetic tier: apply it to *every* loose tier rather than to phonetics
+the phonetic tier: apply it to _every_ loose tier rather than to phonetics
 alone. Starter entries drawn from the vocabulary: `sin`/`son`, `flesh`/`flash`,
 `shall`/`Sheol`, `grace`/`grease`, `faith`/`face`. That the same mechanism
 serves both tiers is a point in its favour — one curated table, one place to
@@ -640,7 +644,7 @@ audit what the app is willing to forgive.
 Because insertions cost 0.20 and credit nothing, and because the denominator is
 the reference length, an inserted "um" is literally free. Measured on
 Proverbs 3:5-6: a leading "um" scores 100% both today and under the new design;
-a *three-word false start* scores 14% today and **100%** under the new design; a
+a _three-word false start_ scores 14% today and **100%** under the new design; a
 mid-verse self-correction ("…with all your soul — no wait — with all your
 heart…") scores 24% today and **100%**.
 
@@ -668,7 +672,7 @@ transcript, and it is why this design does not need to detect self-corrections
 as such — it only needs to not be confused by them.
 
 **How a false start should be treated, stated as a rule:** a false start
-followed by the correct word is *one* production of that word, credited once,
+followed by the correct word is _one_ production of that word, credited once,
 with the false start absorbed at insertion cost. It must not be penalized,
 because the member did in fact produce the passage — and it must not be credited
 twice, because they produced it once.
@@ -693,12 +697,12 @@ is deliberately **not** WER.
 **Why not WER.** Word Error Rate, the ASR convention, is `(S + D + I) / N`. It
 counts insertions, and it is therefore unbounded above: a transcript longer than
 the reference can score worse than 100% error. That is the right measure for
-evaluating a *recognizer* against an unknown utterance. It is the wrong measure
+evaluating a _recognizer_ against an unknown utterance. It is the wrong measure
 here for two reasons. The insertions are mostly the recognizer's noise and the
 member's disfluency, which is precisely what we decided not to charge for. And
 reporting "your word error rate was 34%" to someone reciting Psalm 23 in a car
 is both hostile and, on the thing they care about, wrong. Keep the ASR
-literature's *alignment*, discard its *metric*.
+literature's _alignment_, discard its _metric_.
 
 The output range and shape stay identical to `gradeWritten().score` — a float in
 `[0, 1]` — which is what lets `copy.speak.scoreSpoken`, `copy.speak.lastScore`
@@ -710,7 +714,7 @@ and the whole feedback path stay untouched.
 memorization app they are the same failure — the word was not produced.
 Weighting one above the other would require an argument for which is worse, and
 there isn't one: saying nothing and saying the wrong thing are both "did not
-recall this word". They differ only in what the *feedback* can say, and that is
+recall this word". They differ only in what the _feedback_ can say, and that is
 handled by the diff carrying the op kind.
 
 **Insertions cost nothing in the score.** They cost only in the alignment, where
@@ -728,8 +732,8 @@ Psalm 23: 44 of 113.
 **Recommendation: do not weight the score. Do weight the feedback.**
 
 The reason is a rule this codebase already states. `COMMIT_SCORE` is 0.95 and
-`src/srs.js:212` says exactly why: *"one dropped article would otherwise deny a
-passage the member plainly knows."* **That 5% margin is already the function-word
+`src/srs.js:212` says exactly why: _"one dropped article would otherwise deny a
+passage the member plainly knows."_ **That 5% margin is already the function-word
 allowance, expressed once, in the one file that owns the commit rule.** Adding a
 second allowance inside the scorer would be the same idea in two places, which
 is the thing CLAUDE.md's conventions exist to prevent — and the two would
@@ -741,8 +745,8 @@ score you cannot check is a score you stop trusting. `3/29 = 90%` is a sentence
 a person can verify in their head.
 
 **Where `keywordIndices` should be used instead:** `feedbackFor()` currently
-reads back `missed.slice(0, MAX_SPOKEN_MISSES)` — the first eight misses *in
-passage order*. On a rough recital that is "the, and, of, your, in, to, a, his",
+reads back `missed.slice(0, MAX_SPOKEN_MISSES)` — the first eight misses _in
+passage order_. On a rough recital that is "the, and, of, your, in, to, a, his",
 which is eight seconds of a synthesized voice saying nothing useful to somebody
 driving. `keywordIndices` is ordered **most-important-first**, so sorting the
 missed words by keyword rank before slicing turns the same eight seconds into
@@ -763,8 +767,8 @@ it is practice only — so today a Speak-mode recital commits nothing.
 
 But **recitation already commits today**, by a different door. CLAUDE.md's
 "Reciting aloud" section: speaking fills `state.typed`, and `commitsVerse`
-*"reads the attempt, never how the words arrived."* And that path already runs
-`voice.js`'s one-edit forgiveness *before* grading, so a committed spoken verse
+_"reads the attempt, never how the words arrived."_ And that path already runs
+`voice.js`'s one-edit forgiveness _before_ grading, so a committed spoken verse
 was never held to exact transcription in the first place. The question is
 therefore not "should a spoken score ever commit" — it already does — but
 "does Speak mode's noisier channel earn the same treatment."
@@ -778,12 +782,12 @@ therefore not "should a spoken score ever commit" — it already does — but
    a genuinely wrong word": the tier most likely to do so is fenced off from the
    one decision where being wrong has a consequence.
 2. **At the member's own threshold, not a new one.** `reviewSettings(profile)
-   .commitThreshold`, same as everything else. Inventing a spoken-specific bar
+.commitThreshold`, same as everything else. Inventing a spoken-specific bar
    would be a second definition of the commit rule, and CLAUDE.md's whole case
    for `commitsVerse` being the single definition is that there must not be one.
 3. **Gate on channel quality, not on score.** Refuse to commit when the scorer
    abstained (§5), and when `verbose` is set — see below. These are statements
-   about whether the transcript is *evidence*, which is a different question
+   about whether the transcript is _evidence_, which is a different question
    from whether the score is high, and they belong in the caller rather than in
    `commitsVerse`.
 4. **Route it through `App.record()`** with `mode: "type"`, `peeks: 0`, so
@@ -791,14 +795,14 @@ therefore not "should a spoken score ever commit" — it already does — but
    anywhere.
 
 Flag this as a scope decision for the owner rather than a conclusion: CLAUDE.md
-already calls SRS credit for spoken recitals *"known follow-up work"*, and the
-reason it gives — *"a recital graded through a car's road noise is not evidence
-the scheduler should act on yet"* — is a good one. The design above is what
+already calls SRS credit for spoken recitals _"known follow-up work"_, and the
+reason it gives — _"a recital graded through a car's road noise is not evidence
+the scheduler should act on yet"_ — is a good one. The design above is what
 would make it defensible; whether to take it is a product call.
 
 ### The one gaming vector
 
-Because alignment is global and monotonic but the *transcript* is unbounded, a
+Because alignment is global and monotonic but the _transcript_ is unbounded, a
 member who recites the passage twice — once badly, once well — gets the better
 of the two, spliced. Measured on Proverbs 3:5-6: a deliberately wrong recital
 followed by a correct one scores **100%** (today's grader gives 79%).
@@ -816,8 +820,8 @@ recital of the passage; it is a recital plus something else. Report `verbose` in
 the result, let the feedback stay friendly, and let the commit gate refuse it.
 
 The same guard is what holds the cross-passage floor. Measured over 3,660
-sampled passage pairs, the highest score any passage reaches when fed *a
-different passage's* text is 65% — and that case is a short reference swamped by
+sampled passage pairs, the highest score any passage reaches when fed _a
+different passage's_ text is 65% — and that case is a short reference swamped by
 a long transcript, which `verbose` flags. **The highest that is neither
 abstained nor flagged is 39%.** So the two channel guards, not the scoring
 matrix, are what stop a scorer this forgiving from crediting the wrong verse.
@@ -839,13 +843,13 @@ using the feature, which is the thing this whole document exists to fix.
 
 ### Concrete thresholds
 
-Let `N` be countable reference words and `M` the transcript token count *after*
+Let `N` be countable reference words and `M` the transcript token count _after_
 the disfluency strip.
 
 ```js
-if (M === 0)                             abstain("empty");
-if (M < Math.max(3, Math.ceil(N * 0.30))) abstain("too-short");
-if (M > N * 4 + 32)                      abstain("flood");
+if (M === 0) abstain("empty");
+if (M < Math.max(3, Math.ceil(N * 0.3))) abstain("too-short");
+if (M > N * 4 + 32) abstain("flood");
 ```
 
 **Why 0.30.** Below a third, the transcript cannot distinguish "the member knows
@@ -863,7 +867,7 @@ is no such thing as a partial recital of a two-word verse.
 app's own voice bleeding into an open microphone. It also caps the alignment
 allocation before it is made, which is the only performance guard the design
 needs (§1). Note that the half-duplex rule in `App.js` (`sayThen()` tears the
-recognizer down before the speaker opens its mouth) is what *should* prevent the
+recognizer down before the speaker opens its mouth) is what _should_ prevent the
 self-transcription case; this is the belt to that braces.
 
 ### Shape of the abstention
@@ -878,7 +882,7 @@ compared. Return:
 `null` rather than `0` so nothing downstream can quietly treat it as a bad
 recital. This is a **caller-visible change**: `viewmodel/speak.js` reads
 `copy.speak.lastScore(last.pct)` unguarded, so it must check `last.abstained`
-first. `copy.speak.nothingHeard` — *"I did not hear anything. Moving on."* —
+first. `copy.speak.nothingHeard` — _"I did not hear anything. Moving on."_ —
 already exists as the spoken line and covers `empty`; `too-short` and `flood`
 want their own sentences, and those belong in `copy.js`, not here.
 
@@ -911,28 +915,28 @@ Twenty cases against real passage text. `today` is measured by running the
 transcript through the current `gradeWritten()`; `target` is the range the new
 scorer must land in; `strict` is the phonetic-excluded figure where it differs.
 
-| # | passage | what the member did | today | target | strict | proves |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | Proverbs 3:5-6 | recited perfectly (lowercase, unpunctuated — what a recognizer emits) | 100% | **1.00** | 1.00 | baseline; `norm()` handles case and punctuation |
-| 2 | Proverbs 3:5-6 | `"um trust in the lord…"` | 100% | **1.00** | 1.00 | a leading filler is free |
-| 3 | Proverbs 3:5-6 | **three-word false start** — `"trust in the trust in the lord…"` | **14%** | **≥0.98** | ≥0.98 | ★ **the headline.** the cursor stall is gone |
-| 4 | Proverbs 3:5-6 | self-correction — `"…with all your soul no wait with all your heart and…"` | **24%** | **1.00** | 1.00 | a corrected false start is one production, credited once, penalized zero times |
-| 5 | Proverbs 3:5-6 | `"and don't lean on…"` | 93% | **1.00** | 1.00 | contraction split op / expansion table |
-| 6 | Proverbs 3:5-6 | `"…with all your hard…"` and `"…make straight your past"` | 93% | **0.90–0.94** | same | ★ **the negative control.** `hard` is *not* a proper noun so the phonetic tier does not fire; `past`/`paths` is 2 edits and genuinely different. Wrong words stay wrong |
-| 7 | Proverbs 3:5-6 | dropped `and` | 97% | **0.95–0.97** | same | a single dropped conjunction still clears the commit bar, as `COMMIT_SCORE`'s comment intends |
-| 8 | Proverbs 3:5-6 | `"lean on your own knowledge"` / `"make straight your ways"` | 93% | **0.90–0.94** | same | genuine recall errors score below commit |
-| 9 | Proverbs 3:5-6 | `"trust in"` — recognizer cut out | 7% | **abstain** `too-short` | — | ★ never assert 7% about a two-token transcript |
-| 10 | Proverbs 3:5-6 | `""` | 0% | **abstain** `empty` | — | `copy.speak.nothingHeard` |
-| 11 | Psalm 23 | recited perfectly, all 113 words | 100% | **1.00** | 1.00 | length is not the problem |
-| 12 | Psalm 23 | **verse 3 forgotten entirely** (`He restores my soul…name's sake.`) | 87% | **0.86–0.88** | same | ★ a genuinely forgotten clause is *not* rescued. 15 of 113 words gone = 87% |
-| 13 | Psalm 23 | six words in, restarted, then perfect | **8%** | **≥0.98** | ≥0.98 | ★ the stall on a long passage |
-| 14 | Deuteronomy 6:4-5 | `"here o israel…"` (homophone for `Hear,`) | 97% | **1.00** | 1.00 | curated homophone table; note `Hear,` carries punctuation |
-| 15 | Galatians 6:7-9 | every `sows` heard as `"sews"` (three occurrences) | 96% | **1.00** | 1.00 | one-edit tier — the case `voice.js` documents, now reaching Speak mode |
-| 16 | Isaiah 40:28-31 | `"…like eagles they shall run…"` | 99% | **1.00** | 1.00 | merge op absorbs the `eagles;they` data bug |
-| 17 | Luke 12:32 | recited perfectly, without the embedded `Luke 12:48b` | **95%** | **1.00** | 1.00 | ★ optional-word handling; today this passage is uncommittable by voice |
-| 18 | Philippians 4:6-7 | `"…in jesus christ"` (transposed) | 98% | **0.97–0.98** | same | the gap asymmetry makes an adjacent swap cost one word, not two — no Damerau term needed |
-| 19 | Isaiah 9:1-7 | full recital, `Zebulun`→`"zebulon"`, `Naphtali`→`"naftali"` | 99% | **1.00** | **0.996** | ★ proper-noun tiers: `zebulon` by edit (strict-eligible), `naftali` by phonetics — and the phonetic one is exactly the strict/friendly gap |
-| 20 | Proverbs 3:5-6 | recited wrong, then recited correctly (both in one transcript) | 79% | **1.00** + `verbose: true` | — | ★ the gaming vector is *flagged*, not silently scored |
+| #   | passage           | what the member did                                                        | today   | target                     | strict    | proves                                                                                                                                                                  |
+| --- | ----------------- | -------------------------------------------------------------------------- | ------- | -------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Proverbs 3:5-6    | recited perfectly (lowercase, unpunctuated — what a recognizer emits)      | 100%    | **1.00**                   | 1.00      | baseline; `norm()` handles case and punctuation                                                                                                                         |
+| 2   | Proverbs 3:5-6    | `"um trust in the lord…"`                                                  | 100%    | **1.00**                   | 1.00      | a leading filler is free                                                                                                                                                |
+| 3   | Proverbs 3:5-6    | **three-word false start** — `"trust in the trust in the lord…"`           | **14%** | **≥0.98**                  | ≥0.98     | ★ **the headline.** the cursor stall is gone                                                                                                                            |
+| 4   | Proverbs 3:5-6    | self-correction — `"…with all your soul no wait with all your heart and…"` | **24%** | **1.00**                   | 1.00      | a corrected false start is one production, credited once, penalized zero times                                                                                          |
+| 5   | Proverbs 3:5-6    | `"and don't lean on…"`                                                     | 93%     | **1.00**                   | 1.00      | contraction split op / expansion table                                                                                                                                  |
+| 6   | Proverbs 3:5-6    | `"…with all your hard…"` and `"…make straight your past"`                  | 93%     | **0.90–0.94**              | same      | ★ **the negative control.** `hard` is _not_ a proper noun so the phonetic tier does not fire; `past`/`paths` is 2 edits and genuinely different. Wrong words stay wrong |
+| 7   | Proverbs 3:5-6    | dropped `and`                                                              | 97%     | **0.95–0.97**              | same      | a single dropped conjunction still clears the commit bar, as `COMMIT_SCORE`'s comment intends                                                                           |
+| 8   | Proverbs 3:5-6    | `"lean on your own knowledge"` / `"make straight your ways"`               | 93%     | **0.90–0.94**              | same      | genuine recall errors score below commit                                                                                                                                |
+| 9   | Proverbs 3:5-6    | `"trust in"` — recognizer cut out                                          | 7%      | **abstain** `too-short`    | —         | ★ never assert 7% about a two-token transcript                                                                                                                          |
+| 10  | Proverbs 3:5-6    | `""`                                                                       | 0%      | **abstain** `empty`        | —         | `copy.speak.nothingHeard`                                                                                                                                               |
+| 11  | Psalm 23          | recited perfectly, all 113 words                                           | 100%    | **1.00**                   | 1.00      | length is not the problem                                                                                                                                               |
+| 12  | Psalm 23          | **verse 3 forgotten entirely** (`He restores my soul…name's sake.`)        | 87%     | **0.86–0.88**              | same      | ★ a genuinely forgotten clause is _not_ rescued. 15 of 113 words gone = 87%                                                                                             |
+| 13  | Psalm 23          | six words in, restarted, then perfect                                      | **8%**  | **≥0.98**                  | ≥0.98     | ★ the stall on a long passage                                                                                                                                           |
+| 14  | Deuteronomy 6:4-5 | `"here o israel…"` (homophone for `Hear,`)                                 | 97%     | **1.00**                   | 1.00      | curated homophone table; note `Hear,` carries punctuation                                                                                                               |
+| 15  | Galatians 6:7-9   | every `sows` heard as `"sews"` (three occurrences)                         | 96%     | **1.00**                   | 1.00      | one-edit tier — the case `voice.js` documents, now reaching Speak mode                                                                                                  |
+| 16  | Isaiah 40:28-31   | `"…like eagles they shall run…"`                                           | 99%     | **1.00**                   | 1.00      | merge op absorbs the `eagles;they` data bug                                                                                                                             |
+| 17  | Luke 12:32        | recited perfectly, without the embedded `Luke 12:48b`                      | **95%** | **1.00**                   | 1.00      | ★ optional-word handling; today this passage is uncommittable by voice                                                                                                  |
+| 18  | Philippians 4:6-7 | `"…in jesus christ"` (transposed)                                          | 98%     | **0.97–0.98**              | same      | the gap asymmetry makes an adjacent swap cost one word, not two — no Damerau term needed                                                                                |
+| 19  | Isaiah 9:1-7      | full recital, `Zebulun`→`"zebulon"`, `Naphtali`→`"naftali"`                | 99%     | **1.00**                   | **0.996** | ★ proper-noun tiers: `zebulon` by edit (strict-eligible), `naftali` by phonetics — and the phonetic one is exactly the strict/friendly gap                              |
+| 20  | Proverbs 3:5-6    | recited wrong, then recited correctly (both in one transcript)             | 79%     | **1.00** + `verbose: true` | —         | ★ the gaming vector is _flagged_, not silently scored                                                                                                                   |
 
 Every number in the `today` column was measured, not estimated. The `target`
 column is a range rather than a value on purpose: pinning an exact float makes
@@ -948,26 +952,26 @@ whole corpus and cannot be satisfied by tuning:
    any transcript. This is the invariant everything downstream leans on (§7).
 2. **Every passage recited perfectly scores exactly 1.00.** Feed each passage its
    own text, `norm`'d and space-joined — the closest thing to ideal recognizer
-   output — and assert 1.00 for all 183. *(Verified against the prototype: 183/183.)*
-3. **Cross-passage floor.** Score each passage against a *different* passage's
+   output — and assert 1.00 for all 183. _(Verified against the prototype: 183/183.)_
+3. **Cross-passage floor.** Score each passage against a _different_ passage's
    text; assert the result is below some floor, or abstained, or flagged
-   `verbose`. *(Measured over 3,660 sampled pairs: the highest score any passage
+   `verbose`. _(Measured over 3,660 sampled pairs: the highest score any passage
    reaches against another passage's text is 65%, and that case is flagged
    `verbose`. The highest that is neither abstained nor `verbose` is **39%** —
    Galatians 6:14 against 1 Samuel 12:23, two short passages that share a lot of
-   function words. So a floor of 50% on unflagged pairs holds with margin.)*
+   function words. So a floor of 50% on unflagged pairs holds with margin.)_
 4. **Cost-matrix invariant:** `INS + OMIT > SUB_MISMATCH`. A one-line assertion
    that stops a retune from silently turning every substitution into a
    delete-plus-insert.
 5. **Alignment monotonicity:** the heard-index of each credited reference word is
    non-decreasing across the diff.
 6. **`perVerseOf` over all 16 real multi-verse passages** — does not throw, and
-   the per-verse word counts sum to the whole. *(This test fails today; see
-   below.)*
+   the per-verse word counts sum to the whole. _(This test fails today; see
+   below.)_
 7. **`keywordIndices` in range:** every index in `data/keywords.js` is a valid
    index into `diff` for its passage.
 8. **Phonetic blocklist completeness:** the eight blocklisted pairs are the
-   *complete* set of collisions between the proper-noun list and the vocabulary
+   _complete_ set of collisions between the proper-noun list and the vocabulary
    under the §2 gate. This is the test that keeps the phonetic tier honest, and
    it will fail loudly the day someone adds a passage that introduces a ninth.
 9. **Double Metaphone key pins** for this corpus's hard vocabulary (§2), so a
@@ -1081,13 +1085,18 @@ The change in `src/speak.js` is three lines:
 ```js
 export function feedbackFor(passage, transcript, mode) {
   const said = (transcript || "").trim();
-  const graded = scoreRecital(passage, said);        // was: gradeWritten(passage.text.split(" "), said)
-  const result = { score: graded.score, pct: graded.pct,
-                   strictScore: graded.strictScore, verbose: graded.verbose,
-                   abstained: graded.abstained, spokenFeedback: "" };
+  const graded = scoreRecital(passage, said); // was: gradeWritten(passage.text.split(" "), said)
+  const result = {
+    score: graded.score,
+    pct: graded.pct,
+    strictScore: graded.strictScore,
+    verbose: graded.verbose,
+    abstained: graded.abstained,
+    spokenFeedback: "",
+  };
 
   if (graded.abstained) {
-    result.spokenFeedback = copy.speak.notCaught(graded.reason);   // nothingHeard for "empty"
+    result.spokenFeedback = copy.speak.notCaught(graded.reason); // nothingHeard for "empty"
     return result;
   }
   // …everything below is unchanged: graded.diff has the same shape it always did
@@ -1104,7 +1113,7 @@ Two caller-side follow-ons, both small:
 
 **Two answers, and the first one is not the one the question expects.**
 
-**It does not survive *today*, before any of this.** `perVerseOf()`
+**It does not survive _today_, before any of this.** `perVerseOf()`
 (`src/speak.js:42`) does:
 
 ```js
@@ -1135,7 +1144,7 @@ design choice rather than a happy accident. The invariant is:
 > `diff` has exactly one entry per `passage.text.split(" ")` word, in order.
 > Insertions never appear in `diff`; they live in `ops` and in `counts.ins`.
 
-That is *why* insertions are kept out of the diff. Everything positional in the
+That is _why_ insertions are kept out of the diff. Everything positional in the
 app is indexed against `text.split(" ")` — `perVerseOf`'s slicing,
 `keywordIndices` in `data/keywords.js`, `blanks.js`'s precomputed blanks — and
 `text` is the flat join of `verses` (asserted at `test/passages.test.mjs:119`).
@@ -1162,8 +1171,8 @@ what it cannot give today.
 
 ### Where the loose comparison lives
 
-CLAUDE.md currently says of `voice.js`'s `same()`: *"It is deliberately only
-here. `grading.js` stays exact, so nothing a member **types** is forgiven."*
+CLAUDE.md currently says of `voice.js`'s `same()`: _"It is deliberately only
+here. `grading.js` stays exact, so nothing a member **types** is forgiven."_
 
 This design moves `same()` into `src/wordmatch.js` and has both `voice.js` and
 `recital.js` import it — one definition, two callers, which is this codebase's
@@ -1181,7 +1190,7 @@ paragraph that will need updating:
 
 Pure modules of `(input) => output`; no DOM, no timers, no `setState`; no
 imports from `App.js`, `viewmodel/` or `views/`; unit-testable under
-`node --test`; prose comments that say *why* rather than *what*; 2-space indent,
+`node --test`; prose comments that say _why_ rather than _what_; 2-space indent,
 Prettier at 120 columns, double quotes, trailing commas; one test file per
 module. Words the member hears go in `copy.js` and nowhere else — the three new
 abstention sentences included.

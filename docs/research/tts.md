@@ -17,20 +17,21 @@ treat those as fact without testing on a real device.
 The single biggest cause of "really sucks" is that `new SpeechSynthesisUtterance(text)`
 with no `voice` set picks the platform default, and on macOS that default is
 **Samantha** — **[measured]** `default: true`, and Readium's curated quality table rates
-Samantha `["low", "normal"]`, i.e. never better than *normal*. And the list the app
+Samantha `["low", "normal"]`, i.e. never better than _normal_. And the list the app
 would have to pick from is mostly landmines: **[measured]** of the **47 English voices
 this Mac exposes, 35 appear in Readium's two exclusion lists** — 15 Apple novelty
 voices (Albert, Bad News, Bahh, Bells, Boing, Bubbles, Cellos, Good News, Jester,
-Organ, Superstar, Trinoids, Whisper, Wobble, Zarvox) and 20 entries rated *veryLow*
+Organ, Superstar, Trinoids, Whisper, Wobble, Zarvox) and 20 entries rated _veryLow_
 (the Eloquence set — Eddy, Flo, Grandma, Grandpa, Reed, Rocko, Sandy, Shelley, each
 listed twice for US and UK — plus Fred, Junior, Kathy, Ralph). **Only 12 survive**, and
-the best of those is rated *normal*. A name-based ranking plus
+the best of those is rated _normal_. A name-based ranking plus
 `rate ≈ 0.9`, `lang` set explicitly, and pitch left alone is the cheapest large win.
 
 **2. Pre-generate the 183 passages as audio files at authoring time. This is the
 obviously-right answer for a fixed corpus, and it is essentially free.**
 The corpus is **[measured from `data/passages.js`] 183 passages, 47,609 characters,
 9,236 words → ~62–66 minutes of speech**. That is:
+
 - **$0.00** with Azure Neural TTS (500,000 free chars/month) or Google Cloud
   Neural2/Chirp3-HD (1,000,000 free chars/month). Worst case, ElevenLabs
   Multilingual v2 at $0.10/1k chars = **$4.76, one time**.
@@ -40,7 +41,7 @@ The corpus is **[measured from `data/passages.js`] 183 passages, 47,609 characte
 - Fetched per-passage on demand, so nobody downloads 30 MB — a member downloads
   ~160 KB per verse they actually hear, and the HTTP cache keeps it.
 
-  And critically: an `<audio>` element is a *media* element, which is the only web
+  And critically: an `<audio>` element is a _media_ element, which is the only web
   audio primitive iOS treats as backgroundable, gets Media Session lock-screen
   controls, and does not have Chrome's 15-second utterance bug, the `getVoices()`
   race, the cancel semantics, or the "voice sounds different on every member's
@@ -53,7 +54,7 @@ adding `"run_worker_first": ["/api/*"]` plus a ~30-line fetch handler gives you 
 secret-holding TTS endpoint with no new infrastructure. Cloudflare Workers AI has
 first-party TTS (`@cf/deepgram/aura-1` at $0.015 per 1k characters — i.e. **$0.71
 for the whole corpus**) so the API key is a Workers AI binding, not a secret you
-have to manage. But this is *third* priority: it only buys you dynamic text
+have to manage. But this is _third_ priority: it only buys you dynamic text
 (Speak-mode feedback sentences), which is a small fraction of what the app says.
 
 **Do not** pursue browser-local neural TTS (Piper/Kokoro via WASM). The smallest
@@ -79,11 +80,11 @@ land in two files):
 
 **One live bug found while testing.** **[measured]** In Chromium/macOS, calling
 `speechSynthesis.cancel()` mid-utterance fires **`onerror` with
-`event.error === "interrupted"`** — it does *not* fire `onend`. `speaker.js` wires
+`event.error === "interrupted"`** — it does _not_ fire `onend`. `speaker.js` wires
 `u.onerror = finish`, and `createSpeaker().cancel()` calls `synth.cancel()` with no
 token guard, so **cancelling a Speak-mode utterance invokes the caller's `onDone`**,
 which is exactly the callback that reopens the microphone and advances the loop.
-`beat.js` is immune because `stopSpeaking()` bumps `speechToken` *before* calling
+`beat.js` is immune because `stopSpeaking()` bumps `speechToken` _before_ calling
 `cancel()`. `speaker.js` needs the same guard (a generation counter checked inside
 `finish`), or `cancel()` must clear the handlers before calling `synth.cancel()`.
 
@@ -107,17 +108,17 @@ Two things to notice:
 
 - **Alex is not there.** **[measured]** `getVoices().some(v => v.name === 'Alex')`
   is `false`, and `say -v '?'` confirms Alex is not installed on this Mac either.
-  Readium rates Alex `["high"]` — the *only* `high`-quality Apple en-US voice — but
+  Readium rates Alex `["high"]` — the _only_ `high`-quality Apple en-US voice — but
   Alex is a downloadable voice on modern macOS, not preinstalled. So a ranking that
   puts Alex first is correct but will usually miss.
 - **Three quarters of the English list is unusable.** **[measured]** Matching the
-  observed names against Readium's two filter files (on the name *before* the first
+  observed names against Readium's two filter files (on the name _before_ the first
   ` (`, since macOS suffixes the locale) excludes **35 of 47**: 15 novelty + 20
   veryLow. The **12 survivors** are, in full: Samantha, Aaron, Arthur, Catherine,
   Daniel (en-GB), Gordon, Karen, Martha, Moira, Nicky, Rishi, Tessa — of which
   Aaron, Arthur and Martha are Readium-rated `low` (compact Siri voices) and
   Catherine, Gordon, Karen, Moira, Rishi and Tessa are en-AU/en-IE/en-IN/en-ZA. For a
-  US congregation that leaves **Samantha and Nicky**, both capped at *normal*. A naive
+  US congregation that leaves **Samantha and Nicky**, both capped at _normal_. A naive
   "first en-US voice" or "first voice whose lang starts with en" picker can land on
   Bahh.
 
@@ -125,7 +126,7 @@ Two things to notice:
 an unbranded Chromium (Chrome for Testing) — branded Google Chrome ships Google's
 network voices ("Google US English", "Google UK English Female/Male") which did not
 appear here. Verify in your own Chrome with the snippet in Appendix A. Everything
-about the *Apple* voices holds either way.
+about the _Apple_ voices holds either way.
 
 ### 1.2 Apple's premium/enhanced voices are not reachable from the web
 
@@ -133,20 +134,20 @@ This is the most important and most surprising finding of §1, and it kills the
 obvious idea ("tell members to download the Premium voice").
 
 An **Apple Frameworks Engineer**, replying on the Apple Developer Forums, states
-plainly: *"It is expected that with Web Speech APIs only the pre-installed voices
-are available. Optionally downloadable voices are not available."*
+plainly: _"It is expected that with Web Speech APIs only the pre-installed voices
+are available. Optionally downloadable voices are not available."_
 (https://developer.apple.com/forums/thread/723503). The thread shows a German
 system with Anna, Markus, Petra, Siri and Viktor installed, where the Web Speech API
 returned only the Eloquence group. As of the last post (Nov 2024) Apple had not
 acknowledged a fix.
 
-Readium's cross-browser survey says the same from the other side: *"Downloadable
+Readium's cross-browser survey says the same from the other side: _"Downloadable
 voices don't appear in API lists, and installing higher-quality variants causes
-preloaded voices to disappear entirely"*
+preloaded voices to disappear entirely"_
 (https://readium.org/speech/docs/WebSpeech.html).
 
 **[uncertain]** There is genuine conflict in the sources here. Readium's `en.json`
-records Apple voices with a `quality` *array* — e.g. Ava and Zoe as
+records Apple voices with a `quality` _array_ — e.g. Ava and Zoe as
 `["low","normal","high"]`, Samantha as `["low","normal"]` — which implies the
 installed variant is exposed under the same `name`, meaning a member who installs
 "Ava (Premium)" would get a better-sounding voice named `Ava` from `getVoices()`.
@@ -164,6 +165,7 @@ of a preloaded Siri voice"). That ceiling is the reason the user says it sucks, 
 no amount of `rate` tuning moves it. That is the argument for recommendation #2.
 
 ### 1.3 Are Chrome's network voices (`localService: false`) better or worse for
+
 long-form scripture?
 
 **Better-sounding, worse-behaved. For this app, worse.** Readium rates
@@ -173,13 +175,14 @@ same entry carries a warning note verbatim:
 > "This voice is pre-loaded in Chrome on desktop. Utterances that are longer than 14
 > seconds long can trigger a bug with this voice."
 
-And the survey text: *"These voices are also plagued by a bug if any utterance read
+And the survey text: _"These voices are also plagued by a bug if any utterance read
 by the Web Speech API takes longer than 14 seconds and do not return boundary
 events... while using Google Chrome's custom voice service, each utterance instance
-has a character limit of 200-300."*
+has a character limit of 200-300."_
 (https://readium.org/speech/docs/WebSpeech.html)
 
 So the Google voices:
+
 - require the network — a run in a canyon or a car in a tunnel is silence;
 - cut off around 200–250 characters / ~15 seconds;
 - **do not fire `boundary` events**, so you cannot even detect progress;
@@ -193,7 +196,7 @@ network voice selected it would be truncated on any passage over ~200 chars, whi
 which is why that chunking exists.)
 
 Verdict: prefer local voices for long-form, but rank the Google voices above the
-Apple compacts *only if* you keep chunks under ~180 chars and accept the network
+Apple compacts _only if_ you keep chunks under ~180 chars and accept the network
 dependency. My recommendation is to prefer `localService: true` and use the network
 voices as a mid-tier fallback.
 
@@ -203,32 +206,32 @@ There is no quality signal on `SpeechSynthesisVoice`. The object has exactly fiv
 properties — `name`, `lang`, `localService`, `voiceURI`, `default` — and none of
 them correlates with quality. `default: true` is actively misleading: **[measured]**
 it points at Samantha. So quality **must** come from a curated name list. Readium's
-project says this explicitly: *"Quality isn't algorithmically determined—it's
-manually curated."* (https://readium.org/speech/docs/VoicesAndFiltering.md)
+project says this explicitly: _"Quality isn't algorithmically determined—it's
+manually curated."_ (https://readium.org/speech/docs/VoicesAndFiltering.md)
 
 Use Readium's data as the source of truth. It is MIT-ish open data at
 `https://github.com/readium/speech/blob/main/json/en.json` plus
 `json/filters/novelty.json` and `json/filters/veryLowQuality.json`. Extracted for
 en-US/en-GB, in Readium's own order (quality tier in brackets):
 
-| Rank | Name as returned by `getVoices()` | Readium quality | Where |
-|---|---|---|---|
-| 1 | `Microsoft AvaMultilingual Online (Natural) - English (United States)` and the other `Microsoft * Online (Natural)` voices (Emma, Jenny, Aria, Andrew, Brian, Guy, Eric, Steffan, Christopher, Roger, Sonia, Libby, Ryan, Thomas…) | **veryHigh** | Edge only |
-| 2 | `Google US English 5 (Natural)`, `Google US English 1/2/7 (Natural)` (female), `Google US English 3/4/6 (Natural)` (male); `Google UK English 1–6 (Natural)` | **high** | Android, ChromeOS |
-| 3 | `Google US English`, `Google UK English Female`, `Google UK English Male` | **high** *(14 s bug, 200–300 char limit, no boundary events, network-only)* | Chrome desktop |
-| 4 | `Alex` | **high** | macOS/iOS — **downloadable, usually absent** |
-| 5 | `Ava`, `Zoe`, `Serena`, `Jamie` | low / normal / **high** depending on installed variant | macOS/iOS — downloadable |
-| 6 | `Allison`, `Samantha`, `Nicky`, `Evan`, `Nathan`, `Tom`, `Joelle`, `Daniel`, `Kate`, `Stephanie`, `Oliver` | normal (best case) | macOS/iOS — Samantha, Nicky, Daniel preinstalled |
-| 7 | `Microsoft Zira/David/Mark/Hazel/Susan/George - English (…)` | normal | Windows |
-| 8 | `Aaron`, `Martha`, `Arthur` | **low** (compact Siri) | macOS/iOS — preinstalled |
-| — | `Chrome OS US English 8`, `Chrome OS UK English 7` | **low** | ChromeOS |
+| Rank | Name as returned by `getVoices()`                                                                                                                                                                                                  | Readium quality                                                             | Where                                            |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------ |
+| 1    | `Microsoft AvaMultilingual Online (Natural) - English (United States)` and the other `Microsoft * Online (Natural)` voices (Emma, Jenny, Aria, Andrew, Brian, Guy, Eric, Steffan, Christopher, Roger, Sonia, Libby, Ryan, Thomas…) | **veryHigh**                                                                | Edge only                                        |
+| 2    | `Google US English 5 (Natural)`, `Google US English 1/2/7 (Natural)` (female), `Google US English 3/4/6 (Natural)` (male); `Google UK English 1–6 (Natural)`                                                                       | **high**                                                                    | Android, ChromeOS                                |
+| 3    | `Google US English`, `Google UK English Female`, `Google UK English Male`                                                                                                                                                          | **high** _(14 s bug, 200–300 char limit, no boundary events, network-only)_ | Chrome desktop                                   |
+| 4    | `Alex`                                                                                                                                                                                                                             | **high**                                                                    | macOS/iOS — **downloadable, usually absent**     |
+| 5    | `Ava`, `Zoe`, `Serena`, `Jamie`                                                                                                                                                                                                    | low / normal / **high** depending on installed variant                      | macOS/iOS — downloadable                         |
+| 6    | `Allison`, `Samantha`, `Nicky`, `Evan`, `Nathan`, `Tom`, `Joelle`, `Daniel`, `Kate`, `Stephanie`, `Oliver`                                                                                                                         | normal (best case)                                                          | macOS/iOS — Samantha, Nicky, Daniel preinstalled |
+| 7    | `Microsoft Zira/David/Mark/Hazel/Susan/George - English (…)`                                                                                                                                                                       | normal                                                                      | Windows                                          |
+| 8    | `Aaron`, `Martha`, `Arthur`                                                                                                                                                                                                        | **low** (compact Siri)                                                      | macOS/iOS — preinstalled                         |
+| —    | `Chrome OS US English 8`, `Chrome OS UK English 7`                                                                                                                                                                                 | **low**                                                                     | ChromeOS                                         |
 
 **Hard exclude** (Readium's filter files, complete lists):
 
 - Novelty (15): `Albert, Bad News, Bahh, Bells, Boing, Bubbles, Cellos, Good News,
-  Jester, Organ, Superstar, Trinoids, Whisper, Wobble, Zarvox`
+Jester, Organ, Superstar, Trinoids, Whisper, Wobble, Zarvox`
 - Very low quality (Apple Eloquence + legacy, 13 English): `Eddy, Flo, Grandma,
-  Grandpa, Jacques, Reed, Rocko, Sandy, Shelley, Fred, Junior, Kathy, Ralph`
+Grandpa, Jacques, Reed, Rocko, Sandy, Shelley, Fred, Junior, Kathy, Ralph`
   — note these appear with a parenthesised locale suffix on macOS, e.g.
   `Eddy (English (United States))`, so match on **prefix before ` (`**, not equality.
 
@@ -253,13 +256,13 @@ in the world is an Edge `(Natural)` voice, which is irrelevant here; the best vo
 macOS Chrome member can reach is `Google US English` (with caveats) or `Alex` (if
 installed); the best an iPhone can reach is a compact Apple voice.
 
-**Android caveat**: Readium and talkrapp agree that Chrome on Android *"returns an
-unfiltered language/region list rather than available voices"* and that voice choice
+**Android caveat**: Readium and talkrapp agree that Chrome on Android _"returns an
+unfiltered language/region list rather than available voices"_ and that voice choice
 is effectively pinned to whatever the user configured in Android system settings —
-*"Android restricts you to whatever voice users configured in device settings. The
-browser cannot override this."* So on Android, expect the ranking to be advisory at
-best, and **always set `u.lang` explicitly** — talkrapp: *"Must explicitly set
-`utterance.lang` to match the voice's language, or behavior becomes unpredictable."*
+_"Android restricts you to whatever voice users configured in device settings. The
+browser cannot override this."_ So on Android, expect the ranking to be advisory at
+best, and **always set `u.lang` explicitly** — talkrapp: _"Must explicitly set
+`utterance.lang` to match the voice's language, or behavior becomes unpredictable."_
 
 ---
 
@@ -274,7 +277,7 @@ best, and **always set `u.lang` explicitly** — talkrapp: *"Must explicitly set
   **The timeout won — no event arrived within 3 s — yet by then the list was fully
   populated (191 voices).**
 
-**Caveat on that measurement:** the listener was attached in a *later* call than the
+**Caveat on that measurement:** the listener was attached in a _later_ call than the
 one that observed the empty list, so I cannot distinguish "`voiceschanged` never
 fires" from "it fired in the gap before I subscribed." Either way the operational
 conclusion is the same and it is the one that matters: **a listener attached after
@@ -313,12 +316,12 @@ Two extra rules that matter for this app specifically:
   Start use the cache.
 - **Re-resolve on `voiceschanged` even after you have resolved**, because Chrome adds
   network voices late and Android adds engine voices when a language pack finishes
-  installing. Just do not *wait* on it.
+  installing. Just do not _wait_ on it.
 
 ### 2.3 iOS is a different problem
 
 On iOS the blocker is not the race, it is the gesture. Every source agrees:
-*"WebKit only lets `speak()` run inside a click, tap, or keypress handler"*
+_"WebKit only lets `speak()` run inside a click, tap, or keypress handler"_
 (https://www.testmuai.com/learning-hub/speech-synthesis-api-browser-support/);
 talkrapp reports the same for Chrome M71+ and iOS Safari. This the app already
 handles by construction — `createSpeaker()` is built inside the Start press, and
@@ -343,7 +346,7 @@ Confirmed, with a primary source. The spec says unsupported tags will be strippe
 browsers do not do that. From the MDN browser-compat-data issue
 (https://github.com/mdn/browser-compat-data/issues/15663): testing `<speak>hello</speak>`
 on **macOS Safari, Firefox and Chrome** produces **"speak hello speak"** — the tags
-are *read aloud as words*. The issue tracks open bugs against Chromium, Edge, Gecko
+are _read aloud as words_. The issue tracks open bugs against Chromium, Edge, Gecko
 and WebKit, and notes MDN's compat table is wrong to show support.
 
 So SSML is not merely unavailable; emitting it would make the app read XML at a
@@ -354,26 +357,26 @@ member driving a car. **Never put angle brackets in `utterance.text`.**
 I measured utterance duration for the same sentence with different separators
 (Samantha, macOS, `volume: 0`, `rate: 1`, median of the run):
 
-| Text between the two clauses | Duration | Delta vs. none |
-|---|---|---|
-| `God and the` (no punctuation) | **1,680 ms** | — |
-| `God, and` (comma) | 2,071 ms | +391 ms |
-| `God; and` (semicolon) | 2,069 ms | +389 ms |
-| `God: and` (colon) | 2,080 ms | +400 ms |
-| `God — and` (em dash) | 2,070 ms | +390 ms |
-| `God. And` (period) | **2,110 ms** | +430 ms |
-| `God... And` (ellipsis) | 2,113 ms | +433 ms |
-| `God\n\nAnd` (blank line) | 2,101 ms | +421 ms |
+| Text between the two clauses   | Duration     | Delta vs. none |
+| ------------------------------ | ------------ | -------------- |
+| `God and the` (no punctuation) | **1,680 ms** | —              |
+| `God, and` (comma)             | 2,071 ms     | +391 ms        |
+| `God; and` (semicolon)         | 2,069 ms     | +389 ms        |
+| `God: and` (colon)             | 2,080 ms     | +400 ms        |
+| `God — and` (em dash)          | 2,070 ms     | +390 ms        |
+| `God. And` (period)            | **2,110 ms** | +430 ms        |
+| `God... And` (ellipsis)        | 2,113 ms     | +433 ms        |
+| `God\n\nAnd` (blank line)      | 2,101 ms     | +421 ms        |
 
 And the stacking test:
 
-| Attempt to lengthen the pause | Duration |
-|---|---|
-| `God. And` (one period) | 2,100 ms |
-| `God.. And` (two periods) | 2,111 ms |
-| `God.... And` (four periods) | 2,113 ms |
+| Attempt to lengthen the pause         | Duration |
+| ------------------------------------- | -------- |
+| `God. And` (one period)               | 2,100 ms |
+| `God.. And` (two periods)             | 2,111 ms |
+| `God.... And` (four periods)          | 2,113 ms |
 | `God... ... ... And` (three ellipses) | 2,102 ms |
-| `God . . . And` (spaced periods) | 2,112 ms |
+| `God . . . And` (spaced periods)      | 2,112 ms |
 
 **Findings, all [measured] on macOS/Apple voices:**
 
@@ -386,7 +389,7 @@ And the stacking test:
    https://www.audiogo.com/how-to/synthetic-long-pause-words); my measurement
    contradicts that for Apple voices. **[uncertain]** — it may hold for Google's
    network voices or on Android, which I could not measure. Do not rely on it.
-3. **Line breaks are *not* ignored** on macOS — `\n\n` produced a period-sized pause
+3. **Line breaks are _not_ ignored** on macOS — `\n\n` produced a period-sized pause
    (2,101 ms). This contradicts justmarkup's "line breaks are ignored". Again,
    platform-specific; do not build on it.
 
@@ -394,16 +397,16 @@ And the stacking test:
 
 The counterintuitive one. Same two clauses:
 
-| Form | Duration |
-|---|---|
-| One utterance: `"the word of God. And the word of man"` | 2,100 ms |
-| Two utterances spoken back-to-back on `onend` | **1,940 ms** |
-| Two utterances queued together via two `speak()` calls | **1,941 ms** |
+| Form                                                    | Duration     |
+| ------------------------------------------------------- | ------------ |
+| One utterance: `"the word of God. And the word of man"` | 2,100 ms     |
+| Two utterances spoken back-to-back on `onend`           | **1,940 ms** |
+| Two utterances queued together via two `speak()` calls  | **1,941 ms** |
 
-**The inter-utterance gap on macOS is effectively zero** — splitting is *160 ms
-faster* than one utterance, because you lose the sentence-final pause and gain
+**The inter-utterance gap on macOS is effectively zero** — splitting is _160 ms
+faster_ than one utterance, because you lose the sentence-final pause and gain
 nothing. So chunking (which `beat.js` already does, correctly, for the 15-second
-bug) is a *correctness* measure, not a prosody measure.
+bug) is a _correctness_ measure, not a prosody measure.
 
 **Therefore: the only reliable pause lever you have is an explicit `setTimeout`
 between chunks.** That is entirely under the app's control, works identically on
@@ -426,19 +429,19 @@ because the current output runs verses together at a uniform clip.
 sentence, Samantha:
 
 | `rate` | Duration | vs. rate 1.0 |
-|---|---|---|
-| 0.70 | 2,516 ms | +20 % |
-| 0.85 | 2,304 ms | +10 % |
-| 0.90 | 2,315 ms | +10 % |
-| 1.00 | 2,101 ms | — |
-| 1.10 | 1,963 ms | −7 % |
-| 1.20 | 1,792 ms | −15 % |
+| ------ | -------- | ------------ |
+| 0.70   | 2,516 ms | +20 %        |
+| 0.85   | 2,304 ms | +10 %        |
+| 0.90   | 2,315 ms | +10 %        |
+| 1.00   | 2,101 ms | —            |
+| 1.10   | 1,963 ms | −7 %         |
+| 1.20   | 1,792 ms | −15 %        |
 
 Note 0.85 and 0.90 are indistinguishable, and 0.70 — which the spec says should be
 43 % slower — is only 20 % slower. **Apple's engine compresses the low end of the
 rate range hard.** The practical range on macOS/iOS is roughly 0.8–1.2; below 0.8 you
 stop getting slower and start getting strange. codersblock reports a related Safari
-bug: *"Rate below 0.5 after being set higher will retain the previous rate."*
+bug: _"Rate below 0.5 after being set higher will retain the previous rate."_
 
 **Recommended values for read-aloud scripture:**
 
@@ -450,9 +453,10 @@ utterance.lang   = 'en-US' // or the chosen voice's lang; required on Android
 ```
 
 Reasoning for `rate = 0.9`:
+
 - Default TTS lands around 150–180 wpm. Scripture is syntactically unusual (inverted
   clauses, "shall", "thee"), dense in proper nouns, and — the point of this app —
-  the listener is *trying to memorise it*, not skim it. Slowing ~10 % puts it near
+  the listener is _trying to memorise it_, not skim it. Slowing ~10 % puts it near
   the 130–150 wpm of a good audiobook narrator.
 - The listener is driving or running: attention is partial and there is road noise.
 - But do not go slower than ~0.85: **[measured]** you get no additional slowing on
@@ -464,9 +468,10 @@ Reasoning for `rate = 0.9`:
   exactly right.
 
 Reasoning for `pitch = 1.0` (i.e. **do not touch pitch**):
-- codersblock, tested across browsers: *"Chrome: non-local voices revert pitch 0 to 1"*;
-  *"Edge: non-local voices ignore pitch settings"*; *"Safari: pitch values at 0.5 and
-  below sound identical."*
+
+- codersblock, tested across browsers: _"Chrome: non-local voices revert pitch 0 to 1"_;
+  _"Edge: non-local voices ignore pitch settings"_; _"Safari: pitch values at 0.5 and
+  below sound identical."_
 - Readium's data has an explicit `pitchControl: false` flag on the Edge Natural voices.
 - Lowering pitch to sound "more reverent" is exactly the change that will work on your
   laptop and do nothing (or something ugly) on a member's phone. Leave it at default
@@ -515,16 +520,16 @@ still describes it as an active limitation
 (https://www.testmuai.com/learning-hub/speech-synthesis-api-browser-support/), and
 the project's own `beat.js` comments document reproducing it. Treat it as live.
 
-**What I *did* establish [measured].** The bug is **voice-specific, not
+**What I _did_ establish [measured].** The bug is **voice-specific, not
 Chrome-wide.** With Apple's local Samantha in Chromium/macOS I spoke a **1,250-character**
 utterance: it started in 7 ms, fired **240 `boundary` events**, and completed
 normally after **68,943 ms** — nearly 69 seconds, with no truncation. That matches
 Readium's framing, which attaches the 14-second warning specifically to
-`Google US English` / `Google UK English *` and notes those voices *"do not return
-boundary events"*. My run returned 240 of them, which is independent confirmation
+`Google US English` / `Google UK English *` and notes those voices _"do not return
+boundary events"_. My run returned 240 of them, which is independent confirmation
 that I was not on a Google voice.
 
-**Consequence for this app:** if you follow recommendation #1 and pin a *local*
+**Consequence for this app:** if you follow recommendation #1 and pin a _local_
 voice, the 15-second bug largely evaporates on macOS. Keep chunking anyway — it is
 free insurance, it is already implemented in `beat.js`, and it is what makes the
 watchdog granular. `MAX_CHUNK_CHARS = 180` is a good number: below the 200-char
@@ -540,9 +545,9 @@ discussions.
 
 Reasons to avoid it here:
 
-- **It is harmful on Android.** codersblock, tested: *"Pausing and resuming don't work
-  on Android devices."* Other reports say `speechSynthesis.pause()` on Android Chrome
-  *actually pauses* and does not reliably resume — i.e. the "fix" is the bug. This
+- **It is harmful on Android.** codersblock, tested: _"Pausing and resuming don't work
+  on Android devices."_ Other reports say `speechSynthesis.pause()` on Android Chrome
+  _actually pauses_ and does not reliably resume — i.e. the "fix" is the bug. This
   app explicitly targets Android.
 - **It is unnecessary if you chunk**, and chunking is already implemented.
 - **It fights the app's own watchdogs.** `beat.js` and `speaker.js` both arm timers
@@ -558,8 +563,8 @@ If you ever do need it, gate it on `!isAndroid && !isIOS && voice.localService =
 **[measured] in Chromium/macOS:**
 
 - `cancel()` during an utterance fires **`onerror` with `error: "interrupted"`**, not
-  `onend`. codersblock reports the Safari variant: *"`'end'` event doesn't fire after
-  `cancel()`."* Either way, **do not assume `onend`**.
+  `onend`. codersblock reports the Safari variant: _"`'end'` event doesn't fire after
+  `cancel()`."_ Either way, **do not assume `onend`**.
 - **Speaking immediately after `cancel()` works.** I called `cancel()` and
   synchronously `speak()`; the new utterance completed normally in 876 ms. The
   well-known "utterances fail silently after `cancel()`" bug did **not** reproduce
@@ -567,8 +572,8 @@ If you ever do need it, gate it on `!isAndroid && !isIOS && voice.localService =
   code; the standard mitigation is a `speechSynthesis.cancel()` on a fresh tick
   (`setTimeout(..., 0)`) before the next `speak()`, plus the existing watchdog.
 - Keep a reference to every live `SpeechSynthesisUtterance`. talkrapp's "critical
-  implementation fix": *"event handlers like `onend` may be garbage collected before
-  playback completes if the object isn't retained."* `beat.js`'s `sayChunk` closure
+  implementation fix": _"event handlers like `onend` may be garbage collected before
+  playback completes if the object isn't retained."_ `beat.js`'s `sayChunk` closure
   retains `u`; `speaker.js`'s `speak()` does too. Do not "simplify" either.
 
 ### 4.4 Backgrounding and screen lock — the one that decides the product
@@ -583,9 +588,9 @@ for a hidden tab on macOS desktop with a local voice**. Sources asserting otherw
 (testmuai, and several blog posts) appear to be generalising from mobile.
 
 **iOS Safari, app backgrounded or screen locked — broken.** WebOutLoud, who ship a
-Safari TTS extension and therefore have skin in the game, report: *speech synthesis
+Safari TTS extension and therefore have skin in the game, report: _speech synthesis
 ceases when Safari is backgrounded on iOS while actively speaking, and users must
-refresh the page or restart Safari to restore functionality*
+refresh the page or restart Safari to restore functionality_
 (https://weboutloud.io/bulletin/speech_synthesis_in_safari/). Their own product's
 answer was to ship a native iOS app for background audio. Separately, WebRTC and
 **Web Audio contexts are suspended as soon as the screen locks or Safari
@@ -596,14 +601,14 @@ underneath, so it inherits this.
 when the screen turns off under Android's battery optimisation unless the user sets
 Chrome to "Unrestricted" battery usage
 (https://www.spf.io/2025/01/30/how-to-keep-audio-playing-in-the-background-in-chrome-on-android/).
-Notably, Google's own "Listen to this page" feature *does* keep playing with the
+Notably, Google's own "Listen to this page" feature _does_ keep playing with the
 screen off — but that is a browser feature with privileged plumbing, not something a
 web page can invoke.
 
 **Screen Wake Lock does not save you.** It is Baseline-newly-available since March
-2025, is **secure-context only**, and — decisively — *"only active documents can
+2025, is **secure-context only**, and — decisively — _"only active documents can
 acquire screen wake locks and previously acquired locks are automatically released
-when document becomes inactive"*
+when document becomes inactive"_
 (https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API). It prevents
 the screen dimming while the member is looking at the page; it does not survive a
 manual lock, and it is refused on low battery or power-save. `beat.js`'s
@@ -611,7 +616,7 @@ manual lock, and it is refused on low battery or power-save. `beat.js`'s
 that framing.
 
 **The escape hatch, and why it points at pre-generated audio.** An `<audio>` element
-is a *media element*, and media elements are the one web audio primitive iOS is
+is a _media element_, and media elements are the one web audio primitive iOS is
 willing to keep running in the background — it is how web podcast players work on
 iPhone. Safari supports the **Media Session API**, giving lock-screen and Control
 Centre transport controls with metadata and artwork
@@ -630,9 +635,9 @@ in a pocket**, which is the stated use case. That is why it is recommendation #2
 not a nice-to-have.
 
 **A related consequence the team should know:** Run mode's procedural WebAudio beat
-*will* be suspended by an iOS screen lock regardless of what you do, because Web
+_will_ be suspended by an iOS screen lock regardless of what you do, because Web
 Audio contexts are suspended. The 2-second lookahead in `beat.js` buys survival
-against *timer throttling*, which is a different problem from *context suspension*.
+against _timer throttling_, which is a different problem from _context suspension_.
 **[uncertain]** whether the beat currently survives a locked iPhone at all; my
 reading of the Apple forum threads says it does not. If keeping the beat alive under
 lock matters, the beat would have to become a looped `<audio>` file too.
@@ -681,11 +686,11 @@ Realistically ~30–50 lines. The genuinely interesting option is **Cloudflare W
 AI**, because then there is no third-party key at all — TTS is a binding on the
 Worker:
 
-| Model | Price |
-|---|---|
-| `@cf/myshell-ai/melotts` | **$0.0002 per audio minute** |
-| `@cf/deepgram/aura-1` | **$0.015 per 1k characters** ($15/1M) |
-| `@cf/deepgram/aura-2` | $0.030 per 1k characters |
+| Model                    | Price                                 |
+| ------------------------ | ------------------------------------- |
+| `@cf/myshell-ai/melotts` | **$0.0002 per audio minute**          |
+| `@cf/deepgram/aura-1`    | **$0.015 per 1k characters** ($15/1M) |
+| `@cf/deepgram/aura-2`    | $0.030 per 1k characters              |
 
 (https://developers.cloudflare.com/workers-ai/models/melotts/,
 https://developers.cloudflare.com/workers-ai/models/aura-1/)
@@ -700,18 +705,18 @@ did not confirm.
 **Third-party pricing for reference** (all "per 1M characters", so multiply by
 0.0476 for one pass of this corpus):
 
-| Provider / model | $/1M chars | This corpus, one pass |
-|---|---|---|
-| Google Cloud Standard / WaveNet | $4 | $0.19 — **free**, 4M/1M chars/mo free tier |
-| OpenAI `tts-1` | $15 | $0.71 |
-| Azure Neural | $16 | $0.76 — **free**, 500k chars/mo free tier |
-| Google Cloud Neural2 | $16 | $0.76 — **free**, 1M chars/mo free tier |
-| Cloudflare Aura-1 | $15 | $0.71 |
-| OpenAI `tts-1-hd` | $30 | $1.43 |
-| Google Cloud Chirp 3 HD | $30 | $1.43 — **free**, 1M chars/mo free tier |
-| ElevenLabs Flash / Turbo | $50 | $2.38 |
-| ElevenLabs Multilingual v2/v3 | $100 | $4.76 |
-| Google Cloud Studio | $160 | $7.62 |
+| Provider / model                | $/1M chars | This corpus, one pass                      |
+| ------------------------------- | ---------- | ------------------------------------------ |
+| Google Cloud Standard / WaveNet | $4         | $0.19 — **free**, 4M/1M chars/mo free tier |
+| OpenAI `tts-1`                  | $15        | $0.71                                      |
+| Azure Neural                    | $16        | $0.76 — **free**, 500k chars/mo free tier  |
+| Google Cloud Neural2            | $16        | $0.76 — **free**, 1M chars/mo free tier    |
+| Cloudflare Aura-1               | $15        | $0.71                                      |
+| OpenAI `tts-1-hd`               | $30        | $1.43                                      |
+| Google Cloud Chirp 3 HD         | $30        | $1.43 — **free**, 1M chars/mo free tier    |
+| ElevenLabs Flash / Turbo        | $50        | $2.38                                      |
+| ElevenLabs Multilingual v2/v3   | $100       | $4.76                                      |
+| Google Cloud Studio             | $160       | $7.62                                      |
 
 Sources: https://cloud.google.com/text-to-speech/pricing (free tiers: 4M chars/mo
 Standard, 1M/mo WaveNet, 1M/mo Neural2/Studio/Chirp3, stacking and non-expiring);
@@ -722,7 +727,7 @@ $12/1M audio-output tokens) which works out to roughly $15/1M characters —
 
 **The headline number: every one of these is under five dollars for the entire
 corpus.** Which reframes the whole question — the interesting cost is not money, it
-is *when* you pay it.
+is _when_ you pay it.
 
 ### 5.2 Pre-generating audio at authoring time — the recommended path
 
@@ -737,25 +742,25 @@ is *when* you pay it.
 
 **Total corpus size by codec** (at 150 wpm; ±8 % for the 140–160 wpm range):
 
-| Codec | Total | Per passage |
-|---|---|---|
-| Opus 24 kbps mono | **11.1 MB** | 61 KB |
-| Opus 32 kbps mono | 14.8 MB | 81 KB |
-| HE-AAC 32 kbps mono | 14.8 MB | 81 KB |
-| **AAC-LC 64 kbps mono** | **29.6 MB** | **162 KB** |
-| MP3 64 kbps mono | 29.6 MB | 162 KB |
-| MP3 96 kbps mono | 44.3 MB | 242 KB |
+| Codec                   | Total       | Per passage |
+| ----------------------- | ----------- | ----------- |
+| Opus 24 kbps mono       | **11.1 MB** | 61 KB       |
+| Opus 32 kbps mono       | 14.8 MB     | 81 KB       |
+| HE-AAC 32 kbps mono     | 14.8 MB     | 81 KB       |
+| **AAC-LC 64 kbps mono** | **29.6 MB** | **162 KB**  |
+| MP3 64 kbps mono        | 29.6 MB     | 162 KB      |
+| MP3 96 kbps mono        | 44.3 MB     | 242 KB      |
 
-Opus is the technically correct choice — *"Opus dramatically outperforms MP3 at every
-bitrate, achieving the same perceptual quality at roughly half the bitrate"*, and
+Opus is the technically correct choice — _"Opus dramatically outperforms MP3 at every
+bitrate, achieving the same perceptual quality at roughly half the bitrate"_, and
 24–32 kbps is comfortably transparent for speech
 (https://zderadicka.eu/opus-audio-codec-for-audio-books-and-more/,
 https://opus-codec.org/comparison/).
 
 **But do not ship Opus alone.** Safari's Opus support is the classic trap: Safari 11
 through 18.3 handled Opus only in the CAF container; Ogg Opus was claimed for
-Safari 18.4 but independent testing found it *"still incomplete, buggy, and far
-behind Firefox and Chrome"* (https://frequal.com/java/OggOpusStillNotWorkingInSafari18_4.html).
+Safari 18.4 but independent testing found it _"still incomplete, buggy, and far
+behind Firefox and Chrome"_ (https://frequal.com/java/OggOpusStillNotWorkingInSafari18_4.html).
 Given that half this app's audience is on iOS, ship **AAC-LC 64 kbps mono in an
 `.m4a`** as the baseline — universally supported, still only 30 MB total and 162 KB
 per passage — and optionally serve Opus/WebM to Chrome via `<source type>` negotiation
@@ -786,7 +791,7 @@ problem when nobody downloads it all.
 
 1. **Not everything the app says is fixed.** Speak mode's `feedbackFor` produces
    sentences containing a score, and word-by-word/verse-by-verse feedback names
-   specific missed words. Those cannot be fully pre-generated. But the *template*
+   specific missed words. Those cannot be fully pre-generated. But the _template_
    parts can, the numbers 0–100 can, and the app already caps spoken misses at
    `MAX_SPOKEN_MISSES`. A hybrid — pre-generated audio for the passage and the
    reference and the fixed phrases, Web Speech (tuned per §1–3) for the residue — is
@@ -794,8 +799,8 @@ problem when nobody downloads it all.
    bites. Expect a slight timbre mismatch between the two voices; **[uncertain]**
    whether members will find that jarring or simply not notice.
 2. **ESV licensing needs a check before you generate.** Crossway's standard use terms
-   permit quoting the ESV *"in print, digital, and audio formats up to and inclusive
-   of five hundred (500) verses"* subject to the half-a-book and 25 % limits — which
+   permit quoting the ESV _"in print, digital, and audio formats up to and inclusive
+   of five hundred (500) verses"_ subject to the half-a-book and 25 % limits — which
    `test/passages.test.mjs` already asserts over the shipped set, so the text side is
    covered. But Crossway maintains a **separate audio permission request form**
    (https://www.crossway.org/permissions/audio/), and it is not obvious whether
@@ -812,22 +817,22 @@ problem when nobody downloads it all.
 directly from the Hugging Face API for `onnx-community/Kokoro-82M-v1.0-ONNX`
 **[measured]**:
 
-| File | Size |
-|---|---|
-| `model_q8f16.onnx` | **86.0 MB** |
-| `model_quantized.onnx` | 92.4 MB |
-| `model_uint8f16.onnx` | 114.2 MB |
-| `model_q4f16.onnx` | 154.6 MB |
-| `model_fp16.onnx` | 163.2 MB |
-| `model_q4.onnx` | 305.2 MB |
-| `model.onnx` (fp32) | 325.5 MB |
+| File                   | Size        |
+| ---------------------- | ----------- |
+| `model_q8f16.onnx`     | **86.0 MB** |
+| `model_quantized.onnx` | 92.4 MB     |
+| `model_uint8f16.onnx`  | 114.2 MB    |
+| `model_q4f16.onnx`     | 154.6 MB    |
+| `model_fp16.onnx`      | 163.2 MB    |
+| `model_q4.onnx`        | 305.2 MB    |
+| `model.onnx` (fp32)    | 325.5 MB    |
 
 Plus onnxruntime-web's WASM binaries (~10 MB). Quality is genuinely good — this is
 the model people compare favourably to commercial TTS — and it runs 100 % locally
 with `device: "wasm"` or `"webgpu"`.
 
 **Piper (via `vits-web` / `piper-tts-web`).** Voice models 30–60 MB each plus ~10 MB
-of onnxruntime-web; reported *"5–10 second delay before audio"* on a fresh visit,
+of onnxruntime-web; reported _"5–10 second delay before audio"_ on a fresh visit,
 instant thereafter from cache
 (https://quick-tts.com/blog/web-speech-api-vs-piper-vs-kokoro.html). Smaller than
 Kokoro, but also noticeably more synthetic — Piper is the "latency matters more than
@@ -864,7 +869,7 @@ for dynamic text.
 1. **Add a voice resolver** (poll + `voiceschanged` + 2 s deadline, §2.2), a curated
    preference list and the two exclusion lists (§1.4), and persist the choice by
    `voiceURI`.
-2. **Set `rate = 0.9`, `lang`, leave `pitch` at 1** on every utterance, in *both*
+2. **Set `rate = 0.9`, `lang`, leave `pitch` at 1** on every utterance, in _both_
    `speaker.js` and `beat.js` (§3.4). Expose a rate control to the member.
 3. **Bring `speaker.js` up to `beat.js`'s standard**: chunk on sentences at ~180
    chars, one watchdog per chunk. Right now Speak mode has neither, and **[measured]**
@@ -943,17 +948,27 @@ than pre-generation solves for free.
 Paste into the console on any HTTPS page. (Written as plain JS, not app code.)
 
 ```js
-await new Promise(r => {
+await new Promise((r) => {
   const t = setInterval(() => {
-    if (speechSynthesis.getVoices().length) { clearInterval(t); r(); }
+    if (speechSynthesis.getVoices().length) {
+      clearInterval(t);
+      r();
+    }
   }, 100);
-  speechSynthesis.onvoiceschanged = () => { clearInterval(t); r(); };
-  setTimeout(() => { clearInterval(t); r(); }, 2000);
+  speechSynthesis.onvoiceschanged = () => {
+    clearInterval(t);
+    r();
+  };
+  setTimeout(() => {
+    clearInterval(t);
+    r();
+  }, 2000);
 });
 console.table(
-  speechSynthesis.getVoices()
-    .filter(v => /^en/i.test(v.lang))
-    .map(v => ({ name: v.name, lang: v.lang, local: v.localService, def: v.default, uri: v.voiceURI }))
+  speechSynthesis
+    .getVoices()
+    .filter((v) => /^en/i.test(v.lang))
+    .map((v) => ({ name: v.name, lang: v.lang, local: v.localService, def: v.default, uri: v.voiceURI })),
 );
 ```
 
@@ -970,7 +985,7 @@ preinstalled voice set and `Samantha` selected explicitly. `document.hidden` was
 `true` throughout. Timings are single runs unless noted; the punctuation deltas were
 consistent to within ~15 ms across repeats, which is well inside the ~400 ms effect
 being measured, but they are **not** statistically rigorous and they characterise
-*Apple's* engine only. Nothing here was measured on iOS, Android, Windows, or with a
+_Apple's_ engine only. Nothing here was measured on iOS, Android, Windows, or with a
 Google network voice — every claim about those platforms is sourced, not measured,
 and is flagged where uncertain.
 
@@ -992,8 +1007,8 @@ and is flagged where uncertain.
 - [codersblock — JavaScript Text to Speech and Its Many Quirks](https://codersblock.com/blog/javascript-text-to-speech-and-its-many-quirks/)
 - [talkrapp — Lessons Learned Using the JavaScript speechSynthesis API](https://talkrapp.com/speechSynthesis.html)
 - [testmuai — Speech Synthesis API: Browser Support, Voices, Limitations](https://www.testmuai.com/learning-hub/speech-synthesis-api-browser-support/)
-- [Chromium issue 41294170 — Speech Synthesis stops abruptly after about 15 seconds](https://issues.chromium.org/issues/41294170) *(sign-in walled; status unverified)*
-- [Chromium issue 41346274 — speechSynthesis fails for long text without warning](https://issues.chromium.org/issues/41346274) *(sign-in walled; status unverified)*
+- [Chromium issue 41294170 — Speech Synthesis stops abruptly after about 15 seconds](https://issues.chromium.org/issues/41294170) _(sign-in walled; status unverified)_
+- [Chromium issue 41346274 — speechSynthesis fails for long text without warning](https://issues.chromium.org/issues/41346274) _(sign-in walled; status unverified)_
 - [woollsta gist — Chrome speech synthesis chunking workaround](https://gist.github.com/woollsta/2d146f13878a301b36d7)
 - [justmarkup — Read out loud: text to speech with the Web Speech API](https://justmarkup.com/articles/2020-05-19-text-to-speech/)
 - [spf.io — How to keep audio playing in the background in Chrome on Android](https://www.spf.io/2025/01/30/how-to-keep-audio-playing-in-the-background-in-chrome-on-android/)

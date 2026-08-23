@@ -1008,21 +1008,29 @@ export class App extends React.Component {
     const retried = this.speakRetried;
     this.speakSet({ phase: "feedback", lastResult: result, band });
 
-    if (band === "clean") return this.sayThen(copy.speak.clean, () => this.speakAdvance());
+    /* What the chosen mode adds on top of the band line — the words missed, or
+     * a figure per verse. Whole-passage mode adds nothing, which is why the
+     * commonest turn is also the shortest. */
+    const detail = result.abstained ? "" : result.spokenFeedback;
+    const say = (...parts) => parts.filter(Boolean).join(" ");
+
+    if (band === "clean") return this.sayThen(say(copy.speak.clean, detail), () => this.speakAdvance());
 
     if (band === "close") {
-      return this.sayThen(copy.speak.close + " " + p.text, () => this.speakAdvance());
+      return this.sayThen(say(copy.speak.close, detail, p.text), () => this.speakAdvance());
     }
 
     if (band === "shaky" && !retried) {
       // Hear it, then say it — once. Never twice: failing the same verse twice
       // inside half a minute is how a session stops being worth doing.
       this.speakRetried = true;
-      return this.sayThen(copy.speak.shaky + " " + p.text + " " + copy.speak.nowYou, () => this.speakListen());
+      return this.sayThen(say(copy.speak.shaky, p.text, copy.speak.nowYou), () => this.speakListen());
     }
 
     this.speakRetried = false;
-    return this.sayThen(copy.speak.lost + " " + p.text, () => this.speakAdvance());
+    return this.sayThen(say(result.abstained ? copy.speak.nothingHeard : copy.speak.lost, p.text), () =>
+      this.speakAdvance(),
+    );
   }
 
   /* Start a session over `ids`, or over the stalest SESSION_SIZE passages.

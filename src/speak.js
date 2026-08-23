@@ -7,14 +7,26 @@
  * next. The microphone, the voice and the silence timer live in App.js, which
  * is why nothing here holds a timer or touches the DOM.
  *
- * Grading reuses gradeWritten() against the raw transcript: an engine hands
- * back lowercase unpunctuated words, and norm() already makes the comparison
- * blind to case and punctuation, so the recital is marked by exactly the rule
- * a typed attempt is. Speak mode is practice only — nothing here (or in its
- * callers) writes progress or moves a verse along the ladder. Giving a clean
- * spoken recital SRS credit is follow-up work. */
+ * Grading is `recital.js`, not `grading.js`, and the difference is the whole
+ * reason this mode became usable. `gradeWritten()` is exact and positional,
+ * which is right for something typed and wrong for something said: its cursor
+ * only advances on a match, so three words the engine put in that the passage
+ * did not want desynchronized it for the rest of the verse. A word-perfect
+ * Proverbs 3:5-6 preceded by "trust in the— " — a false start, the commonest
+ * thing in real recitation — scored 14%. The member had recited it perfectly.
+ *
+ * `scoreRecital()` aligns instead, and charges almost nothing for a word nobody
+ * asked for, so false starts, self-corrections and the engine's own noise are
+ * free by construction while a genuinely forgotten clause still costs exactly
+ * what it should. grading.js stays exactly as it was: nothing a member *types*
+ * is forgiven, and the two graders never have to agree.
+ *
+ * Speak mode is practice only — nothing here (or in its callers) writes
+ * progress or moves a verse along the ladder. Giving a clean spoken recital SRS
+ * credit is follow-up work, and `strictScore` is the figure that gate should
+ * read when it is built: it never counts the phonetic tier. */
 
-import { gradeWritten } from "./grading.js";
+import { scoreRecital } from "./recital.js";
 import { copy } from "./copy.js";
 
 export const SPEAK_MODES = ["passage", "word", "verse"];
@@ -67,16 +79,27 @@ function perVerseOf(diff, verses) {
  * single-verse passage in verse mode just gets the whole-passage sentence. */
 export function feedbackFor(passage, transcript, mode) {
   const said = (transcript || "").trim();
-  const graded = gradeWritten(passage.text.split(" "), said);
-  const pct = Math.round(graded.score * 100);
-  const result = { score: graded.score, pct, spokenFeedback: "" };
+  const graded = scoreRecital(passage, said);
+  const result = {
+    score: graded.score || 0,
+    pct: graded.pct,
+    strictScore: graded.strictScore,
+    verbose: graded.verbose,
+    abstained: graded.abstained,
+    spokenFeedback: "",
+  };
 
-  if (!said) {
+  /* Nothing worth marking came back — an empty recital, or a transcript with
+   * too little of the passage in it to be a reading of it at all. Saying "seven
+   * percent" to a member whose microphone was covered is a figure about the
+   * app's own failure, dressed up as theirs. */
+  if (graded.abstained) {
+    result.pct = null;
     result.spokenFeedback = copy.speak.nothingHeard;
     return result;
   }
 
-  const parts = [copy.speak.scoreSpoken(pct)];
+  const parts = [];
   if (mode === "word") {
     result.perWord = graded.diff.map((w) => ({ word: w.word, hit: w.hit }));
     const missed = graded.diff.filter((w) => !w.hit).map((w) => w.word);

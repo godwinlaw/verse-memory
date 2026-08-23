@@ -33,7 +33,11 @@ test("passage mode: a perfect lowercase transcript scores full marks", () => {
   const r = feedbackFor(SHORT, "jesus wept", "passage");
   assert.equal(r.score, 1);
   assert.equal(r.pct, 100);
-  assert.match(r.spokenFeedback, /100 percent/);
+  /* The figure is no longer said out loud — the session answers a recital with
+   * one of four band lines and, on three of them, the verse itself (see BANDS).
+   * What feedbackFor composes is only the detail a mode adds on top, and whole
+   * passage mode adds none. */
+  assert.equal(r.spokenFeedback, "");
   assert.equal(r.perWord, undefined);
   assert.equal(r.perVerse, undefined);
 });
@@ -41,6 +45,8 @@ test("passage mode: a perfect lowercase transcript scores full marks", () => {
 test("passage mode: an empty recital says so instead of quoting zero", () => {
   const r = feedbackFor(SHORT, "", "passage");
   assert.equal(r.score, 0);
+  assert.equal(r.abstained, true, "and abstains rather than asserting a very confident nought");
+  assert.equal(r.pct, null);
   // The line changed when the loop learned to hand the verse back: a member who
   // said nothing is offered the passage rather than told they were not heard.
   assert.equal(r.spokenFeedback, copy.speak.nothingHeard);
@@ -48,13 +54,17 @@ test("passage mode: an empty recital says so instead of quoting zero", () => {
 });
 
 test("word mode: the missed words are graded per word and read out", () => {
-  const r = feedbackFor(SHORT, "jesus", "word");
-  assert.equal(r.perWord.length, 2);
+  /* Long enough to be gradeable: one word out of a two-word verse is not a
+   * recital the app should claim to have marked, so SHORT abstains here — see
+   * the abstention rule in recital.js. */
+  const verse = { id: 3, ref: "Psalm 46:10", text: "Be still, and know that I am God." };
+  const r = feedbackFor(verse, "be still and know that I am", "word");
+  assert.equal(r.perWord.length, 8, "one entry per word of the passage");
   assert.equal(r.perWord[0].hit, true);
-  assert.equal(r.perWord[1].hit, false);
-  assert.deepEqual(r.missed, ["wept."]);
+  assert.equal(r.perWord[7].hit, false, "the word never said is the word not credited");
+  assert.deepEqual(r.missed, ["God."]);
   assert.match(r.spokenFeedback, /missed/i);
-  assert.match(r.spokenFeedback, /wept/);
+  assert.match(r.spokenFeedback, /God/);
 });
 
 test("verse mode: a verses-bearing passage is graded verse by verse", () => {
@@ -70,7 +80,9 @@ test("verse mode: a verses-bearing passage is graded verse by verse", () => {
 test("verse mode: a passage without verses falls back to the whole-passage sentence", () => {
   const r = feedbackFor(SHORT, "jesus wept", "verse");
   assert.equal(r.perVerse, undefined);
-  assert.match(r.spokenFeedback, /100 percent/);
+  // Nothing to add per verse, so nothing is said per verse — the band line and
+  // the passage itself are the whole answer.
+  assert.equal(r.spokenFeedback, "");
 });
 
 test("the queue wraps instead of ending", () => {

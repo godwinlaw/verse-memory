@@ -3,12 +3,12 @@
 Product research + design specification. Written against the Speak mode shipped in
 `src/speak.js` / `App.js`, whose whole turn is currently:
 
-> "Recite Psalm 23:1." → *[listen]* → "62 percent correct." → next verse
+> "Recite Psalm 23:1." → _[listen]_ → "62 percent correct." → next verse
 
 **The one-line diagnosis: the loop is an exam when it should be a rehearsal.** It takes a
 recitation and gives back a number. It never gives back the verse. Every mature product in
-this space — scripture and language alike — is built on *anticipate, attempt, then hear the
-truth*. Hearing the correct verse read back **is** the feedback. The score is seasoning.
+this space — scripture and language alike — is built on _anticipate, attempt, then hear the
+truth_. Hearing the correct verse read back **is** the feedback. The score is seasoning.
 
 Everything below follows from that.
 
@@ -24,9 +24,9 @@ of `copy.js` — plain, warm, short sentences, no exclamation marks, no hype.
 > **App:** "Ten verses due today. I'll read the reference, you say the verse, then I'll read
 > it back. If you get stuck, say 'hint'."
 >
-> *[1.5s]*
+> _[1.5s]_
 >
-> *[earcon: two-tone rising, ~250ms — "your turn"]*
+> _[earcon: two-tone rising, ~250ms — "your turn"]_
 
 Say the shape of the session up front and then never explain again. The person now knows
 three things they currently have to guess: how long this is, whose turn it is, and that
@@ -36,15 +36,15 @@ there is a way out of being stuck.
 
 > **App:** "Psalm twenty-three, verse one."
 >
-> *[400ms]*
+> _[400ms]_
 >
-> *[earcon: rising two-tone — your turn]*
+> _[earcon: rising two-tone — your turn]_
 >
-> *[microphone opens — LISTEN]*
+> _[microphone opens — LISTEN]_
 >
 > **Person:** "The Lord is my shepherd, I shall not want."
 >
-> *[endpoint detected → earcon: single soft low tone, ~150ms — "got it"]*
+> _[endpoint detected → earcon: single soft low tone, ~150ms — "got it"]_
 
 Then exactly one of four endings, by band. Note that **three of the four end with the verse
 being read aloud.** That is the point of the whole redesign.
@@ -53,9 +53,9 @@ being read aloud.** That is the point of the whole redesign.
 
 > **App:** "That's it."
 >
-> *[0.8s]* → next verse
+> _[0.8s]_ → next verse
 
-No read-back. Getting it right is rewarded with *speed*, which is the only currency that
+No read-back. Getting it right is rewarded with _speed_, which is the only currency that
 matters in a car. This also creates real variety in the rhythm: a good run feels fast, a bad
 run feels patient. Right now every turn is the same length regardless of how it went.
 
@@ -63,14 +63,14 @@ run feels patient. Right now every turn is the same length regardless of how it 
 
 > **App:** "Close. Here it is."
 >
-> *[reads the verse at 0.92 rate]*
+> _[reads the verse at 0.92 rate]_
 >
-> *[1.2s]* → next verse
+> _[1.2s]_ → next verse
 
 Optionally, when three or fewer words were missed and they are content words, one clause
 before the read-back:
 
-> **App:** "Close — you dropped 'shall'. Here it is." → *[verse]*
+> **App:** "Close — you dropped 'shall'. Here it is." → _[verse]_
 
 Never name more than two words aloud. Beyond two, the read-back is doing the work and the
 list is just noise.
@@ -79,28 +79,28 @@ list is just noise.
 
 > **App:** "Not quite. Listen."
 >
-> *[reads the verse]*
+> _[reads the verse]_
 >
 > **App:** "Now you."
 >
-> *[earcon]* → *[LISTEN — second attempt]*
+> _[earcon]_ → _[LISTEN — second attempt]_
 >
-> **App:** "There it is." *(or, if still short)* "Getting closer. We'll come back to it."
+> **App:** "There it is." _(or, if still short)_ "Getting closer. We'll come back to it."
 >
 > → next verse
 
-This is the mastery loop, and it is *one* extra attempt, immediately, right after hearing
+This is the mastery loop, and it is _one_ extra attempt, immediately, right after hearing
 the correct text. That is the moment the second attempt is worth anything.
 
 **Lost — under 55%, or nothing usable heard**
 
 > **App:** "Let's take this one together."
 >
-> *[reads the verse]*
+> _[reads the verse]_
 >
 > **App:** "Say it with me."
 >
-> *[reads the verse again, 0.88 rate]*
+> _[reads the verse again, 0.88 rate]_
 >
 > → next verse
 
@@ -115,27 +115,27 @@ the biggest difference to how it feels.
 
 **Silence from the start.** After 5 seconds with no speech at all:
 
-> *[mic closes]*
+> _[mic closes]_
 >
 > **App:** "It starts, 'The Lord is my shepherd.'"
 >
-> *[mic reopens — same attempt continues, no new earcon]*
+> _[mic reopens — same attempt continues, no new earcon]_
 
 After a further 7 seconds of nothing:
 
 > **App:** "Here's the whole thing."
 >
-> *[reads the verse]* → next verse
+> _[reads the verse]_ → next verse
 
 **A stall in the middle.** They started, got three words in, and stopped. The app already
-aligns heard words onto the passage positionally (`src/voice.js`), so it knows *where* they
+aligns heard words onto the passage positionally (`src/voice.js`), so it knows _where_ they
 dried up. After ~3 seconds of silence with the passage clearly unfinished:
 
-> *[mic closes]*
+> _[mic closes]_
 >
-> **App:** *[quieter, 0.9 rate]* "…I shall not want."
+> **App:** _[quieter, 0.9 rate]_ "…I shall not want."
 >
-> *[mic reopens — same attempt continues, no penalty]*
+> _[mic reopens — same attempt continues, no penalty]_
 
 Feed the next three words and get out of the way. This is what a stage prompter does, and it
 is the single most humane thing an audio memorization app can do. Nothing in the surveyed
@@ -155,24 +155,24 @@ No new earcon on reopen either — an earcon means "new turn", and this is not o
 
 **On request** — the person says "hint":
 
-> **App:** *[the next three words from where they are]* → *[LISTEN continues]*
+> **App:** _[the next three words from where they are]_ → _[LISTEN continues]_
 
 ### Commands, in situ
 
 > **Person:** "read it"
-> **App:** "Sure." → *[reads the verse]* → "Now you." → *[earcon]* → *[LISTEN]*
+> **App:** "Sure." → _[reads the verse]_ → "Now you." → _[earcon]_ → _[LISTEN]_
 
 > **Person:** "skip"
 > **App:** "Okay." → next verse
 
 > **Person:** "repeat"
-> **App:** *[re-reads whatever it last said]*
+> **App:** _[re-reads whatever it last said]_
 
 > **Person:** "again"
-> **App:** *[re-prompts the same reference]* → *[earcon]* → *[LISTEN]*
+> **App:** _[re-prompts the same reference]_ → _[earcon]_ → _[LISTEN]_
 
 > **Person:** "slower"
-> **App:** "Okay." *[drops TTS rate one notch for the rest of the session]*
+> **App:** "Okay." _[drops TTS rate one notch for the rest of the session]_
 
 > **Person:** "stop"
 > **App:** "Stopped. Six left — we'll start there next time."
@@ -203,7 +203,7 @@ mechanic is
 
 - **Recall session** (above) — the default for verses the SRS considers committed and fresh.
 - **Learn session** — for a verse that is weak or new, invert the turn:
-  reference → *verse read* → *[2s]* → "Now you." → earcon → LISTEN → verse read again.
+  reference → _verse read_ → _[2s]_ → "Now you." → earcon → LISTEN → verse read again.
   This is Remember Me's hands-free loop exactly, and it is the right loop for a verse you do
   not yet have ([remem.me](https://www.remem.me/docs/audio/)).
 
@@ -216,19 +216,19 @@ Concrete replacements for the current flat `SPEAK_SILENCE_MS` ≈ 2.5s / `SPEAK_
 These are engineering starting points, not measured values — mark them as tunable and expect
 to move them after real car testing.
 
-| Thing | Value | Why |
-|---|---|---|
-| Reference → earcon gap | 400ms | Space so the earcon reads as a separate signal, not a syllable |
-| Earcon "your turn" | ~250ms, two-tone rising (880 → 1175 Hz) | Synthesize it — `beat.js` already has WebAudio, no files needed |
-| Earcon "got it" | ~150ms, single 440 Hz, quiet | Confirms the mic closed. Silence after speaking is what feels broken |
-| First-word grace | 5s | Then the prompter, not a failure |
-| Endpoint silence, normal | 2.0s | Slightly tighter than today because the prompter now covers the stalls |
-| Endpoint silence, mid-verse | 4.5s | Applied when the transcript covers <70% of expected words — they are thinking, not finished |
-| Attempt ceiling | max(20s, words × 0.9s) | A long chapter needs a long turn; today's fixed ceiling punishes the long ones |
-| Read-back rate | 0.92 of default | Scripture at conversational TTS rate is too fast to follow |
-| Gap after a clean verse | 1.2s | |
-| Gap after a read-back | 2.0s | Let it land before the next reference |
-| Max continuous speaking stretch | 12s | Chunk on sentences — reuse `chunkForSpeech()` from `beat.js` |
+| Thing                           | Value                                   | Why                                                                                         |
+| ------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Reference → earcon gap          | 400ms                                   | Space so the earcon reads as a separate signal, not a syllable                              |
+| Earcon "your turn"              | ~250ms, two-tone rising (880 → 1175 Hz) | Synthesize it — `beat.js` already has WebAudio, no files needed                             |
+| Earcon "got it"                 | ~150ms, single 440 Hz, quiet            | Confirms the mic closed. Silence after speaking is what feels broken                        |
+| First-word grace                | 5s                                      | Then the prompter, not a failure                                                            |
+| Endpoint silence, normal        | 2.0s                                    | Slightly tighter than today because the prompter now covers the stalls                      |
+| Endpoint silence, mid-verse     | 4.5s                                    | Applied when the transcript covers <70% of expected words — they are thinking, not finished |
+| Attempt ceiling                 | max(20s, words × 0.9s)                  | A long chapter needs a long turn; today's fixed ceiling punishes the long ones              |
+| Read-back rate                  | 0.92 of default                         | Scripture at conversational TTS rate is too fast to follow                                  |
+| Gap after a clean verse         | 1.2s                                    |                                                                                             |
+| Gap after a read-back           | 2.0s                                    | Let it land before the next reference                                                       |
+| Max continuous speaking stretch | 12s                                     | Chunk on sentences — reuse `chunkForSpeech()` from `beat.js`                                |
 
 That last row is not only a UX rule. Chrome abandons utterances beyond roughly 15 seconds
 without firing `onend` — the app already knows this and handles it in Run mode. Speak mode's
@@ -240,24 +240,24 @@ read-backs will hit the same wall the moment it starts reading whole passages.
 
 **The headline finding: essentially nobody does speech scoring in a hands-free loop.** Of
 the products surveyed, exactly one (Verses, iOS) grades spoken recitation at all, and it does
-so as an on-screen game mode, not eyes-free. Every product that markets a *hands-free* /
-*driving* audio experience is running a **passive** loop: reference → pause → correct text,
+so as an on-screen game mode, not eyes-free. Every product that markets a _hands-free_ /
+_driving_ audio experience is running a **passive** loop: reference → pause → correct text,
 self-checked. Verse Mastery's Speak mode is doing something genuinely novel — which is also
 why there is no prior art to copy for the feedback half, and why it needs designing rather
 than borrowing.
 
 ### Remember Me — the closest thing to a reference implementation
 
-Its hands-free loop, in its own words: it *"speaks the reference, waits during a **recall
+Its hands-free loop, in its own words: it _"speaks the reference, waits during a **recall
 pause** so you can recite the passage from memory, then reads the passage so you can check
-yourself"* ([remem.me/docs/audio](https://www.remem.me/docs/audio/)).
+yourself"_ ([remem.me/docs/audio](https://www.remem.me/docs/audio/)).
 
 That is Pimsleur's anticipation gap applied to scripture, and it is the structure I am
 recommending. Exposed settings: speech rate, volume, **pause between verses (seconds)**,
 **recall pause (seconds)**, sleep timer, repeat-the-list toggle, caption display. There is a
 separate self-recording path (record yourself, reveal the text, play back, self-assess) and a
 temporary in-session "flag" to re-read a missed verse without touching its schedule — note
-that flagging requires a tap, so their re-queue is *not* hands-free. Ours can be.
+that flagging requires a tap, so their re-queue is _not_ hands-free. Ours can be.
 
 No speech recognition. No scoring. The recall pause is user-tunable rather than adaptive.
 
@@ -277,11 +277,11 @@ report recordings of themselves being stickier than TTS.
 
 ### Fighter Verses
 
-*"The audio loops continually so that through repetition you can become familiar with the
-text"*, and it is pitched for *"when you can't look at the device, like when driving,
-walking, or running."* Its differentiator is **human narration (Max McLean) rather than
+_"The audio loops continually so that through repetition you can become familiar with the
+text"_, and it is pitched for _"when you can't look at the device, like when driving,
+walking, or running."_ Its differentiator is **human narration (Max McLean) rather than
 TTS**, plus memory songs setting verses to music — several reviews single out the human
-voice against *"robotic, AI-generated voices"* in competitors.
+voice against _"robotic, AI-generated voices"_ in competitors.
 ([Truth78](https://truth78.org/pages/fv-app),
 [App Store](https://apps.apple.com/us/app/fighter-verses-memorize-bible/id411711646),
 [learnofchrist review](https://learnofchrist.com/resources/fighter-verses))
@@ -293,8 +293,8 @@ browser's default `speechSynthesis` voice.
 ### Verses (iOS)
 
 The only surveyed product with spoken grading. Six game modes: Tap to Reveal, Listen,
-Reorder, Word Bank, Type Out, and **Speak Out** — *"recite the passage back verbally"*, and
-the app *"will grade your accuracy and track your progress."*
+Reorder, Word Bank, Type Out, and **Speak Out** — _"recite the passage back verbally"_, and
+the app _"will grade your accuracy and track your progress."_
 ([getverses.com](https://www.getverses.com/),
 [App Store](https://apps.apple.com/us/app/verses-bible-memory/id939461663))
 
@@ -307,8 +307,8 @@ building.
 
 ### Dwell
 
-Not a memorization app — an audio Bible — but it is the state of the art for *scripture as
-listening*, and its feature list is a checklist of what a good audio experience has that
+Not a memorization app — an audio Bible — but it is the state of the art for _scripture as
+listening_, and its feature list is a checklist of what a good audio experience has that
 Speak mode does not: 20+ distinct human voice recordings, independent volume for voice and
 music, background music beds, sleep mode, offline download, and a **"Repeat & Reflect"**
 memorization feature.
@@ -330,8 +330,8 @@ Effectively no overlap with hands-free memorization. Mentioned for completeness.
 
 ### What people are actually asking for
 
-Community threads surfaced a request for *"an audible method for scripture memorization that
-repeats verses over and over without having to input commands or read the screen"*, with
+Community threads surfaced a request for _"an audible method for scripture memorization that
+repeats verses over and over without having to input commands or read the screen"_, with
 workarounds including a generic audio looper and, more recently, using ChatGPT's voice mode
 to be tested aloud
 ([faith.tools roundup](https://faith.tools/bible-memory),
@@ -348,30 +348,30 @@ loop Speak mode is trying to be. The idea is right; the execution is what is wro
 
 Two named principles, both directly applicable:
 
-**Graduated Interval Recall.** Items are prompted at expanding intervals — *"revisit it for
+**Graduated Interval Recall.** Items are prompted at expanding intervals — _"revisit it for
 review a minute later. Each subsequent review occurs at a greater interval — for example, 5
-minutes, 15 minutes"* — repeated intensively at first, then at ever-greater gaps.
+minutes, 15 minutes"_ — repeated intensively at first, then at ever-greater gaps.
 ([Pimsleur](https://www.pimsleur.com/blog/why-graduated-interval-recall-is-the-key-to-mastering-a-new-language/))
 
 Verse Mastery has this **between** sessions (`srs.INTERVALS`) and nothing like it **within** a
 session. The Speak queue is a flat carousel. That is why a bad verse just rolls past.
 
-**The Principle of Anticipation.** Learners *"listen, pause for understanding, generate a
-response, and then compare their response to a native speaker's."* Pimsleur designed against
-*"the dulling effect of mere repetition"* by requiring the learner to produce the answer
+**The Principle of Anticipation.** Learners _"listen, pause for understanding, generate a
+response, and then compare their response to a native speaker's."_ Pimsleur designed against
+_"the dulling effect of mere repetition"_ by requiring the learner to produce the answer
 before hearing it. The lesson cycle is literally **audio, silence, audio, silence**.
 ([Art of Memory](https://artofmemory.com/blog/the-pimsleur-language-method/),
 [Pimsleur on memory](https://www.pimsleur.com/blog/memory-and-language-learning-how-pimsleur-helps-you-retain-what-you-learn))
 
-Note the fourth beat: *compare your response to the correct one*. **Verse Mastery has beats
+Note the fourth beat: _compare your response to the correct one_. **Verse Mastery has beats
 one, two and three and is missing beat four.** It replaces the correct answer with a
 percentage. That is the whole bug.
 
 ### Duolingo
 
-Read-aloud exercises are transcribed by ASR and scored **pass/fail**, tuned generously — *"mumble
-something in the neighborhood and you usually pass."* No phoneme-level scoring in the core
-course. The design goal is explicitly *keeping the learner moving*.
+Read-aloud exercises are transcribed by ASR and scored **pass/fail**, tuned generously — _"mumble
+something in the neighborhood and you usually pass."_ No phoneme-level scoring in the core
+course. The design goal is explicitly _keeping the learner moving_.
 ([Duolingo speaking whitepaper](https://duolingo-papers.s3.amazonaws.com/reports/duolingo-speaking-whitepaper.pdf),
 [assessment whitepaper](https://englishtest-static.duolingo.com/media/resources/media/resources/whitepapers/speaking-whitepaper.pdf))
 
@@ -382,19 +382,19 @@ currently shipping a continuous score to someone at 60mph.
 ### ELSA Speak — the counter-example, and why it does not apply
 
 ELSA does the opposite: phoneme-level analysis, highlighting the exact mispronounced sound,
-so learners *"know exactly which sounds require practice rather than guessing why they
-received a low score."* Feedback arrives as a bell/buzz earcon plus colour-coded text, mouth
+so learners _"know exactly which sounds require practice rather than guessing why they
+received a low score."_ Feedback arrives as a bell/buzz earcon plus colour-coded text, mouth
 diagrams, waveforms, and A/B playback against a native speaker.
 ([ELSA FAQ](https://elsaspeak.com/en/faqs/how-does-elsas-pronunciation-feedback-work),
 [ELSA blog](https://blog.elsaspeak.com/en/advantage-of-elsa-feedback/))
 
 Two things transfer and one does not.
 
-- **Transfers:** feedback must be *specific and actionable*, never a bare number. ELSA's own
+- **Transfers:** feedback must be _specific and actionable_, never a bare number. ELSA's own
   framing — a score leaves you guessing — is the exact complaint against "62 percent correct."
 - **Transfers:** the bell/buzz earcon pair. Cheap, instant, eyes-free.
 - **Does not transfer:** all of the visual apparatus. ELSA's specificity is delivered
-  *visually*. Ours has to be delivered by **reading the correct verse back**, because that is
+  _visually_. Ours has to be delivered by **reading the correct verse back**, because that is
   the only eyes-free channel for "here is what it should have been."
 
 ### Anki + TTS
@@ -405,15 +405,15 @@ grading deferred to the screen later. It is worth noting mainly as confirmation 
 people build audio-only review themselves, they build **prompt → gap → answer** and accept
 losing the grading, rather than building **prompt → gap → score**.
 
-*(Inference from the general shape of Anki audio-review setups rather than a specific cited
-source — I did not find an authoritative write-up in this pass.)*
+_(Inference from the general shape of Anki audio-review setups rather than a specific cited
+source — I did not find an authoritative write-up in this pass.)_
 
 ### Voice interface fundamentals
 
-- *"Clearly defining turn-taking is crucial ... using techniques like audio cues and silence
-  detection."* Earcons should mark each state change: a ping when listening starts, a
+- _"Clearly defining turn-taking is crucial ... using techniques like audio cues and silence
+  detection."_ Earcons should mark each state change: a ping when listening starts, a
   different sound when processing begins, a chime on completion.
-- *"Silence past three seconds and the user assumes the system crashed."*
+- _"Silence past three seconds and the user assumes the system crashed."_
 - Endpointing by trailing-silence VAD is the traditional approach; every 800ms of endpoint
   timeout adds most of a second to every single turn, which compounds badly over a long
   session.
@@ -441,7 +441,7 @@ Four separate failures in five words:
 
 1. **No action attached.** 62% does not tell you which words, or what to do next.
 2. **It is the wrong resolution.** The difference between 62% and 67% is meaningless and
-   unactionable, but it *feels* like information, so the listener spends attention on it.
+   unactionable, but it _feels_ like information, so the listener spends attention on it.
 3. **It is a verdict, and verdicts accumulate.** Twenty verses at 60-something percent is
    twenty small failures in a row, delivered in a flat synthetic voice, with nothing offered
    in between.
@@ -454,13 +454,13 @@ Four bands, one short line each, and — the load-bearing part — **the correct
 in three of the four cases.** Bands and copy as specified in the loop above. Restated
 compactly:
 
-| Band | Line | Then |
-|---|---|---|
-| ≥95% | "That's it." | next verse, fast |
-| 80–94% | "Close. Here it is." | read the verse |
-| 55–79% | "Not quite. Listen." | read the verse, then one retry |
-| <55% | "Let's take this one together." | read it twice, re-queue later |
-| nothing heard | *(prompter, not a verdict — see below)* | |
+| Band          | Line                                    | Then                           |
+| ------------- | --------------------------------------- | ------------------------------ |
+| ≥95%          | "That's it."                            | next verse, fast               |
+| 80–94%        | "Close. Here it is."                    | read the verse                 |
+| 55–79%        | "Not quite. Listen."                    | read the verse, then one retry |
+| <55%          | "Let's take this one together."         | read it twice, re-queue later  |
+| nothing heard | _(prompter, not a verdict — see below)_ |                                |
 
 ### When to say nothing at all
 
@@ -493,7 +493,7 @@ Worth doing, narrowly. `feedbackFor()` already computes the missed set and caps 
   "and" is not a memory failure worth a sentence.
 - Format: `"Close — you dropped 'shall' and 'green'. Here it is."` then read the verse.
 
-Above three misses, the read-back *is* the specific feedback and a word list is only noise.
+Above three misses, the read-back _is_ the specific feedback and a word list is only noise.
 The existing "Word by word" feedback mode should be **disabled in driving mode entirely** and
 kept as a post-session on-screen review.
 
@@ -513,27 +513,27 @@ and of `copy.run.idleNote`.
 Collisions below are **measured against the 183 passages actually shipped in
 `data/passages.js`**, not recalled — word-boundary match, case-insensitive.
 
-| Command | Does | Collisions in the shipped set |
-|---|---|---|
-| **hint** | Next three words from where you are | **0** |
-| **skip** | Abandon this verse, go to the next | **0** |
-| **repeat** | Re-say the last spoken thing | **0** |
-| **stop** | End the session | **0** |
-| **read it** | Read the whole verse, then hand back the turn | **0** ("read" appears nowhere) |
-| **again** | Re-prompt the same reference and re-listen | **2** — John 14:1–3, Hebrews 11:32–38 |
-| *slower / louder* | Adjust TTS | **0** each |
+| Command           | Does                                          | Collisions in the shipped set         |
+| ----------------- | --------------------------------------------- | ------------------------------------- |
+| **hint**          | Next three words from where you are           | **0**                                 |
+| **skip**          | Abandon this verse, go to the next            | **0**                                 |
+| **repeat**        | Re-say the last spoken thing                  | **0**                                 |
+| **stop**          | End the session                               | **0**                                 |
+| **read it**       | Read the whole verse, then hand back the turn | **0** ("read" appears nowhere)        |
+| **again**         | Re-prompt the same reference and re-listen    | **2** — John 14:1–3, Hebrews 11:32–38 |
+| _slower / louder_ | Adjust TTS                                    | **0** each                            |
 
 So the proposed vocabulary is almost entirely collision-free **today**, and "again" is the
 only word needing the carrier rule, on two verses.
 
 **On "help" as the hint word — reject it anyway.** It collides only once in the current set
-(Hebrews 4:15–16, *"grace to help in time of need"*), so the measured risk is low. But it is
-the highest-risk word in the vocabulary against the *set as it will grow*: Psalm 46:1 (*"a
-very present help in trouble"*) and Psalm 121:1–2 (*"my help comes from the LORD"*) are among
+(Hebrews 4:15–16, _"grace to help in time of need"_), so the measured risk is low. But it is
+the highest-risk word in the vocabulary against the _set as it will grow_: Psalm 46:1 (_"a
+very present help in trouble"_) and Psalm 121:1–2 (_"my help comes from the LORD"_) are among
 the most commonly memorized verses in English and are obvious future additions to the Psalms
 shelf. **"hint" has zero collisions and no plausible future ones.** Take the free win.
 
-Similarly, avoid **"one more"** as an alias for *again* — "one" appears in 36 shipped
+Similarly, avoid **"one more"** as an alias for _again_ — "one" appears in 36 shipped
 passages and "more" in 12.
 
 ### The safe detection design
@@ -548,17 +548,17 @@ Four conditions, all required. An utterance is treated as a command only when:
    A command spoken inside a flowing recitation is not standalone.
 4. **It does not match the expected next word at the current alignment position.** The app
    already tracks where in the passage the recitation has reached (`voice.js` aligns heard
-   words onto the passage positionally). If the next expected word *is* "again", the utterance
+   words onto the passage positionally). If the next expected word _is_ "again", the utterance
    is recitation, full stop.
 
 ### The collision rule — computable, and testable at build time
 
 Do not hand-tune this. **At queue time, compute which command words appear anywhere in the
-current passage's text.** For those words *and only those*, on *that verse only*, require a
+current passage's text.** For those words _and only those_, on _that verse only_, require a
 carrier prefix:
 
 - Psalm 23 contains none of the command words → bare "stop" and bare "again" are safe.
-- John 14:1–3 contains "again" (*"I will come again"*) → on that verse only, "again" alone is
+- John 14:1–3 contains "again" (_"I will come again"_) → on that verse only, "again" alone is
   recitation; the command requires **"okay again"**. Same for Hebrews 11:32–38.
 - Every other command word, on every one of the 183 shipped passages, needs no carrier at all.
 
@@ -577,14 +577,14 @@ Stopping is the one command with a safety consequence, so it gets three independ
 3. **Hardware.** Headphone/media-button pause, and a full-width Stop control on screen for a
    passenger. Neither requires the driver to read anything.
 
-The half-duplex constraint means "stop" spoken while the app is talking is *not heard*. This
+The half-duplex constraint means "stop" spoken while the app is talking is _not heard_. This
 must be designed around, not wished away: the 12-second cap on continuous speech guarantees a
 LISTEN window is never more than a few seconds away, and the hardware paths cover the rest.
 
 ### False triggers we should accept
 
-A false *hint* or a false *repeat* costs three seconds and is barely noticed. A false *skip*
-costs a verse. A false *stop* ends the session. Tune the confidence threshold per command by
+A false _hint_ or a false _repeat_ costs three seconds and is barely noticed. A false _skip_
+costs a verse. A false _stop_ ends the session. Tune the confidence threshold per command by
 that cost — loose for hint and repeat, strict for skip and stop. Do not use one threshold for
 all six.
 
@@ -684,7 +684,7 @@ that the driver never needs to.
 
 8. **The default browser voice is unpleasant, and scripture read at conversational TTS rate is
    hard to follow.** Fighter Verses' whole audio differentiator is human narration against
-   *"robotic, AI-generated voices"* — that critique lands squarely on us.
+   _"robotic, AI-generated voices"_ — that critique lands squarely on us.
    **Fix, cheap:** explicitly select the best available `speechSynthesis` voice rather than
    taking the default, drop the read-back rate to ~0.92, and chunk on sentence boundaries so
    punctuation is audible (`chunkForSpeech()` already exists).
@@ -725,7 +725,7 @@ This makes a session count without letting a misheard word in a car cost anyone 
 schedule, and it needs no new grader: `gradeWritten` and `commitsVerse` already read the
 attempt rather than how the words arrived.
 
-Whether a clean *spoken* recitation should be allowed to **commit** a verse is a separate and
+Whether a clean _spoken_ recitation should be allowed to **commit** a verse is a separate and
 harder call, and worth deciding with the church rather than in code.
 
 ---
@@ -756,7 +756,7 @@ harder call, and worth deciding with the church rather than in code.
 - All timing values in the table — engineering starting points reasoned from the VUI sources
   and the app's existing constants, not measured in a car.
 - Command-word collisions are **measured**, not inferred — checked against all 183 passages in
-  `data/passages.js` at the time of writing. They are a fact about the *current* set only, and
+  `data/passages.js` at the time of writing. They are a fact about the _current_ set only, and
   will drift as passages are added; hence the recommendation to enforce it with a test rather
   than a hand-maintained list.
 - The claim that no surveyed app scores speech hands-free — based on public product pages and
