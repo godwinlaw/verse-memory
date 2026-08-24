@@ -104,7 +104,7 @@ export function listVals({ state, prog, actions }) {
     shownCount: rows.length,
     // Counted over the whole set, not over the goal category. This screen shows
     // every shelf, so borrowing the board's goal-scoped figures would have read
-    // "183 shown · 0 committed · 167 untouched" and left sixteen passages
+    // "187 shown · 0 committed · 171 untouched" and left sixteen passages
     // apparently unaccounted for.
     listCommitted: state.passages.filter((p) => prog.statusOf(p.id) === "memorized").length,
     listUntouched: state.passages.filter((p) => prog.statusOf(p.id) === "new").length,
