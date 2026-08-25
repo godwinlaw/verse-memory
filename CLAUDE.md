@@ -117,7 +117,7 @@ anyone forgetting a word. Two figures span everything instead: `committedAll`,
 which the leaderboard's "You" row uses so it matches the peer rows (those come
 from `committedCount(r.progress)` in `App.loadRoster`, which knows nothing about
 categories), and `totalCount`, the size of the list. Reading the board's figure
-off `committedAll` would let a member show "170 of 167".
+off `committedAll` would let a member show "174 of 171".
 
 **A long chapter ships as sections.** Hebrews 11 is six passage records and 2
 Corinthians 4 is three, each sharing a `group`. Each section is an ordinary

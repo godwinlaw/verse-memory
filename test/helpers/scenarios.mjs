@@ -7,6 +7,7 @@
  */
 
 import { passages } from "../../data/passages.js";
+import { SAMUEL_QUESTIONS } from "../../data/samuel.js";
 import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "../../src/exam.js";
 
 /* 2026-08-15T12:00:00Z — matches freezeClock()'s default so freshness values are
@@ -690,6 +691,43 @@ export const scenarios = [
         heard: "",
         lastResult: null,
         error: "The microphone was blocked. Allow it in your browser, then try again.",
+      },
+    }),
+  },
+
+  // ── samuel mode ────────────────────────────────────────────────────────────
+  { name: "samuel/idle", state: baseState({ view: "samuel" }) },
+  {
+    name: "samuel/answered",
+    state: baseState({
+      view: "samuel",
+      samuel: {
+        record: { [SAMUEL_QUESTIONS[0].id]: { right: 0, wrong: 1, last: NOW } },
+        round: SAMUEL_QUESTIONS.slice(0, 3),
+        index: 0,
+        answer: SAMUEL_QUESTIONS[0].options[0],
+        results: [false],
+        scope: null,
+        view: "quiz",
+        book: "1 Samuel",
+        openChapter: "",
+      },
+    }),
+  },
+  {
+    name: "samuel/reading",
+    state: baseState({
+      view: "samuel",
+      samuel: {
+        record: {},
+        round: [],
+        index: 0,
+        answer: null,
+        results: [],
+        scope: null,
+        view: "read",
+        book: "2 Samuel",
+        openChapter: "2 Samuel 7",
       },
     }),
   },

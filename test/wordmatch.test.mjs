@@ -160,7 +160,7 @@ test("every blocklisted pair is refused, in both directions", () => {
  * vocabulary word — and asserts the blocklist already names all of it. It will
  * fail loudly the day somebody adds a passage that introduces a new collision,
  * which is exactly when somebody should be looking. */
-test("the blocklist is the complete collision surface over all 183 passages", () => {
+test("the blocklist is the complete collision surface over the whole passage set", () => {
   const vocabulary = new Set();
   const names = new Set();
   for (const passage of passages) {
@@ -170,8 +170,13 @@ test("the blocklist is the complete collision surface over all 183 passages", ()
     }
     for (const key of properNouns(passage.text)) names.add(key);
   }
-  assert.equal(vocabulary.size, 1546, "the vocabulary this surface was measured against");
-  assert.equal([...names].filter((w) => w.length >= MIN_PHONETIC_LEN).length, 55, "proper nouns long enough to fire");
+  /* The corpus these figures were measured against. They are expected to move
+   * whenever data/passages.js does — a split passage or a new shelf changes
+   * both — and moving them is the prompt to re-read the loop below rather than
+   * a failure in itself: the surface the blocklist has to cover is exactly this
+   * vocabulary crossed with these names. */
+  assert.equal(vocabulary.size, 1537, "the vocabulary this surface was measured against");
+  assert.equal([...names].filter((w) => w.length >= MIN_PHONETIC_LEN).length, 53, "proper nouns long enough to fire");
 
   /* Nothing gets through. A pair that reaches the phonetic tier here is a pair
    * of real vocabulary words being credited for each other, which is the

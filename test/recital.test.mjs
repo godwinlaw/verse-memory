@@ -208,23 +208,19 @@ test("16. the merge op absorbs the `eagles;they` data bug", () => {
   assert.equal(graded.diff.find((d) => d.word === "eagles;they").heard, "eagles they");
 });
 
-test("17. ★ an embedded scripture reference no longer caps the passage below commit", () => {
+test("17. ★ a passage that once carried an embedded reference now scores whole", () => {
+  /* This fixture was the sharpest example of the old grader's unfairness: Luke
+   * 12:32 shipped with "Luke 12:48b" inside its own text, two words nobody
+   * recites, so a word-perfect recital was capped at 95% — at the commit bar
+   * rather than above it. The data has since been fixed upstream, and the
+   * fixture is kept because the outcome it asserts is the one that matters:
+   * saying the passage correctly scores 100. */
   const luke = of("Luke 12:32");
-  const heard = luke.text
-    .split(" ")
-    .filter((w) => !/^(Luke|12:48b)$/.test(w))
-    .map(norm)
-    .join(" ");
-  assert.equal(Math.round(today(luke, heard) * 100), 95, "today a perfect recital is capped at the commit bar itself");
-
+  const heard = spoken(luke);
   const graded = scoreRecital(luke, heard);
   assert.equal(graded.score, 1);
-  assert.equal(graded.total, 41, "two of the 43 words are the reference, and leave the denominator");
-  assert.equal(graded.diff.length, 43, "but stay in the diff");
-  assert.deepEqual(
-    graded.diff.filter((d) => d.optional).map((d) => d.word),
-    ["Luke", "12:48b"],
-  );
+  assert.equal(graded.diff.length, luke.text.split(" ").length, "one entry per word of the passage");
+  assert.equal(graded.total, graded.diff.length, "and every one of them countable");
 });
 
 test("18. an adjacent transposition costs one word, not two", () => {
@@ -407,19 +403,53 @@ test("proper nouns are the words capitalized away from a sentence start", () => 
   assert.ok(!found.has("in"), "nor because it opens the second sentence");
 });
 
-test("an embedded scripture reference is found in all four passages that carry one", () => {
-  const carriers = ["Isaiah 54:2-3", "Habakkuk 3:17-18", "Luke 12:32", "1 Corinthians 6:19-20"];
+test("no shipped passage carries a scripture reference inside its own text", () => {
+  /* Four of them once did — Isaiah 54:2-3 carried "Isaiah 55:1-3a", and Luke
+   * 12:32 carried "Luke 12:48b" — a fetch-time leak that capped a perfect
+   * recital of Luke 12:32 at 95%, below the commit bar. The data was fixed
+   * upstream (the trailing references became passages of their own), so this
+   * now guards the fix rather than tolerating the bug: if the fetcher ever
+   * reintroduces one, the scoring layer will quietly excuse it and nobody will
+   * notice until a member is marked down. */
   const marked = {};
   for (const passage of passages) {
     const words = passage.text.split(" ");
     const optional = optionalRefWords(words);
     if (optional.size) marked[passage.ref] = [...optional].sort((a, b) => a - b).map((i) => words[i]);
   }
-  assert.deepEqual(Object.keys(marked).sort(), [...carriers].sort(), "and in no others");
-  assert.deepEqual(marked["Luke 12:32"], ["Luke", "12:48b"]);
-  assert.deepEqual(marked["1 Corinthians 6:19-20"], ["1", "Corinthians", "9:22b"], "the leading numeral goes too");
-  assert.deepEqual(marked["Isaiah 54:2-3"], ["Isaiah", "55:1-3a"]);
-  assert.deepEqual(marked["Habakkuk 3:17-18"], ["Zechariah", "4:6b"]);
+  assert.deepEqual(marked, {}, "the set is clean; see tools/fetch_passages.mjs if this ever fails again");
+});
+
+test("a passage that did carry one is scored whole, and reaches the commit bar", () => {
+  const luke = of("Luke 12:32");
+  const heard = spoken(luke);
+  const graded = scoreRecital(luke, heard);
+  assert.equal(graded.score, 1, "a perfect recital is perfect");
+  assert.equal(
+    graded.diff.filter((d) => d.optional).length,
+    0,
+    "with nothing excused, because there is nothing to excuse",
+  );
+  assert.ok(graded.score >= 0.95, "and it clears the commit bar it used to be capped at");
+});
+
+test("the optional-word mechanism still works, for the day the data slips again", () => {
+  /* Driven off a passage built for the purpose rather than off the shipped set,
+   * so this keeps testing the mechanism now that no real passage exercises it. */
+  const leaky = {
+    id: 9001,
+    ref: "Made Up 1:1",
+    text: "The word of the Lord came to me saying this. Jeremiah 2:2b",
+  };
+  const words = leaky.text.split(" ");
+  const optional = optionalRefWords(words);
+  assert.deepEqual(
+    [...optional].sort((a, b) => a - b).map((i) => words[i]),
+    ["Jeremiah", "2:2b"],
+    "the trailing reference is spotted",
+  );
+  const graded = scoreRecital(leaky, "the word of the lord came to me saying this");
+  assert.equal(graded.score, 1, "and reciting the passage without it is still a perfect recital");
 });
 
 /* ── the structural properties, which hold over the whole corpus ──────────── */
