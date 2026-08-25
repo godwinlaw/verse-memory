@@ -2,9 +2,33 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "verse-memory",
   "compatibility_date": "2026-08-14",
-  // Static-assets-only Worker: no server code, just the built static site.
-  // `npm run build` assembles ./dist from index.html, src/, data/, config.js.
+  // Almost a static-assets-only Worker, and deliberately still shaped like one.
+  // `npm run build` assembles ./dist from index.html, src/, data/, config.js,
+  // and that tree is served untouched — every path but /api/* is answered by
+  // Cloudflare's asset layer without running a line of script.
+  //
+  // The one exception is the transcription route (worker/transcribe.js), which
+  // exists because a browser cannot hold an API key. `run_worker_first` is what
+  // keeps the exception small: only /api/* is handed to the script, so the
+  // static behaviour of every other path is exactly what it was, and the
+  // `ASSETS` binding is how the script hands anything else straight back.
+  //
+  // The worker script is NOT copied into dist/ and must not be — wrangler
+  // bundles `main` from the repo itself, quite separately from
+  // `assets.directory`, so scripts/build.mjs stays the static-site assembler it
+  // has always been.
+  "main": "worker/transcribe.js",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
+  },
+  // Speech-to-text with no secret anywhere: the model is a binding rather than
+  // a key, so there is nothing in this repo, and nothing in a Worker secret,
+  // for a scanner to find at a public endpoint. That is why it is the default
+  // provider. The alternative is Groq — set TRANSCRIBE_PROVIDER=groq and
+  // `wrangler secret put GROQ_API_KEY` — and the route supports both.
+  "ai": {
+    "binding": "AI",
   },
 }

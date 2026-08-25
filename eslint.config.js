@@ -49,6 +49,17 @@ export default [
     },
   },
   {
+    // The one piece of server code: the Cloudflare Worker behind /api/*. It is
+    // an ES module against the Workers runtime, whose globals are the service
+    // worker set (fetch, Response, FormData, btoa) rather than the DOM's.
+    files: ["worker/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: { ...globals.serviceworker },
+    },
+  },
+  {
     // config.js / config.example.js run as classic scripts and assign globals.
     files: ["config*.js"],
     languageOptions: { sourceType: "script", globals: { ...globals.browser } },

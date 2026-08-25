@@ -76,8 +76,18 @@ import { leaderboardView } from "./views/leaderboard.js";
 import { guideView } from "./views/guide.js";
 import { speakView } from "./views/speak.js";
 import { createSpeaker, speechSupported } from "./speaker.js";
-import { bandFor, commandIn, feedbackFor, nextIndex, promptFor, promptWordsFor, silenceMsFor } from "./speak.js";
+import {
+  SILENCE_THINKING_MS,
+  bandFor,
+  commandIn,
+  feedbackFor,
+  nextIndex,
+  promptFor,
+  promptWordsFor,
+  silenceMsFor,
+} from "./speak.js";
 import { createEarcons } from "./earcon.js";
+import { MAX_RECORD_MS, createTranscriber, recordingSupported } from "./transcriber.js";
 import { speakPool } from "./viewmodel/speak.js";
 import { runView } from "./views/run.js";
 import { authGateView } from "./views/auth-gate.js";
@@ -411,7 +421,13 @@ export class App extends React.Component {
       // Asked once, here, because it is a question about the browser.
       voice: { ...this.state.voice, supported: voiceSupported() },
       // Speak needs both halves of the conversation: a voice and an ear.
-      speak: { ...this.state.speak, supported: voiceSupported() && speechSupported() },
+      /* Either way of hearing will do — the browser's own recogniser, or a
+       * recording sent somewhere to be transcribed — but a voice is not
+       * optional: a hands-free sitting that cannot speak has nothing to offer. */
+      speak: {
+        ...this.state.speak,
+        supported: (voiceSupported() || (!!appConfig.transcribeUrl && recordingSupported())) && speechSupported(),
+      },
       scrambleLevel: storage.loadScrambleLevel(defaultDiff, SCRAMBLE_LEVELS.length),
       examSetup: normalizeSetup(storage.loadExamSetup()),
       reviewSetup: storage.loadReviewSetup(this.state.reviewSetup),
@@ -809,6 +825,14 @@ export class App extends React.Component {
       clearTimeout(this.speakTimer);
       this.speakTimer = null;
     }
+    if (this.speakCeiling) {
+      clearTimeout(this.speakCeiling);
+      this.speakCeiling = null;
+    }
+    if (this.speakRecorder) {
+      this.speakRecorder.cancel();
+      this.speakRecorder = null;
+    }
     if (this.speakVoice) this.speakVoice.cancel();
   }
 
@@ -877,6 +901,7 @@ export class App extends React.Component {
       this.speakSet({ heard: "" });
     }
     if (this.speakEarcons) this.speakEarcons.open();
+    if (this.speakRecords()) return this.speakRecord();
     this.speakRec = createRecognizer({
       onStatus: () => {},
       onText: (text, settled, alternatives) => {
@@ -914,6 +939,45 @@ export class App extends React.Component {
     // A recital that never starts is a member who is stuck, not one who is
     // finished, so the first thing that silence buys is a prompt.
     this.speakArmSilence(SPEAK_STALL_MS, true);
+  }
+
+  /* Whether this browser takes the recital in one piece rather than streaming it.
+   *
+   * Streaming is what makes the Web Speech API feel bad: the recogniser ends a
+   * continuous session of its own accord after about a minute, has to be
+   * restarted into a rate-limiter, and on Chrome for Android ignores
+   * `continuous` altogether — which is the phone in the car, the case this mode
+   * exists for. Recording the whole recital and transcribing it once is the
+   * shape that fixes all three, and it is what good dictation tools actually
+   * do. It is off unless a deploy configures somewhere to send the audio, and
+   * when it is off nothing below changes at all. */
+  speakRecords() {
+    return !!appConfig.transcribeUrl && recordingSupported();
+  }
+
+  /* Record the turn instead of streaming it. The rest of the loop — the bands,
+   * the read-back, the prompter — never learns which way the words arrived. */
+  speakRecord() {
+    const p = this.speakPassage();
+    this.speakRecorder = createTranscriber({
+      endpoint: appConfig.transcribeUrl,
+      // Any sound is the member still going, which is the same signal a settled
+      // phrase gives the streaming path.
+      onSound: () => {
+        if (this.state.speak.running && this.state.speak.phase === "listen")
+          this.speakArmSilence(this.speakSilenceMs());
+      },
+      onError: (err) => this.stopSpeak(copy.speak.micError(err)),
+    });
+    if (!this.speakRecorder) return this.stopSpeak(copy.speak.noMic);
+    this.speakRecorder.start();
+    // A stall is still a stall, and a ceiling in case nothing is ever heard at
+    // all — with no transcript yet there is nothing to read a coverage ratio off.
+    this.speakArmSilence(SPEAK_STALL_MS, true);
+    this.speakCeiling = setTimeout(
+      () => this.speakGrade(),
+      Math.min(MAX_RECORD_MS, (p ? p.text.split(/\s+/).length * 400 : 0) + SILENCE_THINKING_MS + 8000),
+    );
   }
 
   /* Of everything the engine thought it heard, the reading closest to the verse
@@ -1001,8 +1065,31 @@ export class App extends React.Component {
     const p = this.speakPassage();
     if (!p) return this.stopSpeak();
     if (this.speakEarcons) this.speakEarcons.close();
-    this.speakTeardown();
 
+    /* A recorded turn has said nothing yet — the words are still in a blob that
+     * has to go and be transcribed. The recorder is detached before the
+     * teardown so that stopping the turn does not cancel the very upload the
+     * mark depends on. */
+    const recorder = this.speakRecorder;
+    this.speakRecorder = null;
+    this.speakTeardown();
+    if (recorder) {
+      return recorder.stop((text) => {
+        if (!this.state.speak.running) return;
+        const command = commandIn(text || "");
+        // A recording that transcribed to a single word was an instruction, not
+        // a recital, and there is nothing in it worth marking.
+        if (command) return this.speakCommand(command);
+        this.speakHeardSettled = text || "";
+        this.speakMark(p);
+      });
+    }
+    return this.speakMark(p);
+  }
+
+  /* Mark what was heard, however it arrived. */
+  speakMark(p) {
+    if (!this.state.speak.running) return;
     const result = feedbackFor(p, this.speakHeardSettled || "", this.state.speak.mode);
     const band = result.abstained ? "lost" : bandFor(result.score);
     const retried = this.speakRetried;
