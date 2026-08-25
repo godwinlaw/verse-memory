@@ -13,6 +13,7 @@ import { chromeVals } from "./chrome.js";
 import { boardVals } from "./board.js";
 import { explainerVals } from "./explainer.js";
 import { guideVals } from "./guide.js";
+import { samuelVals } from "./samuel.js";
 import { listVals } from "./list.js";
 import { reviewVals, reviewSetupVals } from "./review.js";
 import { learnSetupVals } from "./learn.js";
@@ -46,6 +47,7 @@ export function buildViewModel({ state, groupName, motto, deadline, actions, now
     ...explainerVals({ state, actions }),
     // The long-form version of the same two ideas, plus the tour of the header.
     ...guideVals({ state, actions }),
+    ...samuelVals({ state, actions }),
     ...reviewSetupVals({ state, actions, now: now.getTime() }),
     ...learnSetupVals({ state, prog, actions }),
     ...reviewVals({ state, prog, totals, actions }),
