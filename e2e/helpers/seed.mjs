@@ -19,7 +19,7 @@ export { passages };
 /* Two different sizes, and specs have to pick the right one on purpose.
  *
  * GOAL is what the board counts down to — the goal category alone, which is
- * what "n / 167" and the weekly pace are measured against (see
+ * what "n / 171" and the weekly pace are measured against (see
  * viewmodel/totals.js). TOTAL is every passage on every shelf: the size of the
  * list, the board's map, and the set the splash names while it loads. */
 export const GOAL = inCategory(passages, GOAL_CATEGORY).length;

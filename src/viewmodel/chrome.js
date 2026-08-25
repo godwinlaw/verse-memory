@@ -12,6 +12,7 @@ const NAV = [
   { key: "list", label: copy.nav.list },
   { key: "leaderboard", label: copy.nav.leaderboard },
   { key: "guide", label: copy.nav.guide },
+  { key: "samuel", label: copy.nav.samuel },
   { key: "speak", label: copy.speak.nav },
   { key: "run", label: copy.nav.run },
 ];
@@ -58,6 +59,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     isReview: state.view === "review",
     isLeader: state.view === "leaderboard",
     isGuide: state.view === "guide",
+    isSamuel: state.view === "samuel",
     isRun: state.view === "run",
     isDone: state.view === "done",
     isReviewSetup: state.view === "review-setup",
