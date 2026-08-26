@@ -16,6 +16,19 @@ export const appConfig = {
    * without a code change. Retune this one; SPLASH_MAX_MS in App.js is the
    * failsafe above it and is not a preference. */
   splashMinMs: 2000,
+  /* Where a recorded recitation is sent to be transcribed — the route in
+   * worker/transcribe.js, which on this deploy is "/api/transcribe".
+   *
+   * Empty means not configured, and not configured is the default on purpose:
+   * with nothing here Speak mode listens exactly the way it always has, through
+   * the browser's own streaming recognizer, and no audio leaves the device by
+   * this path. Setting it turns on record-then-transcribe (src/transcriber.js),
+   * which is the shape that survives a phone — Chrome for Android ignores
+   * `continuous` entirely, so the streaming path was never really working there
+   * (docs/research/asr.md §1). It sits with the other tunables because it is a
+   * per-deploy fact: a build with no Worker behind it should leave it empty
+   * rather than point at a route that will 404 on every verse. */
+  transcribeUrl: "",
   ...appOverrides,
 };
 
