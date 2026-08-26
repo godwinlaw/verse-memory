@@ -631,11 +631,73 @@ export const scenarios = [
     }),
   },
 
+  // ── speak mode ─────────────────────────────────────────────────────────────
+  { name: "speak/idle", state: baseState({ view: "speak" }) },
+  {
+    name: "speak/idle-supported",
+    state: baseState({
+      view: "speak",
+      speak: {
+        supported: true,
+        running: false,
+        mode: "word",
+        source: "committed",
+        queue: [],
+        index: 0,
+        phase: "idle",
+        heard: "",
+        lastResult: null,
+      },
+    }),
+  },
+  {
+    name: "speak/running-feedback",
+    state: baseState({
+      view: "speak",
+      speak: {
+        supported: true,
+        running: true,
+        mode: "verse",
+        source: "all",
+        queue: [1, 2, 3],
+        index: 1,
+        phase: "feedback",
+        heard: "for god so loved the world",
+        lastResult: {
+          score: 0.5,
+          pct: 50,
+          spokenFeedback: "50 percent correct.",
+          missed: ["world"],
+          perVerse: [{ verse: 1, score: 0.5, pct: 50 }],
+        },
+      },
+    }),
+  },
+
+  {
+    /* A session the microphone ended, not the member — the one case where the
+     * screen going back to the setup needs a sentence beside it. */
+    name: "speak/stopped-by-mic",
+    state: baseState({
+      view: "speak",
+      speak: {
+        supported: true,
+        running: false,
+        mode: "passage",
+        source: "due",
+        queue: [],
+        index: 0,
+        phase: "idle",
+        heard: "",
+        lastResult: null,
+        error: "The microphone was blocked. Allow it in your browser, then try again.",
+      },
+    }),
+  },
+
   // ── samuel mode ────────────────────────────────────────────────────────────
   { name: "samuel/idle", state: baseState({ view: "samuel" }) },
   {
-    /* Mid-round, one question answered wrongly — the state that has to show
-     * both the right answer and the member's pick. */
     name: "samuel/answered",
     state: baseState({
       view: "samuel",
@@ -676,4 +738,38 @@ export const scenarios = [
   // a month on, where the held passage is well under the member's mark.
   { name: "guide/day-zero", state: baseState({ view: "guide", guideDays: 0 }) },
   { name: "guide/month-later", state: baseState({ view: "guide", guideDays: 30 }) },
+
+  // ── run mode ───────────────────────────────────────────────────────────────
+  { name: "run/default", state: baseState({ view: "run" }) },
+  {
+    name: "run/playing",
+    state: baseState({
+      view: "run",
+      run: {
+        supported: true,
+        preset: "sprint",
+        bpm: 180,
+        playing: true,
+        nowRef: "John 11:35",
+        nowText: "Jesus wept.",
+        playlist: [
+          {
+            ref: "Psalm 23",
+            title: "The Lord Is My Shepherd",
+            artist: "Shane & Shane",
+            url: "https://open.spotify.com/track/x",
+          },
+        ],
+      },
+    }),
+  },
+  // A browser with no WebAudio: the beat controls give way to a note, the
+  // playlist stays.
+  {
+    name: "run/unsupported",
+    state: baseState({
+      view: "run",
+      run: { supported: false, preset: "hype", bpm: 165, playing: false, nowRef: "", nowText: "", playlist: [] },
+    }),
+  },
 ].map((s) => ({ props: PROPS, ...s }));

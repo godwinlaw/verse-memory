@@ -21,11 +21,12 @@ import { committedCount, countByStatus, streakOf } from "../progress.js";
 import { segButton } from "../ui/tokens.js";
 import { PRIMARY_DOMAIN } from "../firebase.js";
 
-/* The mobile gate is a dead end: nothing to press, nothing to wait for, and the
- * sentence on it is the same every time (copy.mobileGate). All it takes is who
- * the app belongs to, so it can still name itself while declining. */
-export function mobileGateVals({ groupName }) {
-  return { groupName };
+/* The mobile gate is a warning, not a dead end: the wording is the same every
+ * time (copy.mobileGate), and the one thing on it to press is Continue, which
+ * lets the member through for this visit. The acknowledgement is state-only —
+ * deliberately not persisted, so the safety line is heard again next visit. */
+export function mobileGateVals({ groupName, actions }) {
+  return { groupName, onContinue: actions.acknowledgeMobile };
 }
 
 /* The splash carries nothing but the app's identity and the shape of the wait:

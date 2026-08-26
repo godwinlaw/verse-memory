@@ -1942,3 +1942,9 @@ textarea.input {
     gap: 20px;
   }
 }
+
+/* run mode */
+.run-callout {
+  display: flex;
+  align-items: center;
+}

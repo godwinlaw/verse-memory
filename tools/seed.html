@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Seed local test data — Verse Mastery (dev only)</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --fg: #16191d;
+        --muted: #5c6570;
+        --line: #d8dde3;
+        --panel: #f5f7f9;
+        --accent: #1f4e79;
+        --warn: #8a5300;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14171a;
+          --fg: #e7ebef;
+          --muted: #9aa4ae;
+          --line: #2c3238;
+          --panel: #1c2126;
+          --accent: #8ab6e0;
+          --warn: #d9a441;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 2rem 1.25rem 4rem;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.55 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Helvetica,
+          Arial,
+          sans-serif;
+      }
+      main {
+        max-width: 46rem;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin: 0 0 0.25rem;
+      }
+      h2 {
+        font-size: 1rem;
+        margin: 2rem 0 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+      p {
+        margin: 0.5rem 0;
+      }
+      .lead {
+        color: var(--muted);
+      }
+      .note {
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--warn);
+        background: var(--panel);
+        padding: 0.75rem 1rem;
+        margin: 1rem 0 0;
+        border-radius: 4px;
+      }
+      .note strong {
+        color: var(--warn);
+      }
+      .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 0.75rem 0;
+      }
+      button {
+        font: inherit;
+        padding: 0.55rem 0.9rem;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--panel);
+        color: var(--fg);
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.primary {
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.9em;
+      }
+      pre {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 0.9rem 1rem;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        margin: 0.75rem 0 0;
+        min-height: 3rem;
+      }
+      a {
+        color: var(--accent);
+      }
+      footer {
+        margin-top: 2.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Seed local test data</h1>
+      <p class="lead">
+        Developer tool for Verse Mastery. Speak mode and Run mode both deal from what the member has actually committed,
+        so on a fresh browser there is nothing for either of them to queue. These buttons write a plausible record so
+        the two modes have something to run on.
+      </p>
+
+      <div class="note">
+        <strong>Dev only.</strong> This page writes to <em>this browser's</em> <code>localStorage</code> for
+        <em>this origin</em> (<code id="origin"></code>) — the keys <code>mv.progress</code>, <code>mv.log</code> and
+        <code>mv.profile</code>. It talks to nothing else: no network, no cloud sync, no other browser or device.
+        <strong>Clear</strong> empties progress and the daily log only — it leaves the profile in place, exactly as the
+        app's own "Reset all progress" does.
+      </div>
+
+      <h2>Seed</h2>
+      <div class="buttons">
+        <button class="primary" id="all">Everything at once</button>
+        <button id="profile">Seed a profile</button>
+        <button id="committed">Seed ~25 committed verses</button>
+        <button id="learning">Seed a few in-progress verses</button>
+      </div>
+
+      <h2>Clear</h2>
+      <div class="buttons">
+        <button id="clear">Clear all local progress</button>
+      </div>
+
+      <h2>Result</h2>
+      <pre id="out">Nothing written yet. Press a button above, then reload the app.</pre>
+
+      <footer>
+        <p><a href="/">← Back to the app</a> — reload it after seeding so it reads the new record.</p>
+      </footer>
+    </main>
+
+    <script type="module">
+      /* Seeding a local record, for looking at Speak mode and Run mode without
+       * first earning a hundred reviews by hand.
+       *
+       * This file can never ship. `scripts/build.mjs` copies exactly four things
+       * into `dist/` — `index.html`, `src/`, `data/` and a runtime `config.js` —
+       * so anything under `tools/` is invisible to every deploy path by
+       * construction, not by an .ignore rule someone has to remember. It is
+       * reachable only over the dev server (`npm run dev`), which serves the repo
+       * root: http://localhost:8080/tools/seed.html
+       *
+       * The records are built by calling the app's own modules rather than by
+       * writing out record literals, which is the approach `e2e/helpers/seed.mjs`
+       * already takes and for the same reason: `committed(0.4)` then means "a
+       * verse the app reads as 40% fresh", and a retune of the interval ladder
+       * moves these fixtures with it instead of stranding them. Nothing imported
+       * below reaches `dom.js` or React, so this page needs no CDN and no app
+       * boot — `storage`, `profile`, `srs` and `text` import nothing at all, and
+       * `progress` reaches only `copy`, `srs` and `text`. */
+
+      import { passages } from "../data/passages.js";
+      import { backdatedLast, stabilityFor } from "../src/srs.js";
+      import { committedCount, progressReader, reviewPool } from "../src/progress.js";
+      import { isProfileComplete, reviewSettings, GENDERS, MINISTRY_GROUPS } from "../src/profile.js";
+      import { storage } from "../src/storage.js";
+      import { dayKey } from "../src/text.js";
+
+      /* ── the records ──────────────────────────────────────────────────────── */
+
+      /* Lifted from `e2e/helpers/seed.mjs`, deliberately unchanged. `step` is the
+       * rung of the interval ladder the verse has climbed to, and every record
+       * carries one: a record without `step` exercises `srs.migrate()` instead of
+       * the model, which is not what anyone seeding data wants to look at. */
+      function committed(fresh = 1, { step = 6, hits = 4, now = Date.now() } = {}) {
+        const stability = stabilityFor(step);
+        return {
+          hits,
+          status: "memorized",
+          step,
+          stability,
+          last: backdatedLast(stability, fresh, now),
+          updatedAt: now,
+        };
+      }
+
+      /* A verse opened but never given back in full — what a Learn sitting draws
+       * first, and what makes "whole set" differ from "committed" on the Speak
+       * source switch. */
+      function started(fresh = 0.5, { step = 0, hits = 1, now = Date.now() } = {}) {
+        const stability = stabilityFor(step);
+        return {
+          hits,
+          status: "learning",
+          step,
+          stability,
+          last: backdatedLast(stability, fresh, now),
+          updatedAt: now,
+        };
+      }
+
+      /* A complete profile, so the app skips the sign-up form. All four fields
+       * `isProfileComplete()` asks for, with the two picklist values taken from
+       * `profile.js`'s own option lists rather than typed out here. */
+      const PROFILE = {
+        name: "Dev Seed",
+        ministryGroup: MINISTRY_GROUPS[1], // Kairos
+        gender: GENDERS[0], // Male
+        gradClass: 2027,
+        updatedAt: Date.now(),
+      };
+
+      /* ── which verses, and how faded ──────────────────────────────────────── */
+
+      /* The due threshold is 75% and `reviewPool()` takes a verse at or below it,
+       * so the two buckets stay well clear of the boundary in both directions —
+       * `freshness()` rounds, and a verse seeded at exactly 75 is a verse whose
+       * membership depends on arithmetic nobody wants to reason about while
+       * looking at a screen. */
+      const FRESH = [0.99, 0.97, 0.96, 0.94, 0.93, 0.91, 0.9, 0.89, 0.88];
+      const FADED = [0.72, 0.7, 0.68, 0.65, 0.62, 0.6, 0.57, 0.54, 0.51, 0.48, 0.45, 0.41, 0.38, 0.34, 0.31, 0.28];
+
+      /* Speak mode's verse-by-verse feedback only says anything on a passage that
+       * carries a `verses` array of more than one (see `speak.feedbackFor`), so a
+       * seed that puts every such passage in the fresh bucket cannot exercise it:
+       * the source switch opens on **due**, and a fresh verse is not due. Half of
+       * these therefore go in faded, on purpose. */
+      const hasVerses = (p) => Array.isArray(p.verses) && p.verses.length > 1;
+      const versePassages = passages.filter(hasVerses);
+      const byId = (id) => passages.find((p) => p.id === id);
+
+      const FADED_VERSE_IDS = [171, 178, 175, 169]; // Psalm 23, Hebrews 11:1-7, 2 Cor 4:1-6, Psalm 8
+      const FRESH_VERSE_IDS = [168, 173, 179, 176]; // Psalm 1, Psalm 37:1-9, Hebrews 11:8-16, 2 Cor 4:7-12
+
+      /* Everything else comes off the single-verse passages, scattered across the
+       * whole list rather than taken off the front, so the seeded record reads
+       * like a member working through the set instead of one stuck in Exodus.
+       *
+       * The walk steps by a stride large enough to jump between books and skips
+       * anything it has already picked, which does two jobs at once: consecutive
+       * slices of the result are still spread over the set, so the three buckets
+       * below can be plain `slice()` calls; and the picks are guaranteed
+       * distinct, so a passage cannot be seeded twice and quietly cost the batch
+       * a record. It is deterministic besides — seeding twice writes the same
+       * record twice, which is what makes a bug reproducible. */
+      const plain = passages.filter((p) => !hasVerses(p));
+      const STRIDE = 29;
+      const PLAIN_COUNT = FRESH.length - FRESH_VERSE_IDS.length + (FADED.length - FADED_VERSE_IDS.length) + 6;
+      const plainPicks = [];
+      for (let i = 0; plainPicks.length < PLAIN_COUNT && i < plain.length * 2; i++) {
+        const p = plain[(i * STRIDE) % plain.length];
+        if (!plainPicks.includes(p)) plainPicks.push(p);
+      }
+
+      const PLAIN_FRESH = plainPicks.slice(0, 5);
+      const PLAIN_FADED = plainPicks.slice(5, 17);
+      const PLAIN_LEARNING = plainPicks.slice(17, 23);
+
+      /* Verses opened but not committed. Freshness on an uncommitted verse is
+       * never shown to a member (a learn screen never mentions it), but it is
+       * what `learnPool()` orders on, so it is worth seeding a spread. */
+      const LEARNING = [0.65, 0.55, 0.48, 0.4, 0.33, 0.22];
+
+      /* ── writing ──────────────────────────────────────────────────────────── */
+
+      /* Every seed folds into whatever is already stored rather than replacing
+       * it, so pressing two buttons in turn keeps both batches. Progress and the
+       * log are saved together because `storage` saves them together — they
+       * change together on a completed review, and the cloud push carries both. */
+      function addProgress(records) {
+        const merged = { ...storage.loadProgress(), ...records };
+        storage.saveProgressAndLog(merged, storage.loadLog());
+        return merged;
+      }
+
+      function seedProfile() {
+        storage.saveProfile({ ...storage.loadProfile(), ...PROFILE, updatedAt: Date.now() });
+        return [
+          `Wrote mv.profile: ${PROFILE.name} · ${PROFILE.ministryGroup} · ${PROFILE.gender} · class of ${PROFILE.gradClass}`,
+          `isProfileComplete() → ${isProfileComplete(storage.loadProfile())} (the sign-up form is skipped)`,
+        ];
+      }
+
+      function seedCommitted() {
+        const now = Date.now();
+        const records = {};
+        const lines = [];
+
+        const fresh = [...FRESH_VERSE_IDS.map(byId), ...PLAIN_FRESH];
+        const faded = [...FADED_VERSE_IDS.map(byId), ...PLAIN_FADED];
+
+        /* The rung is varied along with the freshness so the seeded set is not
+         * twenty-five verses all sitting on the same interval: a fresh verse has
+         * usually been round more times than a faded one. */
+        fresh.forEach((p, i) => {
+          records[p.id] = committed(FRESH[i], { step: 6 + (i % 4), hits: 5 + (i % 3), now });
+        });
+        faded.forEach((p, i) => {
+          records[p.id] = committed(FADED[i], { step: 2 + (i % 5), hits: 2 + (i % 4), now });
+        });
+
+        addProgress(records);
+        seedLog();
+
+        lines.push(`Wrote mv.progress: ${fresh.length + faded.length} committed verses`);
+        lines.push(`  ${fresh.length} still fresh (88–99%) — above the 75% due mark, so not in the review queue`);
+        lines.push(`  ${faded.length} faded (28–72%) — at or below the mark, so Speak's "Due" queue has real content`);
+        lines.push(`Wrote mv.log: six days of reviews, so the board shows a streak`);
+        return lines;
+      }
+
+      function seedLearning() {
+        const now = Date.now();
+        const records = {};
+        PLAIN_LEARNING.forEach((p, i) => {
+          records[p.id] = started(LEARNING[i], { step: i % 2, hits: 1 + (i % 2), now });
+        });
+        addProgress(records);
+        return [`Wrote mv.progress: ${PLAIN_LEARNING.length} in-progress (uncommitted) verses`];
+      }
+
+      /* A short run of days with reviews on them, written the way `streakOf()`
+       * reads it — one entry per local day, which is why it goes through
+       * `text.dayKey` rather than through an ISO string. */
+      function seedLog() {
+        const log = { ...storage.loadLog() };
+        const today = new Date();
+        [4, 6, 3, 8, 5, 7].forEach((n, ago) => {
+          const d = new Date(today);
+          d.setDate(d.getDate() - ago);
+          log[dayKey(d)] = Math.max(log[dayKey(d)] || 0, n);
+        });
+        storage.saveProgressAndLog(storage.loadProgress(), log);
+      }
+
+      /* ── reporting ────────────────────────────────────────────────────────── */
+
+      /* The figures are read back out of the app's own modules rather than
+       * counted from the batch that was just written, so what this page reports
+       * is what the app will say — including the due count, which is computed
+       * with exactly the expression `viewmodel/speak.js` uses for its "N passages
+       * in the queue" label. */
+      function summary() {
+        const progress = storage.loadProgress();
+        const profile = storage.loadProfile();
+        const read = progressReader(progress);
+        const due = reviewPool(passages, progress, reviewSettings(profile).dueFreshness);
+        const learning = passages.filter((p) => read.statusOf(p.id) === "learning");
+        const seededVerseBearing = versePassages.filter((p) => read.statusOf(p.id) === "memorized");
+        const dueVerseBearing = due.filter(hasVerses);
+
+        const lines = [
+          "",
+          "── as the app now reads it ─────────────────────────────",
+          `Committed (committedCount):        ${committedCount(progress)} of ${passages.length}`,
+          `Due for review right now (reviewPool at ${reviewSettings(profile).dueFreshness}%): ${due.length}`,
+          `In progress, uncommitted:          ${learning.length}`,
+          `Profile complete:                  ${isProfileComplete(profile)}`,
+          "",
+          "Speak mode → the three sources deal:",
+          `  Due        ${due.length}`,
+          `  Committed  ${committedCount(progress)}`,
+          `  All        ${passages.length}`,
+          `Run mode → calloutQueue (committed, stalest first): ${committedCount(progress) || passages.length}` +
+            (committedCount(progress) ? "" : "  ← falls back to the whole set"),
+          "",
+        ];
+
+        if (seededVerseBearing.length) {
+          lines.push("Multi-verse passages committed (Speak's verse-by-verse mode has something to say on these):");
+          seededVerseBearing.forEach((p) => {
+            const state = dueVerseBearing.includes(p) ? "due now" : "still fresh";
+            lines.push(`  ${p.ref} — ${p.verses.length} verses, ${read.freshness(p.id)}% fresh, ${state}`);
+          });
+        } else {
+          lines.push("No multi-verse passages committed — Speak's verse-by-verse mode has nothing to slice.");
+        }
+        return lines;
+      }
+
+      const out = document.getElementById("out");
+      const report = (lines) => {
+        out.textContent = [...lines, ...summary()].join("\n");
+      };
+
+      document.getElementById("origin").textContent = location.origin;
+
+      document.getElementById("profile").onclick = () => report(seedProfile());
+      document.getElementById("committed").onclick = () => report(seedCommitted());
+      document.getElementById("learning").onclick = () => report(seedLearning());
+      document.getElementById("all").onclick = () => report([...seedProfile(), ...seedCommitted(), ...seedLearning()]);
+      document.getElementById("clear").onclick = () => {
+        /* The app's own wipe, so this page cannot clear something the settings
+         * form would not. Progress and the daily log go; the profile stays. */
+        storage.clearProgressAndLog();
+        report(["Cleared mv.progress and mv.log. mv.profile is untouched."]);
+      };
+    </script>
+  </body>
+</html>
