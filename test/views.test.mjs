@@ -42,43 +42,6 @@ function shown(name) {
 
 test.after(() => restore());
 
-/* ── run mode ─────────────────────────────────────────────────────────────── */
-
-test("the run screen offers the pinned Psalms playlist and the beat controls", () => {
-  const markup = shown("run/default");
-  assert.match(markup, /Psalms memory playlist \(by Emily\)/);
-  assert.match(markup, /open\.spotify\.com\/playlist\/2J256T9x2D6ysT1zOwpNyE/);
-  assert.match(markup, /Steady/);
-  assert.match(markup, /Hype/);
-  assert.match(markup, /Sprint/);
-});
-
-test("a playing run shows the verse being called out", () => {
-  const markup = shown("run/playing");
-  assert.match(markup, /John 11:35/);
-  assert.match(markup, /Jesus wept\./);
-  assert.match(markup, /Shane (&amp;|&) Shane/);
-});
-
-test("a browser with no WebAudio still gets the playlist", () => {
-  const markup = shown("run/unsupported");
-  assert.doesNotMatch(markup, /Steady/);
-  assert.match(markup, /Psalms memory playlist/);
-});
-
-/* ── speak mode ───────────────────────────────────────────────────────────── */
-
-test("a session the microphone ended says so, rather than just going quiet", () => {
-  const markup = shown("speak/stopped-by-mic");
-  assert.match(markup, /microphone was blocked/i);
-  // And it is still offering the way back in — the screen is not a dead end.
-  assert.match(markup, /Start speaking/);
-});
-
-test("an ordinary idle speak screen carries no alarm", () => {
-  assert.doesNotMatch(shown("speak/idle-supported"), /microphone was blocked/i);
-});
-
 /* No screen prints arithmetic that did not work out.
  *
  * This is cheap and it earns its place: the leaderboard quoted "NaN%" on every
@@ -124,21 +87,18 @@ test("turning the passage over asks for the other words", () => {
   assert.notEqual(shown("review/blanks-alternating"), shown("review/blanks-alternating-flipped"));
 });
 
-test("a phone is warned before the app, and before the splash", () => {
+test("a phone is turned away before the app, and before the splash", () => {
   const blocked = shown("device/mobile");
-  assert.match(blocked, /at its best on a computer/);
-  assert.match(blocked, /never look at or touch the screen while driving/, "the safety warning is on it");
-  // The way through: a Continue button, and nothing else to press.
-  assert.match(blocked, /Continue<\/button>/);
+  assert.match(blocked, /not available on a mobile device/);
   // Nothing behind the gate leaks past it: no board, no sign-in, no boot.
   assert.doesNotMatch(blocked, /passages committed/);
   assert.doesNotMatch(blocked, /Sign in with Google/);
   assert.doesNotMatch(blocked, /class="splash-mark"/);
 
-  // Still warned mid-boot: the decision does not wait on anything loading,
+  // Still refused mid-boot: the decision does not wait on anything loading,
   // since none of it changes the answer.
   const loading = shown("device/mobile-while-loading");
-  assert.match(loading, /at its best on a computer/);
+  assert.match(loading, /not available on a mobile device/);
   assert.doesNotMatch(loading, /class="splash-mark"/);
 });
 

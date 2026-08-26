@@ -94,7 +94,6 @@ export const copy = {
     leaderboard: "Stats",
     guide: "Guide",
     samuel: "Samuel",
-    run: "Run",
   },
 
   header: {
@@ -122,17 +121,12 @@ export const copy = {
 
   /* ── the gates ──────────────────────────────────────────────────────────── */
 
-  /* The first of them: a warning for a phone or a tablet (see src/device.js).
-   * It stands in front of the splash, so it is written first here too. The app
-   * still works on a phone — the member just has to hear this first, every
-   * visit, because the safety line is worth saying each time. */
+  /* The first of them, and the only one a member can do nothing about: the app
+   * is not offered on a phone or a tablet (see src/device.js). It stands in
+   * front of the splash, so it is written first here too. */
   mobileGate: {
-    lead: "This app is designed for a sitting at a desk, and it is at its best on a computer.",
-    caveat: "It works on a phone, but it is not the experience it was built for.",
-    safety:
-      "Please be careful with Speak mode — never look at or touch the screen while driving. " +
-      "Keep your eyes on the road; let the audio do the work.",
-    continueCta: "Continue",
+    message:
+      "This app is not available on a mobile device to reduce screen time. Access with a non-mobile device instead.",
   },
 
   /* The splash the app opens on, while it works out whether the member is
@@ -875,86 +869,5 @@ export const copy = {
     roundScore: (right, of) => "That round: " + right + " of " + of + ".",
     weakest: "Read these again",
     missedCount: (n) => (n === 1 ? "1 miss" : n + " misses"),
-  },
-
-  /* speak mode */
-  speak: {
-    nav: "Speak",
-    title: "Speak mode",
-    lead: "Hands-free practice. The app reads out a reference, you recite the passage, and it tells you how you did — then moves straight on to the next one until you stop.",
-    modeLabel: "Feedback",
-    modes: { passage: "Whole passage", word: "Word by word", verse: "Verse by verse" },
-    sourceLabel: "Queue",
-    sources: { due: "Due for review", committed: "All committed", all: "Whole set" },
-    start: "Start speaking",
-    stop: "Stop",
-    phases: { idle: "Ready", prompt: "Reading reference", listen: "Listening", feedback: "How you did" },
-    queueCount: (n) => n + (n === 1 ? " passage" : " passages") + " in the queue",
-    lastScore: (pct) => pct + "% correct",
-    unsupported: "This browser cannot speak or listen, so Speak mode is not available here. Chrome can.",
-    empty: "Nothing in this queue. Pick another queue, or learn some verses first.",
-    practiceNote: "Practice only — a speaking session does not move your review schedule.",
-    prompt: (ref) => "Recite " + ref + ".",
-    scoreSpoken: (pct) => pct + " percent correct.",
-    missedWords: (words) => "You missed: " + words.join(", ") + ".",
-    verseSpoken: (n, pct) => "Verse " + n + ": " + pct + " percent.",
-    nothingHeard: "Let's take this one together.",
-
-    /* What the app says about a recital, by band (see BANDS in speak.js).
-     *
-     * A percentage is not said aloud any more. It was a number with nothing
-     * attached: nobody at the wheel can act on "sixty-two percent", and hearing
-     * one after every verse made the session feel like a test being
-     * administered rather than a passage being learned. Three of these four
-     * lines hand the verse back instead, which is both the feedback and the
-     * next repetition. The figure is still on the screen for anyone who wants
-     * it. */
-    opening: (n) =>
-      (n === 1 ? "One verse" : n + " verses") +
-      ". I'll read the reference, you say the verse, then I'll read it back. If you get stuck, say hint.",
-    clean: "That's it.",
-    close: "Close. Here it is.",
-    shaky: "Not quite. Listen.",
-    nowYou: "Now you.",
-    lost: "Let's take this one together.",
-    /* The prompter's few words. Said as the verse says them, so a member hears
-     * the line rather than a list. */
-    prompter: (words) => (words ? "It goes, " + words + "…" : "Here it is."),
-    /* The same four verdicts, for the screen rather than the ear. */
-    bands: { clean: "That's it", close: "Close", shaky: "Not quite", lost: "Together" },
-    /* A speaking session that ends because the microphone was refused looks
-     * exactly like one the member stopped, so it says which it was. The
-     * sentences are the review screen's — one microphone, one set of words for
-     * what can go wrong with it. */
-    micError: (code) => copy.review.voiceErrors[code] || copy.review.voiceErrors.failed,
-    noMic: "This browser cannot listen, so a speaking session has nothing to hear. Chrome can.",
-    endedNote: "The session stopped.",
-  },
-
-  /* run mode */
-  run: {
-    title: "Run mode",
-    blurb: "Go for a run and keep memorizing: a beat keeps your cadence, and your verses are called out over it.",
-    unsupported: "This browser cannot play the beat. The playlist below still works.",
-    presetLabel: "Beat",
-    bpmLabel: "BPM",
-    start: "Start the run",
-    stop: "Stop",
-    idleNote: "Press start: the beat drops, a verse is read out, and you get a gap to say it back in your head.",
-    playlistTitle: "Running playlist",
-    psalmsPlaylist: "Psalms memory playlist (by Emily)",
-    testSound: "Test sound",
-    testSpoken: "Sound is working.",
-    /* Heard nothing? These are the two things worth knowing, and neither is
-     * visible without being told. */
-    audioState: (state) =>
-      state === "running"
-        ? "Beat playing"
-        : state === "suspended"
-          ? "Audio paused by the browser — press start again"
-          : "Beat off",
-    saying: (line) => "Saying: " + line,
-    backgroundNote:
-      "Keep this tab open and the screen on. A phone that locks or a tab left in the background can silence the audio.",
   },
 };
