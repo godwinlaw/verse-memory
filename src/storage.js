@@ -21,7 +21,6 @@ const KEYS = {
   learnSetup: "mv.learnSetup",
   explainerOpen: "mv.explainerOpen",
   theme: "mv.theme",
-  samuel: "mv.samuel",
 };
 
 /* ── guarded primitives ───────────────────────────────────────────────────── */
@@ -73,11 +72,6 @@ export const storage = {
   loadProgress: () => readJSON(KEYS.progress, {}),
   loadLog: () => readJSON(KEYS.log, {}),
   loadProfile: () => readJSON(KEYS.profile, {}),
-  /* Samuel mode's quiz record. Device-local and never synced or merged into the
-   * passage record: it answers a different question about a different thing,
-   * and folding it into progress would put quiz answers on the leaderboard. */
-  loadSamuel: () => readJSON(KEYS.samuel, {}),
-  saveSamuel: (record) => write(KEYS.samuel, JSON.stringify(record)),
   loadBlankLevel: (fallback, count) => readIndex(KEYS.blankLevel, fallback, count),
   loadBlankParity: (fallback, count) => readIndex(KEYS.blankParity, fallback, count),
   loadScrambleLevel: (fallback, count) => readIndex(KEYS.scrambleLevel, fallback, count),

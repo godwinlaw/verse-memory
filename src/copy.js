@@ -93,7 +93,6 @@ export const copy = {
     list: "Passages",
     leaderboard: "Stats",
     guide: "Guide",
-    samuel: "Samuel",
   },
 
   header: {
@@ -834,40 +833,5 @@ export const copy = {
       phrases: ["Hear, O Israel:", "The LORD our God,", "the LORD is one."],
     },
     start: "Start learning",
-  },
-
-  /* samuel mode */
-  samuel: {
-    title: "Samuel",
-    lead: "Getting ready for the test on 1 and 2 Samuel. Answer questions until the weak spots show, then read those chapters again.",
-    /* The countdown is the reason the screen exists, so it says the number
-     * plainly rather than dressing it up. */
-    countdown: (days) =>
-      days > 1
-        ? days + " days until the test"
-        : days === 1
-          ? "The test is tomorrow"
-          : days === 0
-            ? "The test is today"
-            : "The test has passed",
-    readiness: (held, total) => "You have " + held + " of " + total + " questions holding",
-    seen: (seen, total) => seen + " of " + total + " seen so far",
-    tabQuiz: "Quiz",
-    tabRead: "Read",
-    scopeLabel: "Which book",
-    bothBooks: "Both",
-    start: "Start a round",
-    again: "Another round",
-    idle: "Ten questions a round, weighted toward whatever you have been getting wrong.",
-    position: (n, of) => "Question " + n + " of " + of,
-    right: "Right.",
-    /* Being told the answer is the point of getting it wrong, so the wrong
-     * verdict carries it rather than just saying no. */
-    wrong: (answer) => "Not quite — it is " + answer + ".",
-    next: "Next",
-    finish: "Finish the round",
-    roundScore: (right, of) => "That round: " + right + " of " + of + ".",
-    weakest: "Read these again",
-    missedCount: (n) => (n === 1 ? "1 miss" : n + " misses"),
   },
 };

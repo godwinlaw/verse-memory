@@ -48,7 +48,6 @@ import {
   onPushError,
 } from "./firebase.js";
 import { passages } from "../data/passages.js";
-import { buildRound, recordAnswer, isRight } from "./samuel.js";
 import {
   buildViewModel,
   authGateVals,
@@ -73,7 +72,6 @@ import { examView } from "./views/exam.js";
 import { examDoneView } from "./views/exam-done.js";
 import { leaderboardView } from "./views/leaderboard.js";
 import { guideView } from "./views/guide.js";
-import { samuelView } from "./views/samuel.js";
 import { authGateView } from "./views/auth-gate.js";
 import { profileFormView } from "./views/profile-form.js";
 import { syncBannerView, syncGateView } from "./views/sync-gate.js";
@@ -317,22 +315,6 @@ function initialState() {
     // paint, so this is the app catching up with the page it booted on rather
     // than the other way round (see theme.js).
     theme: DEFAULT_THEME,
-
-    /* samuel mode — the study screen for the 1 and 2 Samuel test. `record` is
-     * the only part that outlives the sitting, and it is kept apart from the
-     * passage progress on purpose: a multiple-choice answer about the census in
-     * 2 Samuel 24 is not evidence about how well a verse is held. */
-    samuel: {
-      record: storage.loadSamuel(),
-      round: [],
-      index: 0,
-      answer: null,
-      results: [],
-      scope: null,
-      view: "quiz",
-      book: "1 Samuel",
-      openChapter: "",
-    },
   };
 }
 
@@ -1042,40 +1024,6 @@ export class App extends React.Component {
 
   /* ── the action table handed to the view-model ──────────────────────────── */
 
-  /* ── samuel mode ────────────────────────────────────────────────────────── */
-
-  setSamuel(patch, then) {
-    this.setState((st) => ({ samuel: { ...st.samuel, ...patch } }), then);
-  }
-
-  startSamuelRound() {
-    const s = this.state.samuel;
-    // Seeded off the clock so two rounds in a row are not the same ten, and
-    // weighted by the record so the ten lean toward what keeps going wrong.
-    const round = buildRound(s.record, { scope: s.scope, seed: Date.now() >>> 0 });
-    this.setSamuel({ round, index: 0, answer: null, results: [] });
-  }
-
-  answerSamuel(choice) {
-    const s = this.state.samuel;
-    const question = s.round[s.index];
-    if (!question || s.answer !== null) return;
-    const record = recordAnswer(s.record, question, choice);
-    storage.saveSamuel(record);
-    this.setSamuel({ answer: choice, record, results: [...s.results, isRight(question, choice)] });
-  }
-
-  nextSamuel() {
-    const s = this.state.samuel;
-    this.setSamuel({ index: s.index + 1, answer: null });
-  }
-
-  /* Jump from a weak chapter straight to reading it — the one place the two
-   * halves of the screen talk to each other. */
-  readSamuelChapter(book, chapter) {
-    this.setSamuel({ view: "read", book, openChapter: book + " " + chapter });
-  }
-
   buildActions() {
     const set = (patch) => this.setState(patch);
     return {
@@ -1347,16 +1295,6 @@ export class App extends React.Component {
       // guide
       setGuideDays: (guideDays) => set({ guideDays }),
 
-      /* samuel mode */
-      startSamuelRound: () => this.startSamuelRound(),
-      answerSamuel: (choice) => this.answerSamuel(choice),
-      nextSamuel: () => this.nextSamuel(),
-      setSamuelTab: (view) => this.setSamuel({ view }),
-      setSamuelScope: (scope) => this.setSamuel({ scope, round: [], index: 0, answer: null, results: [] }),
-      setSamuelBook: (book) => this.setSamuel({ book, openChapter: "" }),
-      openSamuelChapter: (key) => this.setSamuel({ openChapter: this.state.samuel.openChapter === key ? "" : key }),
-      readSamuelChapter: (book, chapter) => this.readSamuelChapter(book, chapter),
-
       // leaderboard
       setLeaderFilter: (key, value) => this.setState((s) => ({ leaderFilter: { ...s.leaderFilter, [key]: value } })),
       setLeaderRankBy: (key) => this.setState({ leaderRankBy: key }),
@@ -1451,8 +1389,7 @@ export class App extends React.Component {
       ${headerView(v)} ${v.syncWarning && syncBannerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)}
       ${v.isReviewSetup && reviewSetupView(v)} ${v.isLearnSetup && learnSetupView(v)} ${v.isReview && reviewView(v)}
       ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)}
-      ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)}
-      ${v.isSamuel && samuelView(v)} ${footerView(v)}
+      ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)} ${footerView(v)}
     </div>`;
   }
 }
