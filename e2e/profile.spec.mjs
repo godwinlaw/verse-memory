@@ -15,8 +15,17 @@ import { committed, passageById, started } from "./helpers/seed.mjs";
 
 const signedIn = { session: MEMBER };
 
+/* The sign-up form and the welcome nudge that follows it are switched off as
+ * the app ships (src/config.js `features`) — a member signs in and lands on the
+ * board. They are hidden rather than deleted, so most of this file puts them
+ * back the way a deploy would; the last test is the one that does not, and
+ * checks what a member actually meets. `PROFILE_FIELDS` is the narrower flag
+ * for a screen that only needs the form's identity fields, not the gate. */
+const SIGNUP = { profileSetup: true, welcome: true };
+const PROFILE_FIELDS = { profileSetup: true };
+
 test("a member with no profile fills one in before the app", async ({ app, page }) => {
-  await app.boot({ profile: null, firebase: signedIn });
+  await app.boot({ profile: null, firebase: signedIn, features: SIGNUP });
 
   await expect(page.getByText("SET UP YOUR PROFILE")).toBeVisible();
   await expect(app.board).toHaveCount(0);
@@ -59,7 +68,7 @@ test("a member with no profile fills one in before the app", async ({ app, page 
  * wait for Settings — and nothing is lost by waiting, because the defaults are
  * written either way (App.submitProfile). */
 test("signing up never asks how reviews should work", async ({ app, page }) => {
-  await app.boot({ profile: null, firebase: signedIn });
+  await app.boot({ profile: null, firebase: signedIn, features: SIGNUP });
   await expect(page.getByText("SET UP YOUR PROFILE")).toBeVisible();
 
   await expect(page.getByText("REVIEW SETTINGS")).toHaveCount(0);
@@ -91,7 +100,7 @@ test("signing up never asks how reviews should work", async ({ app, page }) => {
 
 test("the member's freshness threshold decides what comes back round", async ({ app, page }) => {
   // Committed at 60%: due at the default 75% mark, but not at 40%.
-  await app.boot({ progress: { 2: committed(0.6) }, firebase: signedIn });
+  await app.boot({ progress: { 2: committed(0.6) }, firebase: signedIn, features: { ...PROFILE_FIELDS, guide: true } });
   await expect(app.queue("Review today")).toContainText(passageById(2).ref);
 
   await app.header.getByRole("button", { name: "Settings" }).click();
@@ -110,7 +119,7 @@ test("the member's freshness threshold decides what comes back round", async ({ 
 });
 
 test("editing can be backed out of", async ({ app, page }) => {
-  await app.boot({ progress: {}, firebase: signedIn });
+  await app.boot({ progress: {}, firebase: signedIn, features: PROFILE_FIELDS });
 
   await app.header.getByRole("button", { name: "Settings" }).click();
   await page.getByPlaceholder("Your full name").fill("Someone Else");
@@ -125,7 +134,11 @@ test("editing can be backed out of", async ({ app, page }) => {
  * visit, and that it went up as a replacement — a merged push would leave every
  * verse in the cloud copy to come back on the following sign-in. */
 test("resetting all progress empties the board, and stays empty", async ({ app, page }) => {
-  await app.boot({ progress: { 1: committed(1), 2: committed(0.6), 3: started(0.5) }, firebase: signedIn });
+  await app.boot({
+    progress: { 1: committed(1), 2: committed(0.6), 3: started(0.5) },
+    firebase: signedIn,
+    features: PROFILE_FIELDS,
+  });
   expect(await app.figure(app.committedFigure)).toBe(2);
 
   await app.header.getByRole("button", { name: "Settings" }).click();
@@ -167,4 +180,25 @@ test("resetting all progress empties the board, and stays empty", async ({ app, 
 
   await app.revisit();
   expect(await app.figure(app.committedFigure)).toBe(0);
+});
+
+/* And what a member meets today, with both flags where they ship: no form
+ * between them and the app, and a settings screen that is only settings. */
+test("with the sign-up form put away, a new member goes straight to the board", async ({ app, page }) => {
+  await app.boot({ profile: null, firebase: signedIn });
+
+  await expect(app.board).toBeVisible();
+  await expect(page.getByText("SET UP YOUR PROFILE")).toHaveCount(0);
+
+  // Settings is still there, and still saves — it just asks nothing about who
+  // the member is, so there is nothing left incomplete to hold Save against.
+  await app.header.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByText("REVIEW SETTINGS")).toBeVisible();
+  await expect(page.getByPlaceholder("Start typing to search…")).toHaveCount(0);
+
+  await page.getByLabel("Review a committed verse once it fades to (%)").fill("40");
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(app.board).toBeVisible();
+  await expect(app.board).toContainText("committed · faded to 40% or below");
 });

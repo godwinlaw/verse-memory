@@ -21,8 +21,6 @@ import { BLANK_LEVELS, BLANK_PARITIES, SCRAMBLE_LEVELS } from "./blanks.js";
 import { transcribe } from "./voice.js";
 import { lockedInput } from "./grading.js";
 import { createRecognizer, voiceSupported } from "./recognizer.js";
-import { beatSupported, createBeat, presetByKey, speak, stopSpeaking } from "./beat.js";
-import { calloutQueue, calloutScript } from "./run.js";
 import { storage, mergeProgress, mergeLog } from "./storage.js";
 import { dueOrder } from "./progress.js";
 import { DEFAULT_MODE, LEARN, LEARN_SIZE, REVIEW, SESSION_SIZE } from "./review.js";
@@ -36,7 +34,7 @@ import {
   mergeProfile,
   reviewSettings,
 } from "./profile.js";
-import { appConfig } from "./config.js";
+import { appConfig, features } from "./config.js";
 import { detectMobile } from "./device.js";
 import { DEFAULT_THEME, applyTheme, normalizeTheme, watchSystemTheme } from "./theme.js";
 import {
@@ -50,7 +48,6 @@ import {
   onPushError,
 } from "./firebase.js";
 import { passages } from "../data/passages.js";
-import { buildRound, recordAnswer, isRight } from "./samuel.js";
 import {
   buildViewModel,
   authGateVals,
@@ -75,13 +72,6 @@ import { examView } from "./views/exam.js";
 import { examDoneView } from "./views/exam-done.js";
 import { leaderboardView } from "./views/leaderboard.js";
 import { guideView } from "./views/guide.js";
-import { samuelView } from "./views/samuel.js";
-import { speakView } from "./views/speak.js";
-import { createSpeaker, speechSupported } from "./speaker.js";
-import { bandFor, commandIn, feedbackFor, nextIndex, promptFor, promptWordsFor, silenceMsFor } from "./speak.js";
-import { createEarcons } from "./earcon.js";
-import { speakPool } from "./viewmodel/speak.js";
-import { runView } from "./views/run.js";
 import { authGateView } from "./views/auth-gate.js";
 import { profileFormView } from "./views/profile-form.js";
 import { syncBannerView, syncGateView } from "./views/sync-gate.js";
@@ -199,30 +189,13 @@ function focusRecall() {
  * begins in `typed` (see voice.js); at rest there is no such phrase. */
 const quietVoice = () => ({ status: "off", error: null, tail: 0, rest: 0 });
 
-/* Speak mode's clocks. The two that matter are in `speak.js` — how long a
- * silence runs before a recital counts as finished, which depends on how much
- * of the passage has been heard. These are the rest:
- *
- *   STALL   how long a member gets before being offered the next few words
- *   PROMPTS how many times that help is given before the verse is simply read
- *   ENDPOINT the shortest the wait can be cut to when the engine says the
- *            speech has ended — a floor, so its judgement can hurry the loop
- *            along but never take the last word out of somebody's mouth */
-const SPEAK_SILENCE_MS = 2500;
-const SPEAK_STALL_MS = 5000;
-const SPEAK_MAX_PROMPTS = 2;
-const SPEAK_ENDPOINT_MS = 1200;
-
 function initialState() {
   return {
     // Settled once, at startup: what the app is being read on. A phone or a
-    // tablet is shown a warning before anything else happens (see device.js),
-    // and the answer cannot change under a member mid-session, so nothing ever
+    // tablet is turned away before anything else happens (see device.js), and
+    // the answer cannot change under a member mid-session, so nothing ever
     // asks again.
     isMobile: detectMobile(),
-    // Whether the member has pressed through the mobile warning. State-only and
-    // deliberately not persisted: the safety warning is re-shown each visit.
-    mobileAck: false,
     loaded: false,
     // The splash stands in front of everything until local data has loaded and
     // Firebase has said whether there is a session to restore — only then does
@@ -270,26 +243,6 @@ function initialState() {
     // once at startup, so no view-model ever has to ask the window a question;
     // the rest is the running microphone. See voice.js for where the words go.
     voice: { supported: false, ...quietVoice() },
-
-    /* Speak mode: the hands-free recitation loop. Practice only — a speak
-     * session never calls record() or touches progress; SRS credit for a
-     * clean spoken recital is follow-up work. Nothing here is persisted. */
-    speak: {
-      supported: false, // settled at startup: needs both a voice and an ear
-      running: false,
-      mode: "passage", // 'passage' | 'word' | 'verse' — see src/speak.js
-      source: "due", // 'due' | 'committed' | 'all'
-      queue: [], // passage ids, wrapped forever until Stop
-      index: 0,
-      phase: "idle", // idle | prompt | listen | feedback
-      heard: "", // the settled transcript of the current recital
-      lastResult: null, // feedbackFor()'s verdict on the last recital
-      /* Why a session ended, when it ended by itself. A speak session that
-       * stops because the microphone was refused looks exactly like one the
-       * member stopped — the screen simply goes back to the setup — and a
-       * speakr has no way to find that out. */
-      error: "",
-    },
     scrambleOrder: [],
     scrambleWrong: -1,
     scrambleMisses: 0, // chunks tried in the wrong place on this card
@@ -362,38 +315,6 @@ function initialState() {
     // paint, so this is the app catching up with the page it booted on rather
     // than the other way round (see theme.js).
     theme: DEFAULT_THEME,
-
-    /* samuel mode — the study screen for the 1 and 2 Samuel test. `record` is
-     * the only part that outlives the sitting, and it is kept apart from the
-     * passage progress on purpose: a multiple-choice answer about the census in
-     * 2 Samuel 24 is not evidence about how well a verse is held. */
-    samuel: {
-      record: storage.loadSamuel(),
-      round: [],
-      index: 0,
-      answer: null,
-      results: [],
-      scope: null,
-      view: "quiz",
-      book: "1 Samuel",
-      openChapter: "",
-    },
-
-    /* run mode — the beat's settings, whether it is running, the verse being
-     * called out, and the Spotify playlist (loaded lazily; see loadRunPlaylist). */
-    run: {
-      supported: beatSupported(),
-      preset: "hype",
-      bpm: presetByKey("hype").bpm,
-      playing: false,
-      nowRef: "",
-      nowText: "",
-      /* The line being spoken and what the audio hardware says it is doing —
-       * both on screen, because silence is otherwise a symptomless fault. */
-      saying: "",
-      audio: "off",
-      playlist: [],
-    },
   };
 }
 
@@ -428,8 +349,6 @@ export class App extends React.Component {
       typeFirstLetter: storage.loadTypeFirstLetter(this.state.typeFirstLetter),
       // Asked once, here, because it is a question about the browser.
       voice: { ...this.state.voice, supported: voiceSupported() },
-      // Speak needs both halves of the conversation: a voice and an ear.
-      speak: { ...this.state.speak, supported: voiceSupported() && speechSupported() },
       scrambleLevel: storage.loadScrambleLevel(defaultDiff, SCRAMBLE_LEVELS.length),
       examSetup: normalizeSetup(storage.loadExamSetup()),
       reviewSetup: storage.loadReviewSetup(this.state.reviewSetup),
@@ -491,7 +410,6 @@ export class App extends React.Component {
     if (this.unwatchTheme) this.unwatchTheme();
     if (this.headerHeight) this.headerHeight.stop();
     this.stopListening();
-    this.stopRun();
   }
 
   /* ── reciting aloud ─────────────────────────────────────────────────────── */
@@ -633,7 +551,7 @@ export class App extends React.Component {
    * incomplete going in) is shown the welcome prompt on the way out; reopening
    * an already-complete profile to edit it never triggers it again. */
   submitProfile() {
-    const isSignUp = !isProfileComplete(this.state.profile);
+    const isSignUp = features.profileSetup && !isProfileComplete(this.state.profile);
     const draft = this.state.profileDraft || this.state.profile || {};
     // Fall back to the Google account's display name if the member never touched
     // the pre-filled name field.
@@ -652,7 +570,13 @@ export class App extends React.Component {
       commitThreshold: draft.commitThreshold !== undefined ? Number(draft.commitThreshold) : DEFAULT_COMMIT_THRESHOLD,
       updatedAt: Date.now(),
     };
-    if (!isProfileComplete(next)) return;
+    /* The four identity fields are only required while the app is asking for
+     * them. With `profileSetup` off they are not on the form at all, so holding
+     * Save against them would make the settings screen — review settings, the
+     * difficulty, the reset — unsavable for everybody. What the draft already
+     * carries is written back either way, so a member who filled the form in
+     * before the flag moved does not lose it by changing a setting. */
+    if (features.profileSetup && !isProfileComplete(next)) return;
     this.saveProfile(next);
     if (isSignUp) logAnalyticsEvent("sign_up");
     this.setState({ editingProfile: false, profileDraft: null, welcomePrompt: isSignUp });
@@ -797,258 +721,8 @@ export class App extends React.Component {
   /* ── review session ─────────────────────────────────────────────────────── */
 
   goto(view) {
-    // Walking off the speak screen is the same press as Stop: a session that
-    // kept talking to an empty screen would be a bug, not a feature.
-    if (this.state.speak && this.state.speak.running && view !== "speak") this.stopSpeak();
-    if (this.state.view === "run" && view !== "run") this.stopRun();
     this.setState({ view });
     if (view === "leaderboard") this.loadRoster();
-    if (view === "run") this.loadRunPlaylist();
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Speak mode: the hands-free loop. The cycle itself is modelled in
-   * src/speak.js; what lives here is only what needs a browser — the
-   * speaker, the recognizer, and the silence timer that decides the
-   * member has finished reciting. Half-duplex is the one hard rule: the
-   * recognizer is torn down before the speaker opens its mouth and only
-   * rebuilt after onDone, or the microphone transcribes the TTS voice. */
-
-  speakSet(patch, then) {
-    this.setState((s) => ({ speak: { ...s.speak, ...patch } }), then);
-  }
-
-  speakTeardown() {
-    if (this.speakRec) {
-      this.speakRec.stop();
-      this.speakRec = null;
-    }
-    if (this.speakTimer) {
-      clearTimeout(this.speakTimer);
-      this.speakTimer = null;
-    }
-    if (this.speakVoice) this.speakVoice.cancel();
-  }
-
-  startSpeak() {
-    const d = this.state.speak;
-    if (!d.supported || d.running) return;
-    const queue = speakPool(d.source, this.state.passages, this.state.progress, this.state.profile, Date.now()).map(
-      (p) => p.id,
-    );
-    if (!queue.length) return;
-    // One speaker for the whole session — the Start press is the user gesture
-    // the browser's audio policy wants, and everything after it is hands-free.
-    this.speakVoice = createSpeaker();
-    // Built on the same press, for the same reason: an AudioContext made
-    // outside a gesture starts silent.
-    this.speakEarcons = createEarcons();
-    this.speakRetried = false;
-    this.speakPrompts = 0;
-    this.speakSet(
-      { running: true, queue, index: 0, phase: "prompt", heard: "", lastResult: null, band: "", error: "" },
-      () => this.sayThen(copy.speak.opening(queue.length), () => this.speakPrompt()),
-    );
-  }
-
-  stopSpeak(error = "") {
-    this.speakTeardown();
-    this.speakVoice = null;
-    if (this.speakEarcons) this.speakEarcons.dispose();
-    this.speakEarcons = null;
-    this.speakRetried = false;
-    this.speakSet({ running: false, phase: "idle", band: "", error });
-  }
-
-  speakPassage() {
-    const d = this.state.speak;
-    return this.state.passages.find((p) => p.id === d.queue[d.index % d.queue.length]) || null;
-  }
-
-  /* Speak with the microphone closed, then hand control on. */
-  sayThen(text, then) {
-    this.speakTeardown();
-    if (!this.speakVoice) return;
-    this.speakVoice.speak(text, () => {
-      if (this.state.speak.running) then();
-    });
-  }
-
-  speakPrompt() {
-    const p = this.speakPassage();
-    if (!p) return this.stopSpeak();
-    this.speakSet({ phase: "prompt", heard: "" });
-    this.sayThen(promptFor(p), () => this.speakListen());
-  }
-
-  /* Open the microphone for a turn.
-   *
-   * `resuming` is a turn the prompter interrupted: the member was already
-   * part-way through the verse, so what they have said is kept and no earcon is
-   * played. An earcon means "your turn", and being helped over a dry patch is
-   * the same turn continuing. */
-  speakListen(resuming = false) {
-    this.speakSet({ phase: "listen" });
-    if (!resuming) {
-      this.speakHeardSettled = "";
-      this.speakPrompts = 0;
-      this.speakSet({ heard: "" });
-    }
-    if (this.speakEarcons) this.speakEarcons.open();
-    this.speakRec = createRecognizer({
-      onStatus: () => {},
-      onText: (text, settled, alternatives) => {
-        if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
-        if (settled) {
-          /* A word said to the app rather than to the verse. Only ever read as
-           * a command when it is the whole of what was heard (see commandIn),
-           * so a recital is never mistaken for an instruction. */
-          const command = commandIn(text);
-          if (command && !this.speakHeardSettled) return this.speakCommand(command);
-          this.speakHeardSettled = this.speakBestReading(text, alternatives);
-          this.speakSet({ heard: this.speakHeardSettled });
-        }
-        // Any sound, settled or not, is the member still going: push the
-        // deadline back. How long that deadline is depends on how much of the
-        // passage has been heard — see silenceMsFor. The timer lives here
-        // rather than in the pure module, which holds no timers by design.
-        this.speakArmSilence(this.speakSilenceMs());
-      },
-      /* The engine's own view of when the speech ended. It has the audio and a
-       * voice model; the timer below has neither. Where it fires, it only
-       * shortens the wait — never lengthens it — so it can improve the loop's
-       * pace but never cut a member off earlier than the window allows. */
-      onEndpoint: () => {
-        if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
-        if (this.speakHeardSettled) this.speakArmSilence(Math.min(SPEAK_ENDPOINT_MS, this.speakSilenceMs()));
-      },
-      // A real failure (mic denied, no microphone, network) can never resolve
-      // itself mid-speak — grading past it would loop "I did not hear
-      // anything" over the whole queue forever. Stop the session instead.
-      onError: (err) => this.stopSpeak(copy.speak.micError(err)),
-    });
-    if (!this.speakRec) return this.stopSpeak(copy.speak.noMic);
-    this.speakRec.start();
-    // A recital that never starts is a member who is stuck, not one who is
-    // finished, so the first thing that silence buys is a prompt.
-    this.speakArmSilence(SPEAK_STALL_MS, true);
-  }
-
-  /* Of everything the engine thought it heard, the reading closest to the verse
-   * in hand. The engine ranks its guesses by how sure it is the words were
-   * said; this app knows which words were *meant*, and can therefore break that
-   * tie better than the engine can. It only ever re-ranks readings the engine
-   * produced on its own, so it cannot credit a word nobody spoke. */
-  speakBestReading(text, alternatives) {
-    const p = this.speakPassage();
-    const prior = this.speakHeardSettled;
-    const readings = (alternatives && alternatives.length ? alternatives : [text]).filter(Boolean);
-    let best = readings[0];
-    if (p && readings.length > 1) {
-      let bestScore = -1;
-      readings.forEach((reading) => {
-        const trial = (prior + " " + reading).trim();
-        const score = feedbackFor(p, trial, "passage").score;
-        if (score > bestScore) {
-          bestScore = score;
-          best = reading;
-        }
-      });
-    }
-    return (prior + " " + best).trim();
-  }
-
-  speakSilenceMs() {
-    const p = this.speakPassage();
-    return p ? silenceMsFor(p, this.speakHeardSettled) : SPEAK_SILENCE_MS;
-  }
-
-  /* `stalled` distinguishes the two things a silence can mean: a member who has
-   * finished (grade it) and one who has dried up (prompt them). */
-  speakArmSilence(ms, stalled = false) {
-    if (this.speakTimer) clearTimeout(this.speakTimer);
-    this.speakTimer = setTimeout(() => (stalled ? this.speakStalled() : this.speakGrade()), ms);
-  }
-
-  /* Nothing has been said and the silence has run long. Feed the next few words
-   * — the audio equivalent of the first-letter scaffold — and reopen the
-   * microphone on the same attempt. After two of those, read the verse and move
-   * on: a third prompt is the app reciting the passage to itself. */
-  speakStalled() {
-    if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
-    const p = this.speakPassage();
-    if (!p) return this.stopSpeak();
-    if (this.speakHeardSettled) return this.speakGrade();
-    if ((this.speakPrompts || 0) >= SPEAK_MAX_PROMPTS) return this.speakGrade();
-    this.speakPrompts = (this.speakPrompts || 0) + 1;
-    const words = promptWordsFor(p, this.speakHeardSettled);
-    if (!words) return this.speakGrade();
-    this.sayThen(copy.speak.prompter(words), () => this.speakListen(true));
-  }
-
-  /* A word spoken to the app. Each of these is a way out of being stuck that
-   * does not need the screen, which is the whole promise of the mode. */
-  speakCommand(command) {
-    const p = this.speakPassage();
-    if (!p) return this.stopSpeak();
-    if (command === "stop") return this.stopSpeak();
-    if (command === "skip") return this.speakAdvance();
-    if (command === "repeat" || command === "again") return this.speakPrompt();
-    if (command === "hint") {
-      const words = promptWordsFor(p, this.speakHeardSettled);
-      return this.sayThen(copy.speak.prompter(words), () => this.speakListen(true));
-    }
-    // "slower" and anything else: read the verse, then hand the turn back.
-    return this.sayThen(p.text, () => this.speakListen(true));
-  }
-
-  speakAdvance() {
-    this.speakSet({ index: nextIndex(this.state.speak.index, this.state.speak.queue.length) }, () =>
-      this.speakPrompt(),
-    );
-  }
-
-  /* Mark the recital and answer it.
-   *
-   * The answer is the verse itself on every turn that was not clean — see the
-   * note on BANDS in speak.js. A clean one is answered with speed, and a shaky
-   * one gets the passage read and then one more attempt at it, straight away,
-   * which is the only moment a second attempt is worth anything. */
-  speakGrade() {
-    if (!this.state.speak.running || this.state.speak.phase !== "listen") return;
-    const p = this.speakPassage();
-    if (!p) return this.stopSpeak();
-    if (this.speakEarcons) this.speakEarcons.close();
-    this.speakTeardown();
-
-    const result = feedbackFor(p, this.speakHeardSettled || "", this.state.speak.mode);
-    const band = result.abstained ? "lost" : bandFor(result.score);
-    const retried = this.speakRetried;
-    this.speakSet({ phase: "feedback", lastResult: result, band });
-
-    /* What the chosen mode adds on top of the band line — the words missed, or
-     * a figure per verse. Whole-passage mode adds nothing, which is why the
-     * commonest turn is also the shortest. */
-    const detail = result.abstained ? "" : result.spokenFeedback;
-    const say = (...parts) => parts.filter(Boolean).join(" ");
-
-    if (band === "clean") return this.sayThen(say(copy.speak.clean, detail), () => this.speakAdvance());
-
-    if (band === "close") {
-      return this.sayThen(say(copy.speak.close, detail, p.text), () => this.speakAdvance());
-    }
-
-    if (band === "shaky" && !retried) {
-      // Hear it, then say it — once. Never twice: failing the same verse twice
-      // inside half a minute is how a session stops being worth doing.
-      this.speakRetried = true;
-      return this.sayThen(say(copy.speak.shaky, p.text, copy.speak.nowYou), () => this.speakListen());
-    }
-
-    this.speakRetried = false;
-    return this.sayThen(say(result.abstained ? copy.speak.nothingHeard : copy.speak.lost, p.text), () =>
-      this.speakAdvance(),
-    );
   }
 
   /* Start a session over `ids`, or over the stalest SESSION_SIZE passages.
@@ -1356,164 +1030,6 @@ export class App extends React.Component {
 
   /* ── the action table handed to the view-model ──────────────────────────── */
 
-  /* ── samuel mode ────────────────────────────────────────────────────────── */
-
-  setSamuel(patch, then) {
-    this.setState((st) => ({ samuel: { ...st.samuel, ...patch } }), then);
-  }
-
-  startSamuelRound() {
-    const s = this.state.samuel;
-    // Seeded off the clock so two rounds in a row are not the same ten, and
-    // weighted by the record so the ten lean toward what keeps going wrong.
-    const round = buildRound(s.record, { scope: s.scope, seed: Date.now() >>> 0 });
-    this.setSamuel({ round, index: 0, answer: null, results: [] });
-  }
-
-  answerSamuel(choice) {
-    const s = this.state.samuel;
-    const question = s.round[s.index];
-    if (!question || s.answer !== null) return;
-    const record = recordAnswer(s.record, question, choice);
-    storage.saveSamuel(record);
-    this.setSamuel({ answer: choice, record, results: [...s.results, isRight(question, choice)] });
-  }
-
-  nextSamuel() {
-    const s = this.state.samuel;
-    this.setSamuel({ index: s.index + 1, answer: null });
-  }
-
-  /* Jump from a weak chapter straight to reading it — the one place the two
-   * halves of the screen talk to each other. */
-  readSamuelChapter(book, chapter) {
-    this.setSamuel({ view: "read", book, openChapter: book + " " + chapter });
-  }
-
-  /* ── run mode ───────────────────────────────────────────────────────────── */
-
-  /* The playlist ships in the main tree, not on every branch — a static import
-   * of a missing module would white-screen the whole app (no bundler), so it
-   * is fetched lazily and its absence is an empty list. */
-  loadRunPlaylist() {
-    if (this.runPlaylistLoaded) return;
-    this.runPlaylistLoaded = true;
-    import("../data/run-playlist.js")
-      .then((m) => m.RUN_PLAYLIST)
-      .catch(() => [])
-      .then((list) => this.setRun({ playlist: list || [] }));
-  }
-
-  setRun(patch) {
-    this.setState((s) => ({ run: { ...s.run, ...patch } }));
-  }
-
-  /* One press starts everything — the gesture is what unlocks the AudioContext
-   * and speechSynthesis — and it runs hands-free until Stop: the beat under a
-   * loop of callouts (reference, verse, then an echo pause for the runner to
-   * say it back in their head), the beat ducked while the voice speaks. */
-  startRun() {
-    if (this.state.run.playing) return;
-    const queue = calloutQueue(this.state.passages, this.state.progress);
-    if (!this.runBeat) this.runBeat = createBeat();
-    if (this.runBeat) this.runBeat.start(this.state.run.preset, this.state.run.bpm);
-    this.runToken = (this.runToken || 0) + 1;
-    this.setRun({ playing: true, saying: "" });
-    this.holdScreenAwake();
-    this.watchRunAudio();
-    if (queue.length) this.runCallout(queue, 0, this.runToken);
-  }
-
-  /* A run is spent looking anywhere but at the phone, so the screen is asked to
-   * stay awake — a locked screen is a background tab, and a background tab is
-   * where audio goes to die. The lock is a courtesy the browser may refuse
-   * (and always refuses without HTTPS), so nothing depends on it. */
-  holdScreenAwake() {
-    const nav = typeof navigator === "undefined" ? null : navigator;
-    if (!nav || !nav.wakeLock || this.wakeLock) return;
-    nav.wakeLock
-      .request("screen")
-      .then((lock) => {
-        this.wakeLock = lock;
-      })
-      .catch(() => {});
-  }
-
-  releaseScreen() {
-    if (this.wakeLock) {
-      try {
-        this.wakeLock.release();
-      } catch {
-        /* already gone */
-      }
-      this.wakeLock = null;
-    }
-  }
-
-  /* Report what the audio hardware is really doing, so a silent run has a
-   * symptom on the screen instead of just being silence. */
-  watchRunAudio() {
-    clearInterval(this.runAudioTimer);
-    const read = () => {
-      const audio = this.runBeat ? this.runBeat.state() : "off";
-      if (audio !== this.state.run.audio) this.setRun({ audio });
-    };
-    read();
-    this.runAudioTimer = setInterval(read, 1000);
-  }
-
-  /* Walk the callout queue, forever. `token` guards against a loop outliving
-   * its run: every timer and utterance checks it before moving on, so Stop
-   * (or leaving the screen) really is the end. */
-  runCallout(queue, index, token) {
-    if (token !== this.runToken) return;
-    const passage = queue[index % queue.length];
-    const script = calloutScript(passage);
-    this.setRun({ nowRef: passage.ref, nowText: passage.text });
-    const sayFrom = (si) => {
-      if (token !== this.runToken) return;
-      if (si >= script.length) {
-        this.runCallout(queue, index + 1, token);
-        return;
-      }
-      this.setRun({ saying: script[si].text });
-      speak(script[si].text, {
-        /* Ducked when the voice really starts, not when it is asked to: a
-         * browser that takes a moment to find its voice would otherwise play a
-         * quiet beat under nothing at all. */
-        onStart: () => {
-          if (token === this.runToken && this.runBeat) this.runBeat.duck(true);
-        },
-        onEnd: () => {
-          if (token !== this.runToken) return;
-          if (this.runBeat) this.runBeat.duck(false);
-          this.setRun({ saying: "" });
-          this.runTimer = setTimeout(() => sayFrom(si + 1), script[si].pauseAfterMs);
-        },
-      });
-    };
-    sayFrom(0);
-  }
-
-  stopRun() {
-    this.runToken = (this.runToken || 0) + 1;
-    clearTimeout(this.runTimer);
-    clearInterval(this.runAudioTimer);
-    stopSpeaking();
-    if (this.runBeat) this.runBeat.stop();
-    this.releaseScreen();
-    if (this.state.run.playing) this.setRun({ playing: false, nowRef: "", nowText: "", saying: "", audio: "off" });
-  }
-
-  /* Two beeps on demand — the one thing that tells a member whether the fault
-   * is the app or the machine it is playing on. */
-  testRunSound() {
-    if (!this.runBeat) this.runBeat = createBeat();
-    if (this.runBeat) this.runBeat.testTone();
-    speak(copy.run.testSpoken, {});
-    this.watchRunAudio();
-  }
-
   buildActions() {
     const set = (patch) => this.setState(patch);
     return {
@@ -1523,12 +1039,7 @@ export class App extends React.Component {
 
       // account + profile
       signIn: () => this.signIn(),
-      signOut: () => {
-        // Signing out replaces the shell without going through goto, so a
-        // running beat would keep playing behind the gate.
-        this.stopRun();
-        signOutUser().catch(() => {});
-      },
+      signOut: () => signOutUser().catch(() => {}),
       /* Try the cloud again, for a member sitting behind the sync gate or under
        * its banner. Which half to retry depends on how far the boot got: a
        * member who is signed in has a document to re-read, while one whose SDK
@@ -1546,12 +1057,7 @@ export class App extends React.Component {
         await this.startAuth();
         this.setState({ syncRetrying: false });
       },
-      editProfile: () => {
-        // The settings form renders over the shell while state.view stays put,
-        // so leaving for it must stop a running beat like goto would.
-        this.stopRun();
-        set({ editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false });
-      },
+      editProfile: () => set({ editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false }),
       cancelEditProfile: () => set({ editingProfile: false, profileDraft: null, resetAsk: false }),
       submitProfile: () => this.submitProfile(),
       dismissWelcome: (view) => {
@@ -1795,52 +1301,19 @@ export class App extends React.Component {
       // guide
       setGuideDays: (guideDays) => set({ guideDays }),
 
-      /* samuel mode */
-      startSamuelRound: () => this.startSamuelRound(),
-      answerSamuel: (choice) => this.answerSamuel(choice),
-      nextSamuel: () => this.nextSamuel(),
-      setSamuelTab: (view) => this.setSamuel({ view }),
-      setSamuelScope: (scope) => this.setSamuel({ scope, round: [], index: 0, answer: null, results: [] }),
-      setSamuelBook: (book) => this.setSamuel({ book, openChapter: "" }),
-      openSamuelChapter: (key) => this.setSamuel({ openChapter: this.state.samuel.openChapter === key ? "" : key }),
-      readSamuelChapter: (book, chapter) => this.readSamuelChapter(book, chapter),
-
       // leaderboard
       setLeaderFilter: (key, value) => this.setState((s) => ({ leaderFilter: { ...s.leaderFilter, [key]: value } })),
       setLeaderRankBy: (key) => this.setState({ leaderRankBy: key }),
-
-      /* speak mode */
-      setSpeakMode: (mode) => this.speakSet({ mode }),
-      setSpeakSource: (source) => this.speakSet({ source }),
-      startSpeak: () => this.startSpeak(),
-      stopSpeak: () => this.stopSpeak(),
-      /* run mode */
-      startRun: () => this.startRun(),
-      stopRun: () => this.stopRun(),
-      testRunSound: () => this.testRunSound(),
-      setRunPreset: (key) => {
-        this.setRun({ preset: key, bpm: presetByKey(key).bpm });
-        if (this.runBeat && this.state.run.playing) this.runBeat.start(key, presetByKey(key).bpm);
-      },
-      setRunBpm: (bpm) => {
-        const clamped = Math.max(100, Math.min(220, bpm));
-        this.setRun({ bpm: clamped });
-        if (this.runBeat) this.runBeat.setBpm(clamped);
-      },
-      /* mobile warning */
-      acknowledgeMobile: () => set({ mobileAck: true }),
     };
   }
 
   render() {
     const { isMobile, loaded, splashHold, auth, sync, profile, editingProfile, welcomePrompt } = this.state;
 
-    // A phone or a tablet is warned before the app — and the warning comes
-    // before the splash, since it is the first thing worth saying. Continue
-    // passes through it for this visit; the acknowledgement is never saved,
-    // so the safety warning is shown again next time.
-    if (isMobile && !this.state.mobileAck)
-      return mobileGateView(mobileGateVals({ groupName: this.groupName(), actions: this.actions }));
+    // Nothing is offered on a phone or a tablet — and the refusal comes before
+    // the splash, since a member who is not getting in should not be made to
+    // watch the boot first. It is a dead end, so no other screen follows it.
+    if (isMobile) return mobileGateView(mobileGateVals({ groupName: this.groupName() }));
 
     // The splash is up until the app knows where the member is going: their
     // board if Firebase restores a session, the sign-in screen if it does not.
@@ -1871,7 +1344,11 @@ export class App extends React.Component {
      * only of the form: a member whose profile is already complete on this
      * device goes straight through, with the banner below telling them their
      * work is staying local). */
-    const needsProfile = !isProfileComplete(profile);
+    /* Only when the app is still asking for a profile. With `profileSetup` off
+     * (config.js) it never is: sign-in lands on the board, and the form behind
+     * the header's gear is the settings screen rather than a gate. A profile
+     * already filled in is untouched either way — nothing here reads it. */
+    const needsProfile = features.profileSetup && !isProfileComplete(profile);
     const syncStatus = (sync || {}).status;
     /* Three ways the app can fail to know what this member has, and all three
      * must keep the sign-up form off the screen: the read is still in flight,
@@ -1905,7 +1382,7 @@ export class App extends React.Component {
 
     // A one-time nudge toward the guide, shown between finishing sign-up and
     // landing on the board — see submitProfile.
-    if (welcomePrompt) {
+    if (features.welcome && welcomePrompt) {
       return welcomeView(welcomeVals({ groupName: this.groupName(), actions: this.actions }));
     }
 
@@ -1922,8 +1399,7 @@ export class App extends React.Component {
       ${headerView(v)} ${v.syncWarning && syncBannerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)}
       ${v.isReviewSetup && reviewSetupView(v)} ${v.isLearnSetup && learnSetupView(v)} ${v.isReview && reviewView(v)}
       ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)}
-      ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)}
-      ${v.isSamuel && samuelView(v)} ${v.isSpeak && speakView(v)} ${v.isRun && runView(v)} ${footerView(v)}
+      ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)} ${footerView(v)}
     </div>`;
   }
 }

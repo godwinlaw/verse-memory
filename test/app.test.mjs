@@ -11,6 +11,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { freezeClock } from "./helpers/dom-env.mjs";
+import { withFeatures } from "./helpers/features.mjs";
 import { baseState, NOW, PROFILE, PROPS } from "./helpers/scenarios.mjs";
 import { normalizeSetup } from "../src/exam.js";
 import { LEARN } from "../src/review.js";
@@ -902,9 +903,30 @@ test("the transcript and the microphone belong to the card, not the session", ()
 /* ── sign-up welcome prompt ───────────────────────────────────────────────── */
 
 test("finishing the profile form for the first time is met with the welcome prompt", () => {
+  // Both halves of this are behind their flags now (src/config.js) — there is
+  // no sign-up form to finish, so there is no prompt on the way out of it. The
+  // rule is still here and still tested; it is just not on offer.
+  withFeatures({ profileSetup: true, welcome: true }, () => {
+    const a = app(baseState({ profile: {}, profileDraft: { ...PROFILE } }));
+    a.actions.submitProfile();
+    assert.equal(a.state.welcomePrompt, true);
+  });
+});
+
+test("with the sign-up form put away, saving the settings form is never a sign-up", () => {
   const a = app(baseState({ profile: {}, profileDraft: { ...PROFILE } }));
   a.actions.submitProfile();
-  assert.equal(a.state.welcomePrompt, true);
+  assert.equal(a.state.welcomePrompt, false);
+  assert.equal(a.state.profile.ministryGroup, "Kairos", "and what the draft carried is still written");
+});
+
+test("a member with no profile can still save the settings form", () => {
+  // The four identity fields are not on it, so holding Save against them would
+  // make every setting under them unreachable.
+  const a = app(baseState({ profile: {}, editingProfile: true, profileDraft: { dueTopX: 4 } }));
+  a.actions.submitProfile();
+  assert.equal(a.state.editingProfile, false);
+  assert.equal(a.state.profile.dueTopX, 4);
 });
 
 test("reopening an already-complete profile to edit it never shows the prompt again", () => {

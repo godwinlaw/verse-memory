@@ -6,6 +6,42 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **Speak/Run mode (#66) and Samuel mode (#67) are reverted.** Both were merged
+  on 26 August 2026 and are backed out whole (`git revert -m 1` of each merge,
+  so the branches and their history are intact and either can be brought back
+  with a fresh PR). What went with them: `speak.js`, `run.js`, `beat.js`,
+  `earcon.js`, `speaker.js`, `recital.js`, `wordmatch.js` and their screens and
+  suites; `data/samuel.js` and the study mode built on it; the running playlist
+  and `docs/research/`. Two side effects are worth knowing, because they are
+  changes to the app rather than removals: `voice.js` goes back to owning its
+  own matcher rather than importing one from `wordmatch.js`, and **the mobile
+  gate is a refusal again** — #66 had turned it into a pass-through warning with
+  a Continue button, so a phone is once more a dead end (`src/device.js` and
+  `views/mobile-gate.js` as they were). The Isaiah 54–55 passage split (#65)
+  sits underneath both and is untouched.
+
+- **Four pieces of the app are switched off, and none of them is deleted.** The
+  group is starting on the app with nothing in it but the verses, so what a new
+  member meets is now the board and the set: the **Stats** leaderboard and the
+  **Guide** are off the header, the **sign-up profile form** no longer stands
+  between signing in and the app (nor does the **welcome nudge** that followed
+  it), and the **Hebrews 4:12 epigraph** is off the top of the board. A new
+  `features` table in `src/config.js` is the single definition of what is on
+  offer, merged over per-deploy overrides in `window.__APP_CONFIG__.features`,
+  so bringing any of them back is one line and no code change. Every screen,
+  view-model, string and test stays exactly where it was — `test/views.test.mjs`
+  renders each hidden screen with its own flag turned on (`featuresFor`, plus
+  `withFeatures`), and the browser specs for the guide, the standings, the
+  profile and the sync gate do the same through `config.js`, which is the app's
+  own door. Two consequences worth knowing: the **sync gate goes with the form**
+  it guards, since a member is no longer sent through sign-up and so can no
+  longer stamp a fresh profile over the real one; and the **profile's four
+  identity fields leave Settings too**, because they exist to slice the
+  leaderboard — with nothing being asked for, `complete` no longer holds Save,
+  which would otherwise make every setting underneath them unreachable. A
+  profile already filled in is untouched, still written back by
+  `App.submitProfile`, and still synced. Closes #69.
+
 - **The leaderboard no longer downloads everybody's record to build itself.**
   It used to read the whole `users` collection — every verse of every member's
   progress map and every day of their log — and throw nearly all of it away to

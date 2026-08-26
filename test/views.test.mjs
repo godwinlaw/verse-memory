@@ -12,14 +12,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { render, freezeClock } from "./helpers/dom-env.mjs";
-import { scenarios, EXAM, questionAt } from "./helpers/scenarios.mjs";
+import { withFeatures } from "./helpers/features.mjs";
+import { scenarios, featuresFor, EXAM, questionAt } from "./helpers/scenarios.mjs";
 import { ACTIVITY_KEYS } from "../src/exam.js";
 import { ADVANCE_R, HOLD_R, INTERVALS, LAPSE_R } from "../src/srs.js";
 
 const restore = freezeClock();
 const { App } = await import("../src/App.js");
 
-function renderScenario(state, props) {
+function renderScenario(state, props, feats = {}) {
   const app = new App(props);
   app.state = state;
   const warnings = [];
@@ -27,56 +28,86 @@ function renderScenario(state, props) {
   console.error = (...args) => warnings.push(args.map(String).join(" "));
   let markup;
   try {
-    markup = render(app.render());
+    markup = withFeatures(feats, () => render(app.render()));
   } finally {
     console.error = origError;
   }
   return { markup, warnings };
 }
 
-/* The markup of one named scenario. */
-function shown(name) {
+/* The markup of one named scenario, rendered with whatever flags its screen is
+ * offered under (featuresFor). `extra` turns on a flag the scenario itself does
+ * not need — the board, say, asked for its link to the guide. */
+function shown(name, extra) {
   const s = scenarios.find((x) => x.name === name);
-  return renderScenario(s.state, s.props).markup;
+  return renderScenario(s.state, s.props, { ...featuresFor(name), ...extra }).markup;
 }
 
 test.after(() => restore());
 
-/* ── run mode ─────────────────────────────────────────────────────────────── */
+/* ── what the app is currently offering ─────────────────────────────────────
+ *
+ * Four pieces of the app are switched off rather than taken out (src/config.js
+ * `features`), and the two halves of that claim are both worth a test: nothing
+ * on screen reaches them, and every one of them still renders when its flag is
+ * put back. The second half is not written out below — it is what every other
+ * test on this page already does, since `shown()` turns on whatever flag the
+ * screen it names is offered under.
+ *
+ * `asShipped` is the same render with nothing turned on: the app as a member
+ * meets it today. */
+function asShipped(name) {
+  const s = scenarios.find((x) => x.name === name);
+  return renderScenario(s.state, s.props).markup;
+}
 
-test("the run screen offers the pinned Psalms playlist and the beat controls", () => {
-  const markup = shown("run/default");
-  assert.match(markup, /Psalms memory playlist \(by Emily\)/);
-  assert.match(markup, /open\.spotify\.com\/playlist\/2J256T9x2D6ysT1zOwpNyE/);
-  assert.match(markup, /Steady/);
-  assert.match(markup, /Hype/);
-  assert.match(markup, /Sprint/);
+test("the header offers neither Stats nor the guide", () => {
+  const board = asShipped("board/populated");
+  assert.doesNotMatch(board, />Stats</);
+  assert.doesNotMatch(board, />Guide</);
+  // And the rest of the bar is untouched — this is a filter, not a rebuild.
+  for (const stop of [/>Home</, />Passages</, />LEARN</, />REVIEW</, />TEST</]) assert.match(board, stop);
 });
 
-test("a playing run shows the verse being called out", () => {
-  const markup = shown("run/playing");
-  assert.match(markup, /John 11:35/);
-  assert.match(markup, /Jesus wept\./);
-  assert.match(markup, /Shane (&amp;|&) Shane/);
+test("the board prints no verse across the top, and no way into the guide", () => {
+  const board = asShipped("board/populated");
+  // Its own words rather than its reference — Hebrews 4:12 is also a passage in
+  // the set, so it is on the board's map either way.
+  assert.doesNotMatch(board, /sharper than any two-edged sword/);
+  assert.doesNotMatch(board, /How this works/);
+  // The hero itself stays: the figure, the bar, and the deadline it counts to.
+  assert.match(board, /passages committed/);
 });
 
-test("a browser with no WebAudio still gets the playlist", () => {
-  const markup = shown("run/unsupported");
-  assert.doesNotMatch(markup, /Steady/);
-  assert.match(markup, /Psalms memory playlist/);
+test("a member with no profile is not asked to register — they get the board", () => {
+  const arriving = asShipped("profile/setup-empty");
+  assert.doesNotMatch(arriving, /SET UP YOUR PROFILE/);
+  assert.doesNotMatch(arriving, /Ministry group/);
+  assert.match(arriving, /passages committed/);
 });
 
-/* ── speak mode ───────────────────────────────────────────────────────────── */
-
-test("a session the microphone ended says so, rather than just going quiet", () => {
-  const markup = shown("speak/stopped-by-mic");
-  assert.match(markup, /microphone was blocked/i);
-  // And it is still offering the way back in — the screen is not a dead end.
-  assert.match(markup, /Start speaking/);
+test("nor is one whose record could not be read — the gate went with the form", () => {
+  // The gate exists to keep the sign-up form off the screen (see below). With
+  // no form to keep off, there is nothing for it to stand in front of.
+  const refused = asShipped("sync/refused");
+  assert.doesNotMatch(refused, /COULD NOT REACH YOUR RECORD/);
+  assert.match(refused, /passages committed/);
+  // The strip still says the work is staying on this device.
+  assert.match(refused, /saved on this device only/);
 });
 
-test("an ordinary idle speak screen carries no alarm", () => {
-  assert.doesNotMatch(shown("speak/idle-supported"), /microphone was blocked/i);
+test("the settings form drops the profile's own fields and is still savable", () => {
+  const settings = asShipped("profile/edit");
+  assert.match(settings, />SETTINGS</, "and calls itself what it now is");
+  for (const gone of [/Ministry group/, /Graduating class/, /shape the leaderboard/]) {
+    assert.doesNotMatch(settings, gone);
+  }
+  // Everything that was underneath them is still there, and Save is not held
+  // against fields nobody was asked for.
+  assert.match(settings, /REVIEW SETTINGS/);
+  assert.match(settings, /Appearance|APPEARANCE/i);
+  const [save] = settings.match(/<button[^>]*>Save changes<\/button>/) || [];
+  assert.doesNotMatch(save || "", /disabled=""/);
 });
 
 /* No screen prints arithmetic that did not work out.
@@ -87,18 +118,18 @@ test("an ordinary idle speak screen carries no alarm", () => {
  * A figure the member cannot read is a bug wherever it appears. */
 for (const s of scenarios) {
   test(`prints no NaN: ${s.name}`, () => {
-    const { markup } = renderScenario(s.state, s.props);
+    const { markup } = renderScenario(s.state, s.props, featuresFor(s.name));
     assert.doesNotMatch(markup, /NaN|undefined%|Infinity/, `${s.name} shows a figure that did not compute`);
   });
 }
 
 for (const s of scenarios) {
   test(`renders without throwing: ${s.name}`, () => {
-    assert.doesNotThrow(() => renderScenario(s.state, s.props));
+    assert.doesNotThrow(() => renderScenario(s.state, s.props, featuresFor(s.name)));
   });
 
   test(`renders with zero React warnings: ${s.name}`, () => {
-    const { warnings } = renderScenario(s.state, s.props);
+    const { warnings } = renderScenario(s.state, s.props, featuresFor(s.name));
     assert.deepEqual(warnings, []);
   });
 }
@@ -124,21 +155,18 @@ test("turning the passage over asks for the other words", () => {
   assert.notEqual(shown("review/blanks-alternating"), shown("review/blanks-alternating-flipped"));
 });
 
-test("a phone is warned before the app, and before the splash", () => {
+test("a phone is turned away before the app, and before the splash", () => {
   const blocked = shown("device/mobile");
-  assert.match(blocked, /at its best on a computer/);
-  assert.match(blocked, /never look at or touch the screen while driving/, "the safety warning is on it");
-  // The way through: a Continue button, and nothing else to press.
-  assert.match(blocked, /Continue<\/button>/);
+  assert.match(blocked, /not available on a mobile device/);
   // Nothing behind the gate leaks past it: no board, no sign-in, no boot.
   assert.doesNotMatch(blocked, /passages committed/);
   assert.doesNotMatch(blocked, /Sign in with Google/);
   assert.doesNotMatch(blocked, /class="splash-mark"/);
 
-  // Still warned mid-boot: the decision does not wait on anything loading,
+  // Still refused mid-boot: the decision does not wait on anything loading,
   // since none of it changes the answer.
   const loading = shown("device/mobile-while-loading");
-  assert.match(loading, /at its best on a computer/);
+  assert.match(loading, /not available on a mobile device/);
   assert.doesNotMatch(loading, /class="splash-mark"/);
 });
 
@@ -348,7 +376,7 @@ test("a member with nothing recorded has nothing to reset", () => {
 
 test("board shows the committed count", () => {
   const s = scenarios.find((x) => x.name === "board/populated");
-  const { markup } = renderScenario(s.state, s.props);
+  const { markup } = renderScenario(s.state, s.props, featuresFor(s.name));
   // progressFixture() commits passages 1, 2, and 3. The hero's figures count up
   // to themselves in CSS (styles.css, .count-up), so the number reaches the page
   // as the --count a counter is reset to rather than as a text node. The hero's
@@ -360,25 +388,25 @@ test("board shows the committed count", () => {
 
 test("the empty leaderboard filter shows its empty message", () => {
   const s = scenarios.find((x) => x.name === "leaderboard/empty");
-  const { markup } = renderScenario(s.state, s.props);
+  const { markup } = renderScenario(s.state, s.props, featuresFor(s.name));
   assert.match(markup, /No one matches these filters yet\./);
 });
 
 test("a member with nothing committed has no row on the stats board", () => {
   const s = scenarios.find((x) => x.name === "leaderboard/unfinished-peer");
-  const { markup } = renderScenario(s.state, s.props);
+  const { markup } = renderScenario(s.state, s.props, featuresFor(s.name));
   assert.doesNotMatch(markup, /Nobody Yet/);
 });
 
 test("list/no-matches renders no rows", () => {
   const s = scenarios.find((x) => x.name === "list/no-matches");
-  const { markup } = renderScenario(s.state, s.props);
+  const { markup } = renderScenario(s.state, s.props, featuresFor(s.name));
   assert.match(markup, /0 shown/);
 });
 
 test("review/type-graded shows a percentage", () => {
   const s = scenarios.find((x) => x.name === "review/type-graded");
-  const { markup } = renderScenario(s.state, s.props);
+  const { markup } = renderScenario(s.state, s.props, featuresFor(s.name));
   assert.match(markup, /\d+%/);
 });
 
@@ -662,7 +690,7 @@ test("and teaches the two words it does keep, rather than dodging them", () => {
 });
 
 test("the board offers a way into the guide", () => {
-  assert.match(shown("board/populated"), /How this works<\/button>/);
+  assert.match(shown("board/populated", { guide: true }), /How this works<\/button>/);
 });
 
 /* ── the board's two queues ───────────────────────────────────────────────── */
@@ -873,7 +901,7 @@ test("the fixture paper asks every activity", () => {
 
 test("test/setup-empty-pool says so instead of offering a start", () => {
   const s = scenarios.find((x) => x.name === "test/setup-empty-pool");
-  const { markup } = renderScenario(s.state, s.props);
+  const { markup } = renderScenario(s.state, s.props, featuresFor(s.name));
   assert.match(markup, /nothing to test/);
   assert.match(markup, /disabled=""/);
 });
@@ -928,7 +956,7 @@ test("leaving a test asks before it throws the paper away", () => {
 
 test("the summary shows a mark, the freshness each verse landed on, and the paper", () => {
   const s = scenarios.find((x) => x.name === "test/summary");
-  const { markup } = renderScenario(s.state, s.props);
+  const { markup } = renderScenario(s.state, s.props, featuresFor(s.name));
   assert.match(markup, /Test complete/);
   assert.match(markup, /\d+%/);
   assert.match(markup, /Where each verse landed/);

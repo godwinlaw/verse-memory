@@ -14,10 +14,17 @@ import { test, expect } from "./fixtures.mjs";
 import { MEMBER } from "./helpers/firebase-stub.mjs";
 import { PROFILE, committed, passageById, started } from "./helpers/seed.mjs";
 
+/* The gate this file is about stands in front of one screen — the sign-up
+ * profile form — and that form is switched off as the app ships (src/config.js
+ * `features`). It is hidden rather than deleted, so every boot here puts it
+ * back the way a deploy would; without it there is nothing for the gate to
+ * guard and nothing to test. */
+const SIGNUP = { profileSetup: true };
+
 const signedIn = { session: MEMBER };
 
 test("a refused read is not mistaken for a new member", async ({ app, page }) => {
-  await app.boot({ profile: null, firebase: { ...signedIn, refuseReads: true } });
+  await app.boot({ features: SIGNUP, profile: null, firebase: { ...signedIn, refuseReads: true } });
 
   await expect(page.getByText("COULD NOT REACH YOUR RECORD")).toBeVisible();
   // The form that would overwrite the real profile is not offered.
@@ -29,6 +36,7 @@ test("a refused read is not mistaken for a new member", async ({ app, page }) =>
 
 test("a member whose profile is already on this device gets the app, and a warning", async ({ app, page }) => {
   await app.boot({
+    features: SIGNUP,
     progress: { 2: committed(0.6) },
     firebase: { ...signedIn, refuseReads: true },
   });
@@ -41,7 +49,7 @@ test("a member whose profile is already on this device gets the app, and a warni
 });
 
 test("a healthy read shows neither the gate nor the warning", async ({ app, page }) => {
-  await app.boot({ progress: { 2: committed(0.6) }, firebase: signedIn });
+  await app.boot({ features: SIGNUP, progress: { 2: committed(0.6) }, firebase: signedIn });
 
   await expect(app.board).toBeVisible();
   await expect(page.getByText("COULD NOT REACH YOUR RECORD")).toHaveCount(0);
@@ -52,6 +60,7 @@ test("a record in the cloud reaches a device that has never seen it", async ({ a
   // Nothing local; everything in the cloud document. This is the cross-device
   // case the whole overlay exists for.
   await app.boot({
+    features: SIGNUP,
     progress: {},
     profile: null,
     firebase: {
@@ -79,7 +88,7 @@ test("a record in the cloud reaches a device that has never seen it", async ({ a
 
 test("an SDK blocked by the network does not look like a new member", async ({ app, page }) => {
   app.allowConsoleErrors(/gstatic\.com|ERR_FAILED|Failed to fetch/i);
-  await app.boot({ profile: null, firebase: { mode: "unreachable" } });
+  await app.boot({ features: SIGNUP, profile: null, firebase: { mode: "unreachable" } });
 
   await expect(page.getByText("COULD NOT REACH YOUR ACCOUNT")).toBeVisible();
   await expect(page.getByText("SET UP YOUR PROFILE")).toHaveCount(0);
@@ -90,7 +99,7 @@ test("an SDK blocked by the network does not look like a new member", async ({ a
 
 test("a blocked SDK still lets a member with a profile work, and says so", async ({ app, page }) => {
   app.allowConsoleErrors(/gstatic\.com|ERR_FAILED|Failed to fetch/i);
-  await app.boot({ progress: { 2: committed(0.6) }, firebase: { mode: "unreachable" } });
+  await app.boot({ features: SIGNUP, progress: { 2: committed(0.6) }, firebase: { mode: "unreachable" } });
 
   await expect(app.board).toBeVisible();
   await expect(page.getByText(/saved on this device only/)).toBeVisible();
@@ -98,7 +107,7 @@ test("a blocked SDK still lets a member with a profile work, and says so", async
 
 test("a build with no Firebase configured stays silent and local", async ({ app, page }) => {
   // firebase: false — no stub, no config. Nothing to reach, so nothing to warn about.
-  await app.boot({ progress: { 2: committed(0.6) } });
+  await app.boot({ features: SIGNUP, progress: { 2: committed(0.6) } });
 
   await expect(app.board).toBeVisible();
   await expect(page.getByText(/saved on this device only/)).toHaveCount(0);
@@ -121,6 +130,7 @@ test("a device that has not pulled yet never pushes an empty slice", async ({ ap
   };
   // A brand-new browser: nothing local, everything in the cloud.
   await app.boot({
+    features: SIGNUP,
     progress: {},
     profile: null,
     firebase: {
@@ -163,6 +173,7 @@ test("a device that has not pulled yet never pushes an empty slice", async ({ ap
 
 test("a push writes the board's summary alongside the record", async ({ app }) => {
   await app.boot({
+    features: SIGNUP,
     progress: { 1: committed(0.9), 2: committed(0.9), 4: started(0.5) },
     firebase: { ...signedIn, remote: { profile: PROFILE, progress: {}, log: {} } },
   });
@@ -185,6 +196,7 @@ test("a push writes the board's summary alongside the record", async ({ app }) =
 
 test("the cloud profile survives a fresh device signing in", async ({ app, page }) => {
   await app.boot({
+    features: SIGNUP,
     progress: {},
     profile: null,
     firebase: {
@@ -223,6 +235,7 @@ test("a cold browser reads the server, not its own pending writes", async ({ app
     log: {},
   };
   await app.boot({
+    features: SIGNUP,
     progress: {},
     profile: null,
     firebase: {
@@ -265,6 +278,7 @@ test("a device holding an older copy does not roll back a verse committed elsewh
   };
 
   await app.boot({
+    features: SIGNUP,
     progress: here,
     firebase: {
       ...signedIn,

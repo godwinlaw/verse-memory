@@ -13,14 +13,11 @@ import { chromeVals } from "./chrome.js";
 import { boardVals } from "./board.js";
 import { explainerVals } from "./explainer.js";
 import { guideVals } from "./guide.js";
-import { samuelVals } from "./samuel.js";
 import { listVals } from "./list.js";
 import { reviewVals, reviewSetupVals } from "./review.js";
 import { learnSetupVals } from "./learn.js";
 import { examVals } from "./exam.js";
 import { leaderboardVals } from "./leaderboard.js";
-import { speakVals } from "./speak.js";
-import { runVals } from "./run.js";
 
 export function buildViewModel({ state, groupName, motto, deadline, actions, now = new Date() }) {
   const totals = deriveTotals({
@@ -49,14 +46,11 @@ export function buildViewModel({ state, groupName, motto, deadline, actions, now
     ...explainerVals({ state, actions }),
     // The long-form version of the same two ideas, plus the tour of the header.
     ...guideVals({ state, actions }),
-    ...samuelVals({ state, actions }),
     ...reviewSetupVals({ state, actions, now: now.getTime() }),
     ...learnSetupVals({ state, prog, actions }),
     ...reviewVals({ state, prog, totals, actions }),
     ...examVals({ state, actions, now: now.getTime() }),
     ...leaderboardVals({ state, totals, myStreak, actions, now: now.getTime() }),
-    ...speakVals({ state, actions, now: now.getTime() }),
-    ...runVals({ state, actions }),
   };
 }
 

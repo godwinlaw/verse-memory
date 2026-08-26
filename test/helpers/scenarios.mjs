@@ -7,13 +7,37 @@
  */
 
 import { passages } from "../../data/passages.js";
-import { SAMUEL_QUESTIONS } from "../../data/samuel.js";
 import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "../../src/exam.js";
 
 /* 2026-08-15T12:00:00Z — matches freezeClock()'s default so freshness values are
  * stable. Offsets are expressed in days before that instant. */
 export const NOW = new Date("2026-08-15T12:00:00.000Z").getTime();
 const daysAgo = (n) => NOW - n * 86400000;
+
+/* Which flags a scenario's screen is offered under (src/config.js `features`).
+ * Several of the app's screens are currently switched off — hidden rather than
+ * taken out — and a render suite that could not reach them would stop proving
+ * they still work. Keyed by the name's prefix, since a flag belongs to a screen
+ * and the prefix is what names the screen.
+ *
+ *   sync/, profile/  the sign-up form, and the gate that stands in front of it;
+ *   welcome/         the nudge shown on the way out of that form;
+ *   leaderboard/     Stats;
+ *   guide/           the long-form explainer.
+ *
+ * A scenario whose screen is always on offer needs nothing here. */
+const SCENARIO_FEATURES = {
+  "sync/": { profileSetup: true },
+  "profile/": { profileSetup: true },
+  "welcome/": { profileSetup: true, welcome: true },
+  "leaderboard/": { leaderboard: true },
+  "guide/": { guide: true },
+};
+
+export function featuresFor(name) {
+  const prefix = Object.keys(SCENARIO_FEATURES).find((p) => name.startsWith(p));
+  return prefix ? SCENARIO_FEATURES[prefix] : {};
+}
 
 export const PROFILE = {
   name: "Ada Lovelace",
@@ -631,145 +655,10 @@ export const scenarios = [
     }),
   },
 
-  // ── speak mode ─────────────────────────────────────────────────────────────
-  { name: "speak/idle", state: baseState({ view: "speak" }) },
-  {
-    name: "speak/idle-supported",
-    state: baseState({
-      view: "speak",
-      speak: {
-        supported: true,
-        running: false,
-        mode: "word",
-        source: "committed",
-        queue: [],
-        index: 0,
-        phase: "idle",
-        heard: "",
-        lastResult: null,
-      },
-    }),
-  },
-  {
-    name: "speak/running-feedback",
-    state: baseState({
-      view: "speak",
-      speak: {
-        supported: true,
-        running: true,
-        mode: "verse",
-        source: "all",
-        queue: [1, 2, 3],
-        index: 1,
-        phase: "feedback",
-        heard: "for god so loved the world",
-        lastResult: {
-          score: 0.5,
-          pct: 50,
-          spokenFeedback: "50 percent correct.",
-          missed: ["world"],
-          perVerse: [{ verse: 1, score: 0.5, pct: 50 }],
-        },
-      },
-    }),
-  },
-
-  {
-    /* A session the microphone ended, not the member — the one case where the
-     * screen going back to the setup needs a sentence beside it. */
-    name: "speak/stopped-by-mic",
-    state: baseState({
-      view: "speak",
-      speak: {
-        supported: true,
-        running: false,
-        mode: "passage",
-        source: "due",
-        queue: [],
-        index: 0,
-        phase: "idle",
-        heard: "",
-        lastResult: null,
-        error: "The microphone was blocked. Allow it in your browser, then try again.",
-      },
-    }),
-  },
-
-  // ── samuel mode ────────────────────────────────────────────────────────────
-  { name: "samuel/idle", state: baseState({ view: "samuel" }) },
-  {
-    name: "samuel/answered",
-    state: baseState({
-      view: "samuel",
-      samuel: {
-        record: { [SAMUEL_QUESTIONS[0].id]: { right: 0, wrong: 1, last: NOW } },
-        round: SAMUEL_QUESTIONS.slice(0, 3),
-        index: 0,
-        answer: SAMUEL_QUESTIONS[0].options[0],
-        results: [false],
-        scope: null,
-        view: "quiz",
-        book: "1 Samuel",
-        openChapter: "",
-      },
-    }),
-  },
-  {
-    name: "samuel/reading",
-    state: baseState({
-      view: "samuel",
-      samuel: {
-        record: {},
-        round: [],
-        index: 0,
-        answer: null,
-        results: [],
-        scope: null,
-        view: "read",
-        book: "2 Samuel",
-        openChapter: "2 Samuel 7",
-      },
-    }),
-  },
-
   // ── the guide ──────────────────────────────────────────────────────────────
   { name: "guide/default", state: baseState({ view: "guide" }) },
   // Both ends of the freshness slider: day 0, where every curve reads 100%, and
   // a month on, where the held passage is well under the member's mark.
   { name: "guide/day-zero", state: baseState({ view: "guide", guideDays: 0 }) },
   { name: "guide/month-later", state: baseState({ view: "guide", guideDays: 30 }) },
-
-  // ── run mode ───────────────────────────────────────────────────────────────
-  { name: "run/default", state: baseState({ view: "run" }) },
-  {
-    name: "run/playing",
-    state: baseState({
-      view: "run",
-      run: {
-        supported: true,
-        preset: "sprint",
-        bpm: 180,
-        playing: true,
-        nowRef: "John 11:35",
-        nowText: "Jesus wept.",
-        playlist: [
-          {
-            ref: "Psalm 23",
-            title: "The Lord Is My Shepherd",
-            artist: "Shane & Shane",
-            url: "https://open.spotify.com/track/x",
-          },
-        ],
-      },
-    }),
-  },
-  // A browser with no WebAudio: the beat controls give way to a note, the
-  // playlist stays.
-  {
-    name: "run/unsupported",
-    state: baseState({
-      view: "run",
-      run: { supported: false, preset: "hype", bpm: 165, playing: false, nowRef: "", nowText: "", playlist: [] },
-    }),
-  },
 ].map((s) => ({ props: PROPS, ...s }));

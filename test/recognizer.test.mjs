@@ -17,11 +17,7 @@ class FakeSpeechRecognition {
   }
   start() {
     this.started++;
-    // `neverOpens` is an engine that accepts start() and then ends without ever
-    // reporting itself listening — which is exactly what Chrome's restart
-    // limiter looks like from the outside, and the only case the backoff has to
-    // survive. An engine that really opens resets the backoff, as it should.
-    if (this.onstart && !this.neverOpens) this.onstart();
+    if (this.onstart) this.onstart();
   }
   abort() {
     this.aborted = true;
@@ -53,43 +49,14 @@ function withSpeech(run) {
   }
 }
 
-/* A clock the test winds by hand, so a four-second wait costs no seconds. */
-function fakeClock() {
-  let now = 0;
-  let seq = 0;
-  const jobs = new Map();
-  return {
-    schedule: (fn, ms) => {
-      const id = ++seq;
-      jobs.set(id, { at: now + ms, fn });
-      return id;
-    },
-    unschedule: (id) => jobs.delete(id),
-    /* Run everything due within `ms`, in the order it came due. */
-    tick(ms) {
-      now += ms;
-      for (const [id, job] of [...jobs].sort((a, b) => a[1].at - b[1].at)) {
-        if (job.at <= now) {
-          jobs.delete(id);
-          job.fn();
-        }
-      }
-    },
-  };
-}
-
 /* A recognizer plus a log of everything it reported. */
-function wired(clock) {
-  const heard = { text: [], statuses: [], errors: [], endpoints: 0 };
-  const rec = createRecognizer(
-    {
-      onText: (t, settled) => heard.text.push([t, settled]),
-      onStatus: (s) => heard.statuses.push(s),
-      onError: (e) => heard.errors.push(e),
-      onEndpoint: () => heard.endpoints++,
-    },
-    clock ? { schedule: clock.schedule, unschedule: clock.unschedule } : undefined,
-  );
+function wired() {
+  const heard = { text: [], statuses: [], errors: [] };
+  const rec = createRecognizer({
+    onText: (t, settled) => heard.text.push([t, settled]),
+    onStatus: (s) => heard.statuses.push(s),
+    onError: (e) => heard.errors.push(e),
+  });
   return { rec, heard, engine: FakeSpeechRecognition.last };
 }
 
@@ -125,75 +92,17 @@ test("settled phrases are marked as such; ones still being revised are not", () 
 
 test("a pause does not end the session — the member does", () => {
   withSpeech(() => {
-    const clock = fakeClock();
-    const { rec, engine } = wired(clock);
+    const { rec, engine } = wired();
     rec.start();
     assert.equal(engine.started, 1);
 
-    /* Chrome ends a continuous session of its own accord after silence. The
-     * member is still mid-passage, so it is started again — but never in the
-     * same breath. Restarting inside `onend` is the pattern Chrome's
-     * rate-limiter watches for, and a session that trips it thereafter ends the
-     * instant it opens, which reads as a microphone that has died. */
+    // Chrome ends a continuous session of its own accord after silence. The
+    // member is still mid-passage, so it is started again.
     engine.onend();
-    assert.equal(engine.started, 1, "not restarted synchronously — that is what trips the limiter");
-
-    clock.tick(300);
-    assert.equal(engine.started, 2, "an unasked-for end is restarted, after a beat");
+    assert.equal(engine.started, 2, "an unasked-for end is restarted");
 
     rec.stop();
     assert.equal(engine.aborted, true, "but stopping lets the microphone go");
-  });
-});
-
-test("the waits grow, so a rate-limited engine is not hammered", () => {
-  withSpeech(() => {
-    const clock = fakeClock();
-    const { rec, engine } = wired(clock);
-    rec.start();
-    engine.neverOpens = true;
-
-    engine.onend();
-    clock.tick(240); // just short of the first wait
-    assert.equal(engine.started, 1, "the first retry waits");
-    clock.tick(20);
-    assert.equal(engine.started, 2);
-
-    // The engine never reported starting, so the next wait is longer than the
-    // last: onstart is what resets the backoff.
-    engine.onend();
-    clock.tick(300);
-    assert.equal(engine.started, 2, "the second retry waits longer than the first");
-    clock.tick(300);
-    assert.equal(engine.started, 3);
-  });
-});
-
-test("a microphone that will not stay open gives up rather than spinning", () => {
-  withSpeech(() => {
-    const clock = fakeClock();
-    const { rec, heard, engine } = wired(clock);
-    rec.start();
-    engine.neverOpens = true;
-    // An engine that ends every time it is started, which is what tripping the
-    // limiter looks like from in here.
-    for (let i = 0; i < 20; i++) {
-      engine.onend();
-      clock.tick(5000);
-    }
-    assert.ok(heard.errors.length > 0, "the member is told, rather than left with a dead microphone");
-    const gaveUpAt = engine.started;
-    clock.tick(60000);
-    assert.equal(engine.started, gaveUpAt, "and it stops trying");
-  });
-});
-
-test("the engine's own endpoint is passed on", () => {
-  withSpeech(() => {
-    const { rec, heard, engine } = wired();
-    rec.start();
-    engine.onspeechend();
-    assert.equal(heard.endpoints, 1);
   });
 });
 

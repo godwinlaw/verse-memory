@@ -42,6 +42,11 @@ const summary = (uid, name, group, gender, gradClass, verses) => ({
   streakDay: new Date().toISOString().slice(0, 10),
 });
 
+/* Stats is switched off as the app ships (src/config.js `features`). It is
+ * hidden rather than deleted, so every boot here turns it back on — which is
+ * also what makes this suite the proof that it still works. */
+const STATS = { leaderboard: true };
+
 async function stats(app) {
   await app.nav("Stats").click();
   return app.page;
@@ -51,6 +56,7 @@ test("the board is built from the summaries, not from everybody's record", async
   // Both collections are answered, holding different people. Only the summaries
   // may appear: reading `users` for the board is the cost this replaced.
   await app.boot({
+    features: STATS,
     progress: {},
     firebase: {
       session: MEMBER,
@@ -67,14 +73,14 @@ test("the board is built from the summaries, not from everybody's record", async
 test("a group with no summaries yet still has a board, read the old way", async ({ app, page }) => {
   // The day the change ships, nobody has pushed one. The fallback is what keeps
   // the board whole until they have.
-  await app.boot({ progress: {}, firebase: { session: MEMBER, standings: [], roster: ROSTER } });
+  await app.boot({ features: STATS, progress: {}, firebase: { session: MEMBER, standings: [], roster: ROSTER } });
   await stats(app);
 
   await expect(page.getByRole("cell", { name: "Grace Hopper" })).toBeVisible();
 });
 
 test("the groups can be ranked against each other, per member", async ({ app, page }) => {
-  await app.boot({ progress: {}, firebase: { session: MEMBER, roster: ROSTER } });
+  await app.boot({ features: STATS, progress: {}, firebase: { session: MEMBER, roster: ROSTER } });
   await stats(app);
 
   // The board opens on people, as it always has.
@@ -98,7 +104,7 @@ test("the groups can be ranked against each other, per member", async ({ app, pa
 });
 
 test("and by the other two things a member says about themselves", async ({ app, page }) => {
-  await app.boot({ progress: {}, firebase: { session: MEMBER, roster: ROSTER } });
+  await app.boot({ features: STATS, progress: {}, firebase: { session: MEMBER, roster: ROSTER } });
   await stats(app);
 
   await page.getByRole("button", { name: "Bros & Sis" }).click();
@@ -111,7 +117,7 @@ test("and by the other two things a member says about themselves", async ({ app,
 });
 
 test("filtering and ranking compose rather than replacing each other", async ({ app, page }) => {
-  await app.boot({ progress: {}, firebase: { session: MEMBER, roster: ROSTER } });
+  await app.boot({ features: STATS, progress: {}, firebase: { session: MEMBER, roster: ROSTER } });
   await stats(app);
 
   await page.getByRole("button", { name: "Ministry", exact: true }).click();
@@ -125,7 +131,7 @@ test("filtering and ranking compose rather than replacing each other", async ({ 
 });
 
 test("going back to people gives back the board it has always been", async ({ app, page }) => {
-  await app.boot({ progress: { 1: committed(0.8) }, firebase: { session: MEMBER, roster: ROSTER } });
+  await app.boot({ features: STATS, progress: { 1: committed(0.8) }, firebase: { session: MEMBER, roster: ROSTER } });
   await stats(app);
 
   // The column heading, not the podium caption beside it — both say the same

@@ -4,6 +4,7 @@
  * just finished that form for the first time — a nudge toward the guide. */
 
 import { copy } from "../copy.js";
+import { features } from "../config.js";
 import {
   DEFAULT_COMMIT_THRESHOLD,
   DEFAULT_DUE_FRESHNESS,
@@ -21,12 +22,11 @@ import { committedCount, countByStatus, streakOf } from "../progress.js";
 import { segButton } from "../ui/tokens.js";
 import { PRIMARY_DOMAIN } from "../firebase.js";
 
-/* The mobile gate is a warning, not a dead end: the wording is the same every
- * time (copy.mobileGate), and the one thing on it to press is Continue, which
- * lets the member through for this visit. The acknowledgement is state-only —
- * deliberately not persisted, so the safety line is heard again next visit. */
-export function mobileGateVals({ groupName, actions }) {
-  return { groupName, onContinue: actions.acknowledgeMobile };
+/* The mobile gate is a dead end: nothing to press, nothing to wait for, and the
+ * sentence on it is the same every time (copy.mobileGate). All it takes is who
+ * the app belongs to, so it can still name itself while declining. */
+export function mobileGateVals({ groupName }) {
+  return { groupName };
 }
 
 /* The splash carries nothing but the app's identity and the shape of the wait:
@@ -119,12 +119,30 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
   const name = draft.name != null ? draft.name : googleName;
   const query = (draft.ministryGroup || "").trim().toLowerCase();
 
+  /* Who the member is — name, ministry group, gender, class. The whole point of
+   * asking is to slice the leaderboard, so the fields are offered under the
+   * same flag as the sign-up screen they were introduced on (config.js): with
+   * `profileSetup` off this is Settings and nothing else. Anything already
+   * answered stays in the draft and is written straight back by submitProfile,
+   * so hiding the fields loses nobody's answers.
+   *
+   * `complete` is what holds Save, and it has nothing to hold when there is
+   * nothing being asked for — see App.submitProfile, which drops the same
+   * requirement rather than letting a form save what it then refuses. */
+  const showIdentity = features.profileSetup;
+
   return {
     isSetup,
     groupName,
-    title: isSetup ? copy.profileForm.titleSetup : copy.profileForm.titleEdit,
+    title: isSetup
+      ? copy.profileForm.titleSetup
+      : showIdentity
+        ? copy.profileForm.titleEdit
+        : copy.profileForm.titleSettings,
     submitLabel: isSetup ? copy.profileForm.submitSetup : copy.profileForm.submitEdit,
-    complete: isProfileComplete({ ...draft, name }),
+    complete: showIdentity ? isProfileComplete({ ...draft, name }) : true,
+
+    showIdentity,
 
     name,
     onName: (e) => actions.setProfileField("name", e.target.value),

@@ -5,7 +5,7 @@
  * from the header for later edits (v.isSetup false — cancellable). */
 
 import { copy } from "../copy.js";
-import { html, sx, corners } from "../dom.js";
+import { html, sx, corners, React } from "../dom.js";
 import {
   COLOR_ERROR,
   LABEL_SECTION,
@@ -85,59 +85,69 @@ export function profileFormView(v) {
         <div style=${sx(SCREEN_TITLE)}>${v.title}</div>
         <div style=${sx(SCREEN_SUBTITLE)}>${v.groupName}</div>
       </div>
-      <p style=${sx(SCREEN_BODY)}>${copy.profileForm.intro}</p>
+      ${
+        v.showIdentity &&
+        html`<${React.Fragment}>
+          <p style=${sx(SCREEN_BODY)}>${copy.profileForm.intro}</p>
 
-      <label style=${sx(FIELD)}>
-        <span style=${sx(LABEL_SECTION)}>${copy.profileForm.name}</span>
-        <input className="input" value=${v.name} onChange=${v.onName} placeholder=${copy.profileForm.namePlaceholder} />
-      </label>
+          <label style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.name}</span>
+            <input
+              className="input"
+              value=${v.name}
+              onChange=${v.onName}
+              placeholder=${copy.profileForm.namePlaceholder}
+            />
+          </label>
 
-      <div style=${sx(FIELD)}>
-        <span style=${sx(LABEL_SECTION)}>${copy.profileForm.ministryGroup}</span>
-        <div style=${sx("position:relative")}>
-          <input
-            className="input"
-            value=${v.ministryGroup}
-            onChange=${v.onMinistryInput}
-            onFocus=${v.onMinistryFocus}
-            onBlur=${v.onMinistryBlur}
-            placeholder=${copy.profileForm.ministryPlaceholder}
-            style=${sx("width:100%;box-sizing:border-box")}
-          />
-          ${
-            v.ministryOpen &&
-            v.ministryMatches.length > 0 &&
-            html`<div
-              style=${sx("position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:5;max-height:210px;overflow:auto;background:var(--color-bg);border:1px solid var(--color-divider)")}
-            >
-              ${v.ministryMatches.map(
-                (m) => html`<button key=${m.label} onMouseDown=${m.onSelect} style=${sx(m.style)}>${m.label}</button>`,
+          <div style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.ministryGroup}</span>
+            <div style=${sx("position:relative")}>
+              <input
+                className="input"
+                value=${v.ministryGroup}
+                onChange=${v.onMinistryInput}
+                onFocus=${v.onMinistryFocus}
+                onBlur=${v.onMinistryBlur}
+                placeholder=${copy.profileForm.ministryPlaceholder}
+                style=${sx("width:100%;box-sizing:border-box")}
+              />
+              ${
+                v.ministryOpen &&
+                v.ministryMatches.length > 0 &&
+                html`<div
+                  style=${sx("position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:5;max-height:210px;overflow:auto;background:var(--color-bg);border:1px solid var(--color-divider)")}
+                >
+                  ${v.ministryMatches.map(
+                    (m) =>
+                      html`<button key=${m.label} onMouseDown=${m.onSelect} style=${sx(m.style)}>${m.label}</button>`,
+                  )}
+                </div>`
+              }
+            </div>
+          </div>
+
+          <div style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.gender}</span>
+            <div style=${sx("display:flex;gap:8px")}>
+              ${v.genders.map(
+                (g) => html`<button key=${g.label} onClick=${g.onClick} style=${sx(g.style)}>${g.label}</button>`,
               )}
-            </div>`
-          }
-        </div>
-      </div>
+            </div>
+          </div>
 
-      <div style=${sx(FIELD)}>
-        <span style=${sx(LABEL_SECTION)}>${copy.profileForm.gender}</span>
-        <div style=${sx("display:flex;gap:8px")}>
-          ${v.genders.map(
-            (g) => html`<button key=${g.label} onClick=${g.onClick} style=${sx(g.style)}>${g.label}</button>`,
-          )}
-        </div>
-      </div>
-
-      <label style=${sx(FIELD)}>
-        <span style=${sx(LABEL_SECTION)}>${copy.profileForm.gradClass}</span>
-        <input
-          className="input"
-          value=${v.gradClass}
-          onChange=${v.onGradClass}
-          placeholder=${copy.profileForm.gradClassPlaceholder}
-          ...${NUMERIC_KEYBOARD}
-        />
-      </label>
-
+          <label style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.gradClass}</span>
+            <input
+              className="input"
+              value=${v.gradClass}
+              onChange=${v.onGradClass}
+              placeholder=${copy.profileForm.gradClassPlaceholder}
+              ...${NUMERIC_KEYBOARD}
+            />
+          </label>
+        <//>`
+      }
       ${
         v.showReviewSettings &&
         html`<div style=${sx(SECTION + ";gap:20px")}>
