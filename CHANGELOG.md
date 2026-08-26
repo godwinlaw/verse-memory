@@ -6,6 +6,20 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **Speak/Run mode (#66) and Samuel mode (#67) are reverted.** Both were merged
+  on 26 August 2026 and are backed out whole (`git revert -m 1` of each merge,
+  so the branches and their history are intact and either can be brought back
+  with a fresh PR). What went with them: `speak.js`, `run.js`, `beat.js`,
+  `earcon.js`, `speaker.js`, `recital.js`, `wordmatch.js` and their screens and
+  suites; `data/samuel.js` and the study mode built on it; the running playlist
+  and `docs/research/`. Two side effects are worth knowing, because they are
+  changes to the app rather than removals: `voice.js` goes back to owning its
+  own matcher rather than importing one from `wordmatch.js`, and **the mobile
+  gate is a refusal again** — #66 had turned it into a pass-through warning with
+  a Continue button, so a phone is once more a dead end (`src/device.js` and
+  `views/mobile-gate.js` as they were). The Isaiah 54–55 passage split (#65)
+  sits underneath both and is untouched.
+
 - **Four pieces of the app are switched off, and none of them is deleted.** The
   group is starting on the app with nothing in it but the verses, so what a new
   member meets is now the board and the set: the **Stats** leaderboard and the
