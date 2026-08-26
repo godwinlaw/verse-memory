@@ -63,9 +63,12 @@ export function boardView(v) {
             ${v.motto}
           </div>`
         }
-        <div style=${sx("font-size:12px;line-height:1.6;opacity:.75;font-style:italic;max-width:60ch")}>
-          ${copy.app.epigraph}
-        </div>
+        ${
+          v.epigraph &&
+          html`<div style=${sx("font-size:12px;line-height:1.6;opacity:.75;font-style:italic;max-width:60ch")}>
+            ${v.epigraph}
+          </div>`
+        }
         <div style=${sx("font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.72")}>
           ${copy.board.progressTo(v.deadlineLabel)}
         </div>
@@ -186,7 +189,7 @@ export function boardView(v) {
             <button className="btn btn-secondary" onClick=${v.goReviewSetup}>${copy.board.paceReview}</button>
             <button className="btn btn-secondary" onClick=${v.goTest}>${copy.board.paceTest}</button>
             <button className="btn btn-secondary" onClick=${v.goList}>${copy.board.paceBrowse(v.totalCount)}</button>
-            <button className="btn btn-ghost" onClick=${v.goGuide}>${copy.board.paceGuide}</button>
+            ${v.showGuideLink && html`<button className="btn btn-ghost" onClick=${v.goGuide}>${copy.board.paceGuide}</button>`}
           </div>
         </div>
       </div>

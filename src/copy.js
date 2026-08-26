@@ -198,6 +198,10 @@ export const copy = {
   profileForm: {
     titleSetup: "SET UP YOUR PROFILE",
     titleEdit: "EDIT YOUR PROFILE",
+    /* What the same screen is called when the identity fields are not on it —
+     * with the profile put away (config.js features.profileSetup) there is no
+     * profile to edit, only the settings that were sitting underneath it. */
+    titleSettings: "SETTINGS",
     submitSetup: "Save and continue",
     submitEdit: "Save changes",
     intro:

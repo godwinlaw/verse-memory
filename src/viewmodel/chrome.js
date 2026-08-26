@@ -2,16 +2,21 @@
  * decide which view the shell renders. */
 
 import { copy } from "../copy.js";
+import { features } from "../config.js";
 import { isProfileComplete } from "../profile.js";
 import { muted } from "../ui/tokens.js";
 
 /* `also` lists the views that belong to a nav item without being it — the
- * screens either side of a session, which should keep their entry underlined. */
+ * screens either side of a session, which should keep their entry underlined.
+ * `feature` names the flag a stop is offered under (config.js); a stop without
+ * one is always there. Filtering the bar is all it takes to put a screen away,
+ * because every destination in the app is on it — which is the same fact the
+ * guide's map is drawn from. */
 const NAV = [
   { key: "board", label: copy.nav.board, also: ["done"] },
   { key: "list", label: copy.nav.list },
-  { key: "leaderboard", label: copy.nav.leaderboard },
-  { key: "guide", label: copy.nav.guide },
+  { key: "leaderboard", label: copy.nav.leaderboard, feature: "leaderboard" },
+  { key: "guide", label: copy.nav.guide, feature: "guide" },
 ];
 
 const navStyle = (active, underlined) =>
@@ -44,7 +49,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     syncRetrying: !!state.syncRetrying,
     onSyncRetry: actions.retrySync,
 
-    nav: NAV.map((n) => ({
+    nav: NAV.filter((n) => !n.feature || features[n.feature]).map((n) => ({
       key: n.key,
       label: n.label,
       onClick: () => actions.goto(n.key),
@@ -68,5 +73,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     goReviewSetup: () => actions.goto("review-setup"),
     goLearnSetup: () => actions.goto("learn-setup"),
     goGuide: () => actions.goto("guide"),
+    /* The board's link to the guide, which is the only way in besides the bar. */
+    showGuideLink: features.guide,
   };
 }

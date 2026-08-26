@@ -68,7 +68,13 @@ export class AppHarness {
    *   reducedMotion             "reduce" by default, so screens are settled the
    *                             moment they arrive — the app drops every
    *                             animation under that query. motion.spec.mjs is
-   *                             what passes "no-preference". */
+   *                             what passes "no-preference";
+   *   features                  flags from src/config.js, off by default as they
+   *                             ship. A screen that is switched off is hidden
+   *                             rather than deleted, so a spec that means to
+   *                             press it turns its flag back on the way a
+   *                             deploy would — through config.js, which is the
+   *                             app's own door and not a seam of our own. */
   async boot({
     progress = {},
     log = {},
@@ -79,6 +85,7 @@ export class AppHarness {
     deadline,
     groupName,
     voice,
+    features,
     reducedMotion = "reduce",
     waitForApp = true,
   } = {}) {
@@ -90,7 +97,7 @@ export class AppHarness {
     if (scenario) await installFirebaseStub(this.page, scenario);
 
     await this.vendorCdn();
-    await this.serveConfig({ splashMinMs, deadline, groupName, firebase: scenario ? STUB_CONFIG : null });
+    await this.serveConfig({ splashMinMs, deadline, groupName, features, firebase: scenario ? STUB_CONFIG : null });
 
     const seeded = {
       "mv.progress": JSON.stringify(progress),
@@ -183,10 +190,11 @@ export class AppHarness {
    * Serving it rather than injecting the globals keeps the test on the same seam
    * a real deploy uses — and stops a stray local config.js from deciding what
    * the suite sees. */
-  async serveConfig({ splashMinMs, deadline, groupName, firebase }) {
+  async serveConfig({ splashMinMs, deadline, groupName, features, firebase }) {
     const appConfig = {
       ...(groupName ? { groupName } : {}),
       ...(deadline ? { deadline } : {}),
+      ...(features ? { features } : {}),
       splashMinMs,
     };
     const body =

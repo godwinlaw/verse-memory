@@ -4,6 +4,7 @@
  * just finished that form for the first time — a nudge toward the guide. */
 
 import { copy } from "../copy.js";
+import { features } from "../config.js";
 import {
   DEFAULT_COMMIT_THRESHOLD,
   DEFAULT_DUE_FRESHNESS,
@@ -118,12 +119,30 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
   const name = draft.name != null ? draft.name : googleName;
   const query = (draft.ministryGroup || "").trim().toLowerCase();
 
+  /* Who the member is — name, ministry group, gender, class. The whole point of
+   * asking is to slice the leaderboard, so the fields are offered under the
+   * same flag as the sign-up screen they were introduced on (config.js): with
+   * `profileSetup` off this is Settings and nothing else. Anything already
+   * answered stays in the draft and is written straight back by submitProfile,
+   * so hiding the fields loses nobody's answers.
+   *
+   * `complete` is what holds Save, and it has nothing to hold when there is
+   * nothing being asked for — see App.submitProfile, which drops the same
+   * requirement rather than letting a form save what it then refuses. */
+  const showIdentity = features.profileSetup;
+
   return {
     isSetup,
     groupName,
-    title: isSetup ? copy.profileForm.titleSetup : copy.profileForm.titleEdit,
+    title: isSetup
+      ? copy.profileForm.titleSetup
+      : showIdentity
+        ? copy.profileForm.titleEdit
+        : copy.profileForm.titleSettings,
     submitLabel: isSetup ? copy.profileForm.submitSetup : copy.profileForm.submitEdit,
-    complete: isProfileComplete({ ...draft, name }),
+    complete: showIdentity ? isProfileComplete({ ...draft, name }) : true,
+
+    showIdentity,
 
     name,
     onName: (e) => actions.setProfileField("name", e.target.value),

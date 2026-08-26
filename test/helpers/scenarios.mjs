@@ -14,6 +14,31 @@ import { applyExam, buildExam, DEFAULT_SETUP, normalizeSetup, scoreExam } from "
 export const NOW = new Date("2026-08-15T12:00:00.000Z").getTime();
 const daysAgo = (n) => NOW - n * 86400000;
 
+/* Which flags a scenario's screen is offered under (src/config.js `features`).
+ * Several of the app's screens are currently switched off — hidden rather than
+ * taken out — and a render suite that could not reach them would stop proving
+ * they still work. Keyed by the name's prefix, since a flag belongs to a screen
+ * and the prefix is what names the screen.
+ *
+ *   sync/, profile/  the sign-up form, and the gate that stands in front of it;
+ *   welcome/         the nudge shown on the way out of that form;
+ *   leaderboard/     Stats;
+ *   guide/           the long-form explainer.
+ *
+ * A scenario whose screen is always on offer needs nothing here. */
+const SCENARIO_FEATURES = {
+  "sync/": { profileSetup: true },
+  "profile/": { profileSetup: true },
+  "welcome/": { profileSetup: true, welcome: true },
+  "leaderboard/": { leaderboard: true },
+  "guide/": { guide: true },
+};
+
+export function featuresFor(name) {
+  const prefix = Object.keys(SCENARIO_FEATURES).find((p) => name.startsWith(p));
+  return prefix ? SCENARIO_FEATURES[prefix] : {};
+}
+
 export const PROFILE = {
   name: "Ada Lovelace",
   ministryGroup: "Kairos",

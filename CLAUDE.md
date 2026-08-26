@@ -271,9 +271,53 @@ The app is gated behind Google sign-in restricted to the Acts 2 Network Workspac
 
 The two halves drifting apart is not a hypothetical: a client that admits a domain the deployed rules do not means every read and write is refused for those members, which the app cannot tell from having no record — so they are asked to set up a profile on each device and nothing syncs. **`.github/workflows/deploy.yml` therefore deploys `firestore:rules` alongside hosting on every push to `main`**, so the client half can never ship without the rules half. Deploying by hand (`firebase deploy --only firestore:rules`) still works and is what to reach for when the rules alone are behind.
 
+### What the app is currently offering
+
+Several pieces of the app are **switched off rather than taken out**, and
+`features` in `src/config.js` is the only definition of which: `leaderboard`
+(the Stats board and its header entry), `guide` (the long-form explainer, its
+entry, and the board's link to it), `profileSetup` (the sign-up form, plus the
+four identity fields it shares with Settings), `welcome` (the one-time nudge
+that followed that form), and `boardEpigraph` (the verse across the top of the
+board). All five are `false` today. A deploy overrides them through
+`window.__APP_CONFIG__.features`, which is **merged** over the defaults rather
+than replacing them, so naming one flag does not silently take the others with
+it.
+
+**A flag is read where it is used, not captured at import.** `viewmodel/`
+decides what is shown (the nav filters `NAV`, `boardVals` hands the view an
+`epigraph` or an empty string, `profileFormVals` sets `showIdentity`), views
+branch on a `v.` boolean the way they already do for `showReviewSettings`, and
+`App.render()` reads the two that decide a whole screen. Nothing in `srs`,
+`progress`, `exam` or `grading` knows a flag exists — a flag is about what is on
+screen and never about what a verse is worth.
+
+Two consequences of `profileSetup` are worth knowing, because they are the
+places the flag reaches past its own screen. The **sync gate goes with the form
+it guards**: it exists to stop a member whose cloud record could not be read
+being sent through sign-up and stamping a fresh profile over the real one, and
+with no form to keep off the screen there is nothing for it to stand in front
+of. And the **identity fields leave Settings too** — they are there to slice the
+leaderboard — which means `profileFormVals.complete` can no longer hold Save
+against them and `App.submitProfile` drops the matching `isProfileComplete`
+check; otherwise every setting underneath them would be unreachable for
+everybody. A profile already filled in is left alone, written straight back from
+the draft, and still synced.
+
+**Hidden is a claim the tests have to keep.** Every one of those screens is
+still rendered by `test/views.test.mjs`: `featuresFor(name)` in
+`test/helpers/scenarios.mjs` maps a scenario's name prefix to the flags its
+screen is offered under, and `withFeatures` (`test/helpers/features.mjs`) turns
+them on around the render. `asShipped(name)` is the same render with nothing
+turned on, and is what asserts the pieces are actually off. The browser suite
+does the same through the app's own door — `app.boot({ features })` writes them
+into the served `config.js` — so `e2e/guide.spec.mjs`, `standings.spec.mjs`,
+`profile.spec.mjs` and `sync.spec.mjs` go on pressing screens a member cannot
+currently reach.
+
 ### Configuration (config from environment)
 
-Defaults (church name, deadline, splash floor, Firebase config) live in `src/config.js`. Deploy-time overrides are injected as `window.__APP_CONFIG__` / `window.__FIREBASE_CONFIG__` by an optional root `config.js` (gitignored; template is `config.example.js`), loaded before the app. The Firebase web config is public by design (access is governed by Firestore rules), so it ships as the default in `src/config.js`.
+Defaults (church name, deadline, splash floor, the feature flags above, Firebase config) live in `src/config.js`. Deploy-time overrides are injected as `window.__APP_CONFIG__` / `window.__FIREBASE_CONFIG__` by an optional root `config.js` (gitignored; template is `config.example.js`), loaded before the app. The Firebase web config is public by design (access is governed by Firestore rules), so it ships as the default in `src/config.js`.
 
 One override is sharp enough to have its own guard: `window.__FIREBASE_CONFIG__ = null` disables cloud sync entirely, which is a reasonable thing to want while looking at the app locally without signing in — but `scripts/build.mjs` prefers the local `config.js` over the template, so a build made with that line live ships a **site with no sign-in and no cross-device progress, saying nothing about it**. The build now evaluates the config it is about to ship and **refuses** when it reads `null`, unless `ALLOW_LOCAL_ONLY_BUILD=1` says it was meant.
 

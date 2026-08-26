@@ -34,7 +34,7 @@ import {
   mergeProfile,
   reviewSettings,
 } from "./profile.js";
-import { appConfig } from "./config.js";
+import { appConfig, features } from "./config.js";
 import { detectMobile } from "./device.js";
 import { DEFAULT_THEME, applyTheme, normalizeTheme, watchSystemTheme } from "./theme.js";
 import {
@@ -551,7 +551,7 @@ export class App extends React.Component {
    * incomplete going in) is shown the welcome prompt on the way out; reopening
    * an already-complete profile to edit it never triggers it again. */
   submitProfile() {
-    const isSignUp = !isProfileComplete(this.state.profile);
+    const isSignUp = features.profileSetup && !isProfileComplete(this.state.profile);
     const draft = this.state.profileDraft || this.state.profile || {};
     // Fall back to the Google account's display name if the member never touched
     // the pre-filled name field.
@@ -570,7 +570,13 @@ export class App extends React.Component {
       commitThreshold: draft.commitThreshold !== undefined ? Number(draft.commitThreshold) : DEFAULT_COMMIT_THRESHOLD,
       updatedAt: Date.now(),
     };
-    if (!isProfileComplete(next)) return;
+    /* The four identity fields are only required while the app is asking for
+     * them. With `profileSetup` off they are not on the form at all, so holding
+     * Save against them would make the settings screen — review settings, the
+     * difficulty, the reset — unsavable for everybody. What the draft already
+     * carries is written back either way, so a member who filled the form in
+     * before the flag moved does not lose it by changing a setting. */
+    if (features.profileSetup && !isProfileComplete(next)) return;
     this.saveProfile(next);
     if (isSignUp) logAnalyticsEvent("sign_up");
     this.setState({ editingProfile: false, profileDraft: null, welcomePrompt: isSignUp });
@@ -1338,7 +1344,11 @@ export class App extends React.Component {
      * only of the form: a member whose profile is already complete on this
      * device goes straight through, with the banner below telling them their
      * work is staying local). */
-    const needsProfile = !isProfileComplete(profile);
+    /* Only when the app is still asking for a profile. With `profileSetup` off
+     * (config.js) it never is: sign-in lands on the board, and the form behind
+     * the header's gear is the settings screen rather than a gate. A profile
+     * already filled in is untouched either way — nothing here reads it. */
+    const needsProfile = features.profileSetup && !isProfileComplete(profile);
     const syncStatus = (sync || {}).status;
     /* Three ways the app can fail to know what this member has, and all three
      * must keep the sign-up form off the screen: the read is still in flight,
@@ -1372,7 +1382,7 @@ export class App extends React.Component {
 
     // A one-time nudge toward the guide, shown between finishing sign-up and
     // landing on the board — see submitProfile.
-    if (welcomePrompt) {
+    if (features.welcome && welcomePrompt) {
       return welcomeView(welcomeVals({ groupName: this.groupName(), actions: this.actions }));
     }
 

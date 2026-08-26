@@ -70,7 +70,10 @@ test("a queue row opens that verse as a sitting of one", async ({ app, page }) =
 });
 
 test("the header and the pace check reach every screen", async ({ app, page }) => {
-  await app.boot({ progress: PROGRESS });
+  // Stats and the guide are switched off as the app ships (src/config.js
+  // `features`); this is the test that they are hidden rather than gone, so it
+  // puts both back the way a deploy would.
+  await app.boot({ progress: PROGRESS, features: { leaderboard: true, guide: true } });
 
   await app.nav("Passages").click();
   await expect(page.getByRole("heading", { name: "All passages" })).toBeVisible();
@@ -99,4 +102,20 @@ test("the map draws one cell per passage, and says what each one is", async ({ a
   await expect(cells).toHaveCount(TOTAL);
   await expect(cells.first()).toHaveAttribute("title", `${passageById(1).ref} — Committed · 98% fresh`);
   await expect(cells.nth(5)).toHaveAttribute("title", `${passageById(6).ref} — Not started`);
+});
+
+/* And the bar as a member meets it, with the two flags where they ship. */
+test("with Stats and the guide put away, the bar carries neither", async ({ app, page }) => {
+  await app.boot({ progress: PROGRESS });
+
+  await expect(app.nav("Stats")).toHaveCount(0);
+  await expect(app.nav("Guide")).toHaveCount(0);
+  // The rest of it is untouched, including the three sittings.
+  for (const stop of ["Home", "Passages", "LEARN", "REVIEW", "TEST"]) {
+    await expect(app.nav(stop)).toBeVisible();
+  }
+
+  // Nor does the board print the epigraph, or a way through to the guide.
+  await expect(page.getByText(/sharper than any two-edged sword/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "How this works" })).toHaveCount(0);
 });

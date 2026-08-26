@@ -6,6 +6,28 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **Four pieces of the app are switched off, and none of them is deleted.** The
+  group is starting on the app with nothing in it but the verses, so what a new
+  member meets is now the board and the set: the **Stats** leaderboard and the
+  **Guide** are off the header, the **sign-up profile form** no longer stands
+  between signing in and the app (nor does the **welcome nudge** that followed
+  it), and the **Hebrews 4:12 epigraph** is off the top of the board. A new
+  `features` table in `src/config.js` is the single definition of what is on
+  offer, merged over per-deploy overrides in `window.__APP_CONFIG__.features`,
+  so bringing any of them back is one line and no code change. Every screen,
+  view-model, string and test stays exactly where it was — `test/views.test.mjs`
+  renders each hidden screen with its own flag turned on (`featuresFor`, plus
+  `withFeatures`), and the browser specs for the guide, the standings, the
+  profile and the sync gate do the same through `config.js`, which is the app's
+  own door. Two consequences worth knowing: the **sync gate goes with the form**
+  it guards, since a member is no longer sent through sign-up and so can no
+  longer stamp a fresh profile over the real one; and the **profile's four
+  identity fields leave Settings too**, because they exist to slice the
+  leaderboard — with nothing being asked for, `complete` no longer holds Save,
+  which would otherwise make every setting underneath them unreachable. A
+  profile already filled in is untouched, still written back by
+  `App.submitProfile`, and still synced. Closes #69.
+
 - **The leaderboard no longer downloads everybody's record to build itself.**
   It used to read the whole `users` collection — every verse of every member's
   progress map and every day of their log — and throw nearly all of it away to

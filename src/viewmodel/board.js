@@ -2,6 +2,7 @@
  * whole-set map, and the activity chart. */
 
 import { copy } from "../copy.js";
+import { features } from "../config.js";
 import { dayKey } from "../text.js";
 import { freshColor } from "../srs.js";
 import { learnPool, reviewPool, streakOf, STATUS_LABEL } from "../progress.js";
@@ -82,6 +83,11 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
   const shortDate = (d) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
   return {
+    /* The verse across the top of the hero. Read here rather than in the view
+     * because whether it is printed is a question about what is shown, and the
+     * answer is a flag (config.js) — the sign-in gate keeps its own copy of the
+     * same epigraph, which is deliberately not covered by this. */
+    epigraph: features.boardEpigraph ? copy.app.epigraph : "",
     deadlineLabel: deadline.toLocaleDateString("en-GB", { day: "numeric", month: "long" }),
     barStyle: "position:absolute;inset:0 auto 0 0;width:" + pct + "%;background:var(--color-reverse-text)",
 

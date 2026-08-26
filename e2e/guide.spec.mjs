@@ -12,8 +12,13 @@ import { DEFAULT_DUE_FRESHNESS } from "../src/profile.js";
 
 const BAR = Math.round(COMMIT_SCORE * 100);
 
+/* The guide is one of the screens currently switched off (src/config.js
+ * `features`) — hidden, not deleted. Every boot here puts it back the way a
+ * deploy would, so the screen goes on being pressed while it is put away. */
+const GUIDE = { guide: true };
+
 test("the guide quotes the model's own figures", async ({ app, page }) => {
-  await app.boot({ progress: {} });
+  await app.boot({ progress: {}, features: GUIDE });
   await app.nav("Guide").click();
 
   await expect(page.getByRole("heading", { name: "How this app works" })).toBeVisible();
@@ -26,7 +31,7 @@ test("the guide quotes the model's own figures", async ({ app, page }) => {
 });
 
 test("the slider redraws the forgetting curve", async ({ app, page }) => {
-  await app.boot({ progress: {} });
+  await app.boot({ progress: {}, features: GUIDE });
   await app.nav("Guide").click();
 
   const slider = page.getByRole("slider");
@@ -45,7 +50,7 @@ test("the slider redraws the forgetting curve", async ({ app, page }) => {
 });
 
 test("the flashcard demonstration is the real card", async ({ app, page }) => {
-  await app.boot({ progress: {} });
+  await app.boot({ progress: {}, features: GUIDE });
   await app.nav("Guide").click();
 
   // Same component as views/review.js, turned by a keyframe instead of a press.
@@ -54,7 +59,7 @@ test("the flashcard demonstration is the real card", async ({ app, page }) => {
 });
 
 test("the guide hands the member on to a first sitting", async ({ app, page }) => {
-  await app.boot({ progress: {} });
+  await app.boot({ progress: {}, features: GUIDE });
   await app.nav("Guide").click();
 
   await page.getByRole("button", { name: "Start learning" }).click();
@@ -62,7 +67,7 @@ test("the guide hands the member on to a first sitting", async ({ app, page }) =
 });
 
 test("the board's pace check opens the guide", async ({ app, page }) => {
-  await app.boot({ progress: {} });
+  await app.boot({ progress: {}, features: GUIDE });
 
   await page.getByRole("button", { name: "How this works" }).click();
   await expect(page.getByRole("heading", { name: "How this app works" })).toBeVisible();
