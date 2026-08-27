@@ -9,6 +9,7 @@
  * committed many but let them all fade. */
 
 import { copy } from "../copy.js";
+import { sharesRanking } from "../profile.js";
 import { freshnessSum } from "../progress.js";
 import { RANK_BY, rankFieldFor, standingsBy } from "../standings.js";
 import { segButton } from "../ui/tokens.js";
@@ -57,6 +58,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
       freshnessScore: myFreshnessScore,
       streak: myStreak,
       me: true,
+      shareRanking: sharesRanking(me),
       ministryGroup: me.ministryGroup,
       gender: me.gender,
       gradClass: me.gradClass,
@@ -71,10 +73,24 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
 
   // A member with nothing committed yet has no row on the board at all — there
   // is nothing meaningful to rank or display for them.
-  const ranked = roster
+  const counted = roster
     .filter(passes)
     .filter((p) => p.count > 0)
     .sort((a, b) => b.freshnessScore - a.freshnessScore || b.count - a.count);
+
+  /* Who is actually named on the people table.
+   *
+   * Hiding is about the member, not their work, so it applies **here and not
+   * to `counted`** — a hidden member goes on feeding their ministry's average
+   * below, and a group figure stays a fact about the group rather than a tally
+   * of who happened to leave the switch on. Your own row is always yours to
+   * see: `me` survives the filter, so a hidden member can still read where
+   * they stand while nobody else can. `hiddenNote` is what says so.
+   *
+   * Only an explicit `true` shows a row, exactly as profile.sharesRanking has
+   * it — a row carrying nothing is a member who never asked, not one whose
+   * answer went missing. */
+  const ranked = counted.filter((p) => p.me || p.shareRanking === true);
   const top = Math.max(1, ranked[0] ? ranked[0].freshnessScore : 1);
 
   // Ranking groups is the same board asked a different question, so it runs off
@@ -85,7 +101,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   // A group's name is its raw field value (e.g. standingsBy names a ministry
   // grouping "Kairos" straight off the profile) — gender is the one grouping
   // whose stored value is not what a member should read on screen.
-  const grouped = standingsBy(ranked, rankFieldFor(rankBy)).map((g) =>
+  const grouped = standingsBy(counted, rankFieldFor(rankBy)).map((g) =>
     rankBy === "gender" ? { ...g, name: copy.gender[g.name] || g.name } : g,
   );
   const isGrouped = rankBy !== "people";
@@ -97,6 +113,12 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
 
   return {
     daysLeftLabel: copy.leaderboard.daysLeft(totals.daysLeft),
+
+    /* Said only to the member it is true of, and only on the board it is about:
+     * your row is on this screen but on nobody else's, and the switch that
+     * changes that is on the settings form. Empty when they are sharing, so
+     * the view has one thing to test rather than two. */
+    hiddenNote: sharesRanking(me) ? "" : copy.leaderboard.hiddenNote,
 
     rankByLabel: copy.leaderboard.rankByLabel,
     rankByOptions: RANK_BY.map((r) => ({

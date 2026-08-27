@@ -913,20 +913,37 @@ test("finishing the profile form for the first time is met with the welcome prom
   });
 });
 
-test("with the sign-up form put away, saving the settings form is never a sign-up", () => {
+/* ── being on the leaderboard, or not ─────────────────────────────────────── */
+
+test("a member who signs up without touching the switch is saved as hidden", () => {
+  // The whole point of the default: nobody is put on a board their ministry can
+  // read because they filled in a form, only because they said so.
   const a = app(baseState({ profile: {}, profileDraft: { ...PROFILE } }));
   a.actions.submitProfile();
-  assert.equal(a.state.welcomePrompt, false);
+  assert.equal(a.state.profile.shareRanking, false);
   assert.equal(a.state.profile.ministryGroup, "Kairos", "and what the draft carried is still written");
 });
 
-test("a member with no profile can still save the settings form", () => {
-  // The four identity fields are not on it, so holding Save against them would
-  // make every setting under them unreachable.
-  const a = app(baseState({ profile: {}, editingProfile: true, profileDraft: { dueTopX: 4 } }));
+test("turning it on is what shares the ranking, and it survives the save", () => {
+  const a = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE } }));
+  a.actions.setProfileField("shareRanking", true);
   a.actions.submitProfile();
-  assert.equal(a.state.editingProfile, false);
-  assert.equal(a.state.profile.dueTopX, 4);
+  assert.equal(a.state.profile.shareRanking, true);
+
+  const b = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE, shareRanking: true } }));
+  b.actions.setProfileField("shareRanking", false);
+  b.actions.submitProfile();
+  assert.equal(b.state.profile.shareRanking, false, "and turning it back off hides them again");
+});
+
+test("nothing but an explicit yes counts as sharing", () => {
+  // A profile from before the switch existed, and a truthy-looking value that
+  // is not `true` — both are members who have never asked to be shown.
+  for (const value of [undefined, "yes", 1, null]) {
+    const a = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE, shareRanking: value } }));
+    a.actions.submitProfile();
+    assert.equal(a.state.profile.shareRanking, false, `${String(value)} is not consent`);
+  }
 });
 
 test("reopening an already-complete profile to edit it never shows the prompt again", () => {

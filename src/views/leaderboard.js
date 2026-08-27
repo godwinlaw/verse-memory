@@ -23,6 +23,17 @@ export function leaderboardView(v) {
       <div style=${sx("margin-left:auto;" + LABEL_META)}>${v.daysLeftLabel}</div>
     </div>
     <div style=${sx(`font-size:13px;color:${muted(55)}`)}>${v.blurb}</div>
+    ${
+      v.hiddenNote &&
+      html`<div
+        className="blueprint"
+        style=${sx("padding:14px 18px;font-size:13px;line-height:1.55;display:flex;gap:10px;align-items:flex-start")}
+      >
+        ${corners()}
+        <span aria-hidden="true" style=${sx("opacity:.55;flex:none")}>●</span>
+        <span>${v.hiddenNote}</span>
+      </div>`
+    }
 
     <div style=${sx(CONTROL_ROW)}>
       <span style=${sx(`font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${muted(55)}`)}

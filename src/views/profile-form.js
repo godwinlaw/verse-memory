@@ -149,20 +149,24 @@ export function profileFormView(v) {
         <//>`
       }
       ${
+        v.showSharing &&
+        html`<div style=${sx(SECTION + ";gap:12px")}>
+          <div style=${sx(SCREEN_SUBTITLE)}>${copy.profileForm.sharing}</div>
+          <div style=${sx(FIELD)}>
+            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.shareRanking}</span>
+            <div style=${sx("display:flex;gap:8px")}>
+              ${v.shareRankingOptions.map(
+                (o) => html`<button key=${o.key} onClick=${o.onClick} style=${sx(o.style)}>${o.label}</button>`,
+              )}
+            </div>
+          </div>
+          <p style=${sx(`margin:0;font-size:13px;color:${muted(55)}`)}>${v.shareRankingNote}</p>
+        </div>`
+      }
+      ${
         v.showReviewSettings &&
         html`<div style=${sx(SECTION + ";gap:20px")}>
           <div style=${sx(SCREEN_SUBTITLE)}>${copy.profileForm.reviewSettings}</div>
-          <label style=${sx(FIELD)}>
-            <span style=${sx(LABEL_SECTION)}>${copy.profileForm.dueTopX}</span>
-            <input
-              className="input"
-              type="number"
-              min="1"
-              value=${v.dueTopX}
-              onChange=${v.onDueTopX}
-              ...${NUMERIC_KEYBOARD}
-            />
-          </label>
           <label style=${sx(FIELD)}>
             <span style=${sx(LABEL_SECTION)}>${copy.profileForm.dueFreshness}</span>
             <input
@@ -209,7 +213,6 @@ export function profileFormView(v) {
               )}
             </div>
           </div>
-          <p style=${sx(`margin:0;font-size:13px;color:${muted(55)}`)}>${v.themeNote}</p>
         </div>`
       }
       ${v.isSetup && html`<p style=${sx(SCREEN_BODY)}>${copy.profileForm.settingsLater}</p>`}

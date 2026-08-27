@@ -16,28 +16,30 @@ const appOverrides = (typeof window !== "undefined" && window.__APP_CONFIG__) ||
  * deploy can turn any of them on through `window.__APP_CONFIG__.features`
  * without a code change.
  *
- * They are off together for a reason. The group is starting on the app with
- * nothing in it but the verses — no standings to compare against, no manual to
- * read first, and no form to fill in before the first passage — so what a new
- * member meets is the board and the set. The three that ask a member for
- * something before they get anything are the ones switched off:
+ * What is on and what is off:
  *
- *   leaderboard   the Stats screen and its entry in the header;
- *   guide         the long-form explainer, its entry, and the board's link to it;
- *   profileSetup  the sign-up form (ministry group, gender, class) and the
- *                 identity fields it shares with Settings — the profile exists
- *                 to slice the leaderboard, so it goes with it;
- *   welcome       the one-time nudge toward the guide, which followed that form;
- *   boardEpigraph the verse printed across the top of the board.
+ *   leaderboard   ON  — the Stats screen and its entry in the header. A member
+ *                 is only *named* on it if they say so: see profile.js,
+ *                 shareRanking, which is off until it is chosen;
+ *   profileSetup  ON  — the sign-up form (ministry group, gender, class) and
+ *                 the identity fields it shares with Settings. It is back
+ *                 because the board slices by those three, and a board that
+ *                 cannot group anybody is not much of a board;
+ *   guide         OFF — the long-form explainer, its entry, and the board's
+ *                 link to it;
+ *   welcome       OFF — the one-time nudge that followed sign-up. It exists to
+ *                 point a new member at the guide, so it stays off with it:
+ *                 finishing the form lands on the board;
+ *   boardEpigraph OFF — the verse printed across the top of the board.
  *
- * `profileSetup` reaches furthest, so it is worth saying what it does not do:
- * a profile already filled in is left alone and still syncs, and Settings is
- * still reachable from the header — it simply stops being something a member
- * has to get past before the app. */
+ * `profileSetup` reaches furthest, so it is worth saying what it carries with
+ * it: the identity fields on Settings, and the sync gate that stops a member
+ * whose cloud record could not be read from filling in a fresh profile over
+ * the real one. */
 const DEFAULT_FEATURES = {
-  leaderboard: false,
+  leaderboard: true,
   guide: false,
-  profileSetup: false,
+  profileSetup: true,
   welcome: false,
   boardEpigraph: false,
 };

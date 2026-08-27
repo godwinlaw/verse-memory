@@ -17,12 +17,12 @@ window.__APP_CONFIG__ = {
   // Which pieces of the app this deploy offers. Every one of them is built and
   // tested; the flag only decides whether it is on screen. Named flags are
   // merged over the defaults in src/config.js, so listing one leaves the rest
-  // alone. The defaults today have all five off — see src/config.js for why.
+  // alone. Today leaderboard and profileSetup are on; the other three are off.
   //
   // features: {
   //   leaderboard: true, // the Stats board and its entry in the header
-  //   guide: true, // the long-form explainer, and the board's link to it
   //   profileSetup: true, // the sign-up form, and its fields on Settings
+  //   guide: true, // the long-form explainer, and the board's link to it
   //   welcome: true, // the one-time nudge toward the guide after sign-up
   //   boardEpigraph: true, // the verse across the top of the board
   // },

@@ -53,9 +53,13 @@ test("a restored session goes straight to the board, never past the sign-in gate
   await expect(app.header).toContainText(PROFILE.name);
 });
 
-test("a deploy's config.js decides the group and the deadline", async ({ app }) => {
+test("a deploy's config.js decides the group and the deadline", async ({ app, page }) => {
   await app.boot({ groupName: "Acts 2 Network - Testing", deadline: "2027-01-31" });
 
-  await expect(app.header).toContainText("Acts 2 Network - Testing");
   await expect(app.board).toContainText("Progress to 31 January");
+  // The group is no longer printed under the wordmark, so the screen that
+  // carries it is the board it belongs to rather than every screen at once.
+  await expect(app.header).not.toContainText("Acts 2 Network - Testing");
+  await app.nav("Stats").click();
+  await expect(page.getByText("Acts 2 Network - Testing")).toBeVisible();
 });

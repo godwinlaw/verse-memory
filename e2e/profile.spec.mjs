@@ -15,14 +15,17 @@ import { committed, passageById, started } from "./helpers/seed.mjs";
 
 const signedIn = { session: MEMBER };
 
-/* The sign-up form and the welcome nudge that follows it are switched off as
- * the app ships (src/config.js `features`) — a member signs in and lands on the
- * board. They are hidden rather than deleted, so most of this file puts them
- * back the way a deploy would; the last test is the one that does not, and
- * checks what a member actually meets. `PROFILE_FIELDS` is the narrower flag
- * for a screen that only needs the form's identity fields, not the gate. */
+/* The sign-up form ships on and the welcome nudge that used to follow it does
+ * not — it exists to point a new member at the guide, which is still off, so
+ * finishing the form lands on the board. These boots name what each test needs
+ * rather than leaning on the defaults in src/config.js, so a flag moving there
+ * cannot quietly change what this suite is exercising.
+ *
+ * `SIGNUP` is the whole sign-up path including that nudge; `PROFILE_FIELDS` is
+ * the narrower one for a screen that only needs the form itself. */
 const SIGNUP = { profileSetup: true, welcome: true };
 const PROFILE_FIELDS = { profileSetup: true };
+const BOARD = { profileSetup: true, leaderboard: true };
 
 test("a member with no profile fills one in before the app", async ({ app, page }) => {
   await app.boot({ profile: null, firebase: signedIn, features: SIGNUP });
@@ -182,23 +185,46 @@ test("resetting all progress empties the board, and stays empty", async ({ app, 
   expect(await app.figure(app.committedFigure)).toBe(0);
 });
 
-/* And what a member meets today, with both flags where they ship: no form
- * between them and the app, and a settings screen that is only settings. */
-test("with the sign-up form put away, a new member goes straight to the board", async ({ app, page }) => {
-  await app.boot({ profile: null, firebase: signedIn });
+/* Being on the leaderboard, or not — the one setting on this form that decides
+ * what other people can see, and the only one that ships off. */
+test("a member is hidden from the board until they say otherwise", async ({ app, page }) => {
+  await app.boot({ progress: { 1: committed(1) }, firebase: signedIn, features: BOARD });
 
-  await expect(app.board).toBeVisible();
-  await expect(page.getByText("SET UP YOUR PROFILE")).toHaveCount(0);
+  // Nothing was asked at sign-up, so the answer is the default: hidden. The
+  // board says so, and says where the switch is.
+  await app.nav("Stats").click();
+  await expect(page.getByText(/You are hidden from this board/)).toBeVisible();
+  await expect(page.getByText(/under Settings/)).toBeVisible();
 
-  // Settings is still there, and still saves — it just asks nothing about who
-  // the member is, so there is nothing left incomplete to hold Save against.
+  // Turning it on is a save like any other on this form, and it sticks.
   await app.header.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByText("REVIEW SETTINGS")).toBeVisible();
-  await expect(page.getByPlaceholder("Start typing to search…")).toHaveCount(0);
-
-  await page.getByLabel("Review a committed verse once it fades to (%)").fill("40");
+  await expect(page.getByText("Share my ranking")).toBeVisible();
+  await page.getByRole("button", { name: "On", exact: true }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
 
-  await expect(app.board).toBeVisible();
-  await expect(app.board).toContainText("committed · faded to 40% or below");
+  await app.nav("Stats").click();
+  await expect(page.getByText(/You are hidden from this board/)).toHaveCount(0);
+
+  // And it is the member's, not the device's: it is in the profile that syncs,
+  // so it is still true on the next visit.
+  await app.revisit();
+  expect(await app.stored("mv.profile")).toMatchObject({ shareRanking: true });
+  await app.nav("Stats").click();
+  await expect(page.getByText(/You are hidden from this board/)).toHaveCount(0);
+});
+
+test("what goes up for a hidden member carries no name", async ({ app }) => {
+  await app.boot({ progress: { 1: committed(1) }, firebase: signedIn, features: BOARD });
+
+  // The summary is written on every push (src/firebase.js). A hidden member's
+  // carries the figures their ministry's average needs and nothing that says
+  // who they are — hiding is a fact about the wire, not about the screen.
+  await expect(async () => {
+    const summaries = (await app.writes()).filter((w) => w.data && Array.isArray(w.data.fresh));
+    expect(summaries.length).toBeGreaterThan(0);
+    const last = summaries.at(-1).data;
+    expect(last.shareRanking).toBe(false);
+    expect(last.name).toBe("");
+    expect(last.ministryGroup).toBeTruthy();
+  }).toPass();
 });

@@ -271,15 +271,48 @@ The app is gated behind Google sign-in restricted to the Acts 2 Network Workspac
 
 The two halves drifting apart is not a hypothetical: a client that admits a domain the deployed rules do not means every read and write is refused for those members, which the app cannot tell from having no record — so they are asked to set up a profile on each device and nothing syncs. **`.github/workflows/deploy.yml` therefore deploys `firestore:rules` alongside hosting on every push to `main`**, so the client half can never ship without the rules half. Deploying by hand (`firebase deploy --only firestore:rules`) still works and is what to reach for when the rules alone are behind.
 
+### Who is on the leaderboard
+
+**A member is not on the board until they say so.** `shareRanking` on the
+profile is the switch, `profile.sharesRanking()` is the only reader, and **only
+an explicit `true` counts** — a profile that predates the field, or was saved
+without touching it, is a member who never asked, which is the same answer.
+`App.submitProfile` writes `draft.shareRanking === true` for that reason, so an
+untouched draft saves as a decision rather than as an absence.
+
+Two things about what hiding does are deliberate and easy to get backwards.
+
+**It hides the member, not their work.** A hidden member still counts toward
+their ministry's average, because a group's figure is a fact about the group and
+nobody should be able to move it — up or down — by changing a switch about
+themselves. So the filter is applied in `viewmodel/leaderboard.js` to the
+**people table only** (`ranked`), while `standingsBy` is fed the unfiltered
+`counted`. Your own row survives the filter (`p.me`), so a hidden member can
+still read where they stand; `hiddenNote` is what tells them nobody else can,
+and points at Settings, which is behind a gear and not somewhere a member finds
+by looking.
+
+**The name is withheld at the source.** `standings` is readable by every signed-in
+member (`deploy/firestore.rules`), so a name filtered out in the view-model would
+not be filtered out at all — `standings.summarize()` therefore publishes `name: ""`
+for a hidden member, alongside `shareRanking: false` and the figures their group
+average needs. That is also why `App.loadRoster` filters on **`standings.rankable`**
+— the three grouping fields, deliberately not a name — rather than
+`isProfileComplete`: a hidden member has no name to give and still belongs in
+their group. `SUMMARY_VERSION` is not bumped, because a document without the
+field is readable exactly as intended: hidden.
+
 ### What the app is currently offering
 
-Several pieces of the app are **switched off rather than taken out**, and
+Several pieces of the app can be **switched off rather than taken out**, and
 `features` in `src/config.js` is the only definition of which: `leaderboard`
 (the Stats board and its header entry), `guide` (the long-form explainer, its
 entry, and the board's link to it), `profileSetup` (the sign-up form, plus the
 four identity fields it shares with Settings), `welcome` (the one-time nudge
 that followed that form), and `boardEpigraph` (the verse across the top of the
-board). All five are `false` today. A deploy overrides them through
+board). Today `leaderboard` and `profileSetup` are on and the other three are
+off — `welcome` is off **because** `guide` is, since the nudge exists to point
+a new member at the guide. A deploy overrides them through
 `window.__APP_CONFIG__.features`, which is **merged** over the defaults rather
 than replacing them, so naming one flag does not silently take the others with
 it.
@@ -292,17 +325,17 @@ branch on a `v.` boolean the way they already do for `showReviewSettings`, and
 `progress`, `exam` or `grading` knows a flag exists — a flag is about what is on
 screen and never about what a verse is worth.
 
-Two consequences of `profileSetup` are worth knowing, because they are the
-places the flag reaches past its own screen. The **sync gate goes with the form
-it guards**: it exists to stop a member whose cloud record could not be read
-being sent through sign-up and stamping a fresh profile over the real one, and
-with no form to keep off the screen there is nothing for it to stand in front
-of. And the **identity fields leave Settings too** — they are there to slice the
-leaderboard — which means `profileFormVals.complete` can no longer hold Save
-against them and `App.submitProfile` drops the matching `isProfileComplete`
-check; otherwise every setting underneath them would be unreachable for
-everybody. A profile already filled in is left alone, written straight back from
-the draft, and still synced.
+`profileSetup` reaches past its own screen in two places, which matter whenever
+it is turned off again. The **sync gate goes with the form it guards**: it
+exists to stop a member whose cloud record could not be read being sent through
+sign-up and stamping a fresh profile over the real one, and with no form to keep
+off the screen there is nothing for it to stand in front of. And the **identity
+fields leave Settings too** — they are there to slice the leaderboard — which
+means `profileFormVals.complete` can no longer hold Save against them and
+`App.submitProfile` drops the matching `isProfileComplete` check; otherwise
+every setting underneath them would be unreachable for everybody. A profile
+already filled in is left alone, written straight back from the draft, and still
+synced.
 
 **Hidden is a claim the tests have to keep.** Every one of those screens is
 still rendered by `test/views.test.mjs`: `featuresFor(name)` in

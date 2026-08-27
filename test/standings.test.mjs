@@ -123,7 +123,11 @@ const held = (ago, step = 6) => ({
   hits: 3,
 });
 
-const PROFILE = { name: "Ada", ministryGroup: "Kairos", gender: "Female", gradClass: 2027 };
+/* A member who has turned their ranking on. `shareRanking` is what publishes a
+ * name (profile.sharesRanking), so a fixture without it is exercising the
+ * hidden case — which is the default, and has its own tests below. */
+const PROFILE = { name: "Ada", ministryGroup: "Kairos", gender: "Female", gradClass: 2027, shareRanking: true };
+const HIDDEN = { ...PROFILE, shareRanking: false };
 
 test("a summary carries the board's three figures and nothing else about the member", () => {
   const s = summarize({
@@ -141,6 +145,40 @@ test("a summary carries the board's three figures and nothing else about the mem
   assert.equal(s.streakDay, day(0));
   assert.equal(s.email, undefined, "the board never needed it, so it is not sent");
   assert.ok(!JSON.stringify(s).includes('"log"'), "nor the log it was derived from");
+});
+
+/* ── hiding yourself ──────────────────────────────────────────────────────── */
+
+test("a member who has not asked to be shown is not named on the wire", () => {
+  const s = summarize({ name: "Ada Lovelace", profile: HIDDEN, progress: { 1: held(0) }, log: {}, now: NOW });
+
+  assert.equal(s.shareRanking, false);
+  assert.equal(s.name, "", "withheld at the source, not just in the view-model");
+  assert.ok(!JSON.stringify(s).includes("Ada"), "the account's name is not a way round it either");
+  // But the figures still go up: they belong to the ministry's average.
+  assert.equal(s.ministryGroup, "Kairos");
+  assert.equal(s.fresh.length, 2);
+});
+
+test("hiding is the default, so a profile that never mentions it is hidden", () => {
+  const noAnswer = { name: "Ada", ministryGroup: "Kairos", gender: "Female", gradClass: 2027 };
+  const s = summarize({ name: "Ada Lovelace", profile: noAnswer, progress: {}, log: {}, now: NOW });
+  assert.equal(s.shareRanking, false);
+  assert.equal(s.name, "");
+});
+
+test("a summary written before the switch existed reads as hidden", () => {
+  // No shareRanking field at all — every document in the collection on the day
+  // this ships. None of those members asked to be shown either.
+  const legacy = { v: 1, name: "Grace Hopper", ministryGroup: "USF", gender: "Female", gradClass: 2025, fresh: [] };
+  assert.equal(rowFromSummary(legacy, NOW).shareRanking, false);
+});
+
+test("a member who has asked to be shown is named, and says so", () => {
+  const s = summarize({ profile: PROFILE, progress: { 1: held(0) }, log: {}, now: NOW });
+  assert.equal(s.shareRanking, true);
+  assert.equal(s.name, "Ada");
+  assert.equal(rowFromSummary(s, NOW).shareRanking, true);
 });
 
 test("nothing in a summary is nested inside an array, which Firestore refuses", () => {
@@ -198,6 +236,6 @@ test("a summary from a document that is missing or malformed reads as empty", ()
 });
 
 test("the account name stands in for a member who has not named themselves", () => {
-  const s = summarize({ name: "Ada Lovelace", profile: { ministryGroup: "Kairos" }, now: NOW });
+  const s = summarize({ name: "Ada Lovelace", profile: { ministryGroup: "Kairos", shareRanking: true }, now: NOW });
   assert.equal(s.name, "Ada Lovelace");
 });

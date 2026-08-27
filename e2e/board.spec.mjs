@@ -104,11 +104,11 @@ test("the map draws one cell per passage, and says what each one is", async ({ a
   await expect(cells.nth(5)).toHaveAttribute("title", `${passageById(6).ref} — Not started`);
 });
 
-/* And the bar as a member meets it, with the two flags where they ship. */
-test("with Stats and the guide put away, the bar carries neither", async ({ app, page }) => {
+/* And the bar as a member meets it, with the flags where they ship. */
+test("the bar carries Stats but not the guide", async ({ app, page }) => {
   await app.boot({ progress: PROGRESS });
 
-  await expect(app.nav("Stats")).toHaveCount(0);
+  await expect(app.nav("Stats")).toBeVisible();
   await expect(app.nav("Guide")).toHaveCount(0);
   // The rest of it is untouched, including the three sittings.
   for (const stop of ["Home", "Passages", "LEARN", "REVIEW", "TEST"]) {
@@ -118,4 +118,6 @@ test("with Stats and the guide put away, the bar carries neither", async ({ app,
   // Nor does the board print the epigraph, or a way through to the guide.
   await expect(page.getByText(/sharper than any two-edged sword/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "How this works" })).toHaveCount(0);
+  // And the wordmark stands alone, with no group name ruled under it.
+  await expect(app.header).not.toContainText("Acts 2 Network");
 });
