@@ -442,7 +442,10 @@ test("the settings form carries the switch, and it is on until it is turned off"
   const settings = shown("profile/edit");
   assert.match(settings, /LEADERBOARD/);
   assert.match(settings, /Share my ranking/);
-  assert.match(settings, /On by default/);
+  assert.match(settings, /Your ministry and group average still includes you/);
+  // The sign-up form's own preamble is gone with it: the fields say what they
+  // are, and nothing on this screen explains itself twice.
+  assert.doesNotMatch(settings, /Tell us a bit about yourself/);
   // Sign-up does not ask: the default is on and the board says where to change
   // it, so there is nothing to decide before the app.
   assert.doesNotMatch(shown("profile/setup-empty"), /Share my ranking/);
