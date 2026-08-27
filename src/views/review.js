@@ -275,36 +275,16 @@ function scramblePanel(v) {
  * the card scrolled the answer it had just produced off the bottom of the
  * screen. Beside what it reveals, the press and the passage are one place.
  *
- * Two ways to look, because they answer different questions. Holding the button
- * is a glance — the passage while the finger is down — and is what the control
- * has always been. The latch beside it is that glance held open, for a member
- * checking themselves line by line who would otherwise be pressing the button
- * once a line. Both cost the card the same single peek (App.setPeek,
- * App.togglePeekStick); neither is a way of seeing the passage for free.
- *
  * Not shown on the flashcard, which is already a reveal. */
 function peekRow(v) {
   return html`<div style=${sx(CONTROL_ROW)}>
     <button
-      className="btn btn-ghost"
-      onMouseDown=${v.peekOn}
-      onMouseUp=${v.peekOff}
-      onMouseLeave=${v.peekOff}
-      onTouchStart=${v.peekOn}
-      onTouchEnd=${v.peekOff}
-      style=${sx("font-size:12px;user-select:none;touch-action:none")}
+      className="seg-btn"
+      onClick=${v.togglePeek}
+      aria-pressed=${v.peekLatched}
+      style=${sx(v.peekStyle + ";user-select:none")}
     >
       ${v.helpLabel}
-    </button>
-    <span style=${sx(LABEL_SECTION)}>${v.peekStickLabel}</span>
-    <button
-      className="seg-btn"
-      onClick=${v.togglePeekStick}
-      aria-label=${v.peekStickLabel}
-      aria-pressed=${v.peekStickOn}
-      style=${sx(v.peekStickStyle)}
-    >
-      ${v.peekStickOn ? copy.common.on : copy.common.off}
     </button>
     <span style=${sx(`font-size:12px;color:${v.peekSpent ? COLOR_ERROR : muted(50)}`)}>${v.peekNote}</span>
   </div>`;

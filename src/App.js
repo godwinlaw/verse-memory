@@ -221,15 +221,8 @@ function initialState() {
     results: {}, // { [passageId]: what submitting that card was worth }
     reviewLeaveAsk: false, // "leave the session?" confirmation is open
     reviewMoveAsk: null, // walking off an unsubmitted card: null | "prev" | "next"
-    showHelp: false,
+    showHelp: false, // Peek is latched on, so the passage is up
     peeks: 0, // presses of "Peek" on the card in front of us
-    // Peek latched on, so the passage stays up instead of needing to be held.
-    // Unlike `peeks` above this belongs to the SITTING, not the card: a member
-    // who has said they want the passage in front of them means it for the
-    // sitting, and having to say it again on every verse is the tired fingers
-    // the latch was asked for. It still costs each card a peek — see
-    // resetCard, where a latched card arrives having already seen its verse.
-    peekStick: false,
     revealed: false,
     flipLetters: false,
     answers: {},
@@ -749,10 +742,6 @@ export class App extends React.Component {
     this.setState({
       view: "review",
       sessionKind: kind,
-      // The latch lasts the sitting and no longer: it is carried from card to
-      // card by resetCard, and a new sitting is a fresh answer to how the
-      // member wants to work.
-      peekStick: false,
       mode: mode || this.state.mode || DEFAULT_MODE,
       queue,
       qi: 0,
@@ -766,14 +755,9 @@ export class App extends React.Component {
 
   /* Clear everything that belongs to the card being left — including what it
    * cost, since peeks and wrong tries are per attempt. What a submitted card
-   * was worth lives in `results`, keyed by passage, and survives.
-   *
-   * The Peek latch is the exception, and the only thing here that outlives the
-   * card: it is the member saying how they want to work this sitting, not
-   * something they did to this verse. So it is carried over — and the card it
-   * carries onto opens with its passage on screen, which is a peek, and is
-   * charged as one. A latched sitting is a sitting where every card starts a
-   * peek down; it is not a way of reading the set for free. */
+   * was worth lives in `results`, keyed by passage, and survives. Peek goes
+   * with them: a passage left on screen is a thing done to that verse, so the
+   * next card opens closed. */
   resetCard() {
     // The microphone belongs to the attempt, not to the session: leaving it hot
     // across a card change would have the next passage recorded against the one
@@ -782,8 +766,8 @@ export class App extends React.Component {
     this.setState((s) => ({
       revealed: false,
       flipLetters: false,
-      showHelp: s.peekStick,
-      peeks: s.peekStick ? 1 : 0,
+      showHelp: false,
+      peeks: 0,
       answers: {},
       blanksChecked: false,
       typed: "",
@@ -1139,29 +1123,12 @@ export class App extends React.Component {
         if (!this.cardSubmitted()) this.resetCard();
         else if (this.cardOpenAgain()) this.retryCard();
       },
-      // Peeking is counted, not prevented: each press costs the card freshness
-      // (see srs.reviewAward), so only the press is worth counting. A peek that
-      // is already showing costs nothing further — that is only reachable with
-      // the latch on, and charging for pressing Peek at a passage already on
-      // screen would be charging for nothing.
-      //
-      // Releasing the button leaves the passage up while the latch holds it:
-      // hold-to-peek and keep-it-up are the same reveal, so a hold must not be
-      // the gesture that puts away what the latch is keeping.
-      setPeek: (showHelp) =>
-        this.setState((s) => ({
-          showHelp: showHelp || s.peekStick,
-          peeks: showHelp && !s.showHelp ? s.peeks + 1 : s.peeks,
-        })),
-      // The latch itself. Switching it on is a peek — it reveals the passage —
-      // and is charged as one; switching it off puts the passage away and
-      // refunds nothing, since it was seen.
-      togglePeekStick: () =>
-        this.setState((s) =>
-          s.peekStick
-            ? { peekStick: false, showHelp: false }
-            : { peekStick: true, showHelp: true, peeks: s.showHelp ? s.peeks : s.peeks + 1 },
-        ),
+      // Peek is a latch: one press puts the passage up and leaves it there, the
+      // next press puts it away. Peeking is counted, not prevented — opening it
+      // costs the card a peek (srs.reviewAward), and closing it refunds
+      // nothing, since it was seen.
+      togglePeek: () =>
+        this.setState((s) => (s.showHelp ? { showHelp: false } : { showHelp: true, peeks: s.peeks + 1 })),
       submitCard: (score) => this.submitCard(score),
       retryCard: () => this.retryCard(),
       nextCard: () => this.moveCard(1),

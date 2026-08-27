@@ -22,6 +22,7 @@ import {
   LEVEL_AWARD,
   MAX_STEP,
   PEEK_COST,
+  PEEK_FLOOR,
   R_FLOOR,
 } from "../src/srs.js";
 import { BLANK_LEVELS } from "../src/blanks.js";
@@ -200,7 +201,18 @@ test("every peek costs the card freshness", () => {
   const clean = reviewAward({ mode: "blanks", blankLevel: 2, score: 1 });
   assert.equal(reviewAward({ mode: "blanks", blankLevel: 2, score: 1, peeks: 1 }), clean - PEEK_COST);
   assert.ok(reviewAward({ mode: "blanks", blankLevel: 2, score: 1, peeks: 3 }) < clean - PEEK_COST);
-  assert.equal(reviewAward({ mode: "blanks", score: 1, peeks: 99 }), R_FLOOR, "and cannot take it below the floor");
+});
+
+test("but peeking stops costing at the floor", () => {
+  const many = reviewAward({ mode: "blanks", score: 1, peeks: 99 });
+  assert.equal(many, PEEK_FLOOR, "however many times the passage was looked at");
+  assert.equal(reviewAward({ mode: "blanks", score: 1, peeks: 999 }), PEEK_FLOOR);
+  // The floor is the peek's alone: a bad attempt is still worth its own mark,
+  // and peeking cannot lift it up to the floor either.
+  const bad = reviewAward({ mode: "blanks", score: 0.1 });
+  assert.ok(bad < PEEK_FLOOR);
+  assert.equal(reviewAward({ mode: "blanks", score: 0.1, peeks: 5 }), bad, "peeks take nothing more off it");
+  assert.ok(reviewAward({ mode: "blanks", score: 0 }) >= R_FLOOR, "and the model's own floor still holds under it");
 });
 
 test("the flashcard is unmarked, so it still simply counts as reviewed", () => {
