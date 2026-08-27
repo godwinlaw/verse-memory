@@ -68,7 +68,9 @@ const LOG = {
   "2026-08-05": 2,
 };
 
-/* The roster, as App.loadRoster builds it. `freshnessScore` is Σ retrievability
+/* The roster, as App.loadRoster builds it. Every one of them carries
+ * `shareRanking: true`, because a peer the board names is by definition one who
+ * asked to be named — see the hidden scenarios below for the other case. `freshnessScore` is Σ retrievability
  * across a member's committed verses, so it is always at or below `count` — and
  * it is not optional: the board ranks on it and quotes it as an average, so a
  * row without one renders "NaN%". */
@@ -81,6 +83,7 @@ const PEERS = [
     ministryGroup: "USF",
     gender: "Female",
     gradClass: 2025,
+    shareRanking: true,
   },
   {
     name: "Alan Turing",
@@ -90,6 +93,7 @@ const PEERS = [
     ministryGroup: "Kairos",
     gender: "Male",
     gradClass: 2026,
+    shareRanking: true,
   },
   {
     name: "Katherine Johnson",
@@ -99,6 +103,7 @@ const PEERS = [
     ministryGroup: "ECM",
     gender: "Female",
     gradClass: 2024,
+    shareRanking: true,
   },
   // A second member of a group that already has one, so a group's figure is
   // visibly an average rather than one person's row relabelled.
@@ -110,6 +115,7 @@ const PEERS = [
     ministryGroup: "USF",
     gender: "Female",
     gradClass: 2025,
+    shareRanking: true,
   },
 ];
 
@@ -644,6 +650,34 @@ export const scenarios = [
       leaderRankBy: "group",
       leaderFilter: { group: "A2F", gender: "Male", gradClass: "2019" },
     }),
+  },
+  /* Hiding. A member who has not asked to be shown is off the people table but
+   * still inside their ministry's average — so these two scenarios are the same
+   * roster, differing only in whether USF's second member is named. */
+  {
+    name: "leaderboard/hidden-peer",
+    state: baseState({
+      view: "leaderboard",
+      peers: PEERS.map((p) => (p.name === "Dorothy Vaughan" ? { ...p, name: "", shareRanking: false } : p)),
+    }),
+  },
+  {
+    name: "leaderboard/hidden-peer-by-group",
+    state: baseState({
+      view: "leaderboard",
+      leaderRankBy: "group",
+      peers: PEERS.map((p) => (p.name === "Dorothy Vaughan" ? { ...p, name: "", shareRanking: false } : p)),
+    }),
+  },
+  // The member themselves hidden: their own row is still theirs to read, and
+  // the note above the board says nobody else can.
+  {
+    name: "leaderboard/you-hidden",
+    state: baseState({ view: "leaderboard", profile: { ...PROFILE, shareRanking: false } }),
+  },
+  {
+    name: "leaderboard/you-shared",
+    state: baseState({ view: "leaderboard", profile: { ...PROFILE, shareRanking: true } }),
   },
   {
     name: "leaderboard/unfinished-peer",

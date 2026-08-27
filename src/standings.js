@@ -32,6 +32,16 @@ export const RANK_BY = [
 export const rankFieldFor = (key) =>
   (RANK_BY.find((r) => r.key === key) || RANK_BY.find((r) => r.key === "people")).field;
 
+/* Is there enough of a profile here for the board to place this member?
+ *
+ * The three grouping fields and deliberately **not** the name, which is what
+ * separates this from profile.isProfileComplete. A member who has hidden
+ * themselves has no name in their summary at all (see summarize below) — but
+ * their figures still belong to their ministry's average, so a filter that
+ * asked for a name would drop them from the group they are actually in. The
+ * name only decides whether a row can be *shown*, and a hidden row never is. */
+export const rankable = (row) => !!(row && row.ministryGroup && row.gender && row.gradClass);
+
 /* A member with nothing to their name yet does not drag their group down.
  *
  * This is the one judgement in here that could reasonably go the other way, so
@@ -113,6 +123,7 @@ export function standingsBy(rows, field) {
  * every other. */
 
 import { migrate, retrievability } from "./srs.js";
+import { sharesRanking } from "./profile.js";
 import { streakOf } from "./progress.js";
 import { dayKey } from "./text.js";
 
@@ -135,9 +146,18 @@ const lastLoggedDay = (log) =>
  * firebase.js already holds. */
 export function summarize({ name = "", profile, progress, log, now = Date.now() } = {}) {
   const p = profile || {};
+  /* A member who has not asked to be shown is not named on the wire.
+   *
+   * The row itself still goes up, because their figures still belong to their
+   * ministry's average (standingsBy) — but the one field that says who those
+   * figures are is left out, so hiding is not a thing the reading client is
+   * trusted to honour. `standings` is readable by every signed-in member, so a
+   * name withheld only in the view-model would not be withheld at all. */
+  const shares = sharesRanking(p);
   return {
     v: SUMMARY_VERSION,
-    name: p.name || name || "",
+    shareRanking: shares,
+    name: shares ? p.name || name || "" : "",
     ministryGroup: p.ministryGroup || "",
     gender: p.gender || "",
     gradClass: p.gradClass || "",
@@ -178,6 +198,10 @@ export function rowFromSummary(summary, now = Date.now()) {
   }
   return {
     name: s.name || "",
+    /* Absent on every summary written before the switch existed, and those
+     * members have not asked to be shown either — so anything but an explicit
+     * true reads as hidden, exactly as profile.sharesRanking does. */
+    shareRanking: s.shareRanking === true,
     count: Math.floor(fresh.length / PAIR),
     freshnessScore,
     streak: day === dayKey(new Date(now)) || day === yesterdayKey(now) ? s.streak || 0 : 0,

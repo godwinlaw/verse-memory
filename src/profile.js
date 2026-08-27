@@ -60,6 +60,25 @@ export const MIN_COMMIT_THRESHOLD = 90;
 export const MAX_COMMIT_THRESHOLD = 100;
 const clampCommitThreshold = (n) => Math.max(MIN_COMMIT_THRESHOLD, Math.min(MAX_COMMIT_THRESHOLD, n));
 
+/* Whether the member's own row appears on the leaderboard, and the answer for
+ * anyone who has never been asked.
+ *
+ * **The default is hidden, and that is the point.** A member is put on a board
+ * their whole ministry can read only because they said so, never because they
+ * signed in — so the absence of an answer reads as "no" rather than as "not
+ * yet decided". `shareRanking === true` is therefore the only value that shows
+ * a member, and every other value — false, undefined, a profile that predates
+ * the field entirely — hides them.
+ *
+ * What it hides is the member, not their work: a hidden member still counts
+ * toward their ministry's average (see standings.standingsBy), because a group
+ * figure is about the group and nobody should be able to drag theirs down, or
+ * prop it up, by changing a switch about themselves. What leaves is the named
+ * row — and the name itself, which standings.summarize stops publishing, so
+ * hiding is a fact about the wire and not just about the screen. */
+export const DEFAULT_SHARE_RANKING = false;
+export const sharesRanking = (p) => (p || {}).shareRanking === true;
+
 /* Default exercise difficulty: 0 = Coarse (fewest blanks / longest phrases),
  * 1 = Medium, 2 = Fine (every key word / shortest phrases). Sets the starting
  * level for both Fill the Blanks and Order the Phrases when no per-device

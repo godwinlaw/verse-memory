@@ -34,6 +34,7 @@ import {
   mergeProfile,
   reviewSettings,
 } from "./profile.js";
+import { rankable } from "./standings.js";
 import { appConfig, features } from "./config.js";
 import { detectMobile } from "./device.js";
 import { DEFAULT_THEME, applyTheme, normalizeTheme, watchSystemTheme } from "./theme.js";
@@ -568,6 +569,10 @@ export class App extends React.Component {
       dueFreshness: draft.dueFreshness !== undefined ? Number(draft.dueFreshness) : DEFAULT_DUE_FRESHNESS,
       defaultDifficulty: draft.defaultDifficulty !== undefined ? Number(draft.defaultDifficulty) : DEFAULT_DIFFICULTY,
       commitThreshold: draft.commitThreshold !== undefined ? Number(draft.commitThreshold) : DEFAULT_COMMIT_THRESHOLD,
+      /* Only an explicit yes shows a member (profile.sharesRanking), so an
+       * untouched draft saves as hidden rather than as nothing — which is what
+       * lets the switch read the same on a device that has never seen it. */
+      shareRanking: draft.shareRanking === true,
       updatedAt: Date.now(),
     };
     /* The four identity fields are only required while the app is asking for
@@ -601,8 +606,11 @@ export class App extends React.Component {
 
   /* Pull the leaderboard roster. Self is dropped here and re-added from local
    * state by the view-model, so "You" always reflects the newest, not-yet-synced
-   * progress. Members without a finished profile are skipped — a row with no
-   * ministry or class cannot be filtered or grouped, so it is not a row.
+   * progress. Members the board cannot place are skipped — a row with no
+   * ministry, gender or class cannot be filtered or grouped, so it is not a row
+   * (standings.rankable, which asks for those three and deliberately not for a
+   * name: a member who has hidden themselves has no name in their summary to
+   * give, and still belongs in their ministry's average).
    *
    * The rows arrive already reduced to what the board ranks (see
    * firebase.fetchRoster and standings.summarize); nothing here reads anyone
@@ -627,7 +635,7 @@ export class App extends React.Component {
     const myUid = this.state.auth.user && this.state.auth.user.uid;
     this.setState({
       peers: rows
-        .filter((r) => r.uid !== myUid && isProfileComplete(r))
+        .filter((r) => r.uid !== myUid && rankable(r))
         .map((r) => ({ ...r, name: r.name || copy.app.anonymousMember })),
     });
   }

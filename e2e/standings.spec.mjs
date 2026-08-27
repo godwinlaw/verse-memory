@@ -17,7 +17,7 @@ const peer = (uid, name, group, gender, gradClass, progress) => ({
   uid,
   name,
   email: uid + "@acts2.network",
-  profile: { name, ministryGroup: group, gender, gradClass },
+  profile: { name, ministryGroup: group, gender, gradClass, shareRanking: true },
   progress,
   log: {},
 });
@@ -33,6 +33,9 @@ const ROSTER = [
 const summary = (uid, name, group, gender, gradClass, verses) => ({
   uid,
   name,
+  // A summary that carries a name is one whose member turned the switch on —
+  // src/standings.js withholds the name otherwise, so the two travel together.
+  shareRanking: true,
   ministryGroup: group,
   gender,
   gradClass,
@@ -42,9 +45,9 @@ const summary = (uid, name, group, gender, gradClass, verses) => ({
   streakDay: new Date().toISOString().slice(0, 10),
 });
 
-/* Stats is switched off as the app ships (src/config.js `features`). It is
- * hidden rather than deleted, so every boot here turns it back on — which is
- * also what makes this suite the proof that it still works. */
+/* Stats ships on, and these boots say so explicitly rather than leaning on the
+ * default — the suite is about the board, so what it needs should not move when
+ * a flag in src/config.js does. */
 const STATS = { leaderboard: true };
 
 async function stats(app) {

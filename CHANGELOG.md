@@ -6,6 +6,36 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **A member is not on the leaderboard until they say so.** Stats is back on
+  (`features.leaderboard`), and with it a **Share my ranking** switch on the
+  settings form — **off by default**, because nobody should be put on a board
+  their whole ministry can read merely by signing in. `profile.sharesRanking`
+  is the one definition and only an explicit `true` counts, so a profile that
+  predates the switch, or never touched it, reads as hidden. **What is hidden is
+  the member, not their work:** a hidden member goes on feeding their ministry's
+  average (`standings.standingsBy`), because a group figure is a fact about the
+  group and nobody should be able to move it by changing a switch about
+  themselves. **The name is withheld at the source, not in the view-model** —
+  `standings.summarize` stops publishing it, so a hidden member's row in the
+  world-readable `standings` collection carries the figures and nothing that
+  says who they are. Their own row stays on their own board, with a note saying
+  nobody else can see it and where the switch is. `App.loadRoster` now filters
+  on `standings.rankable` (the three grouping fields, deliberately not a name)
+  rather than `isProfileComplete`, since a hidden member has no name to give and
+  still belongs in their group.
+- **The sign-up form is back** (`features.profileSetup`), because the board
+  slices by ministry, gender and class and a board that cannot group anybody is
+  not much of a board. The **welcome nudge stays off**: it exists to point a new
+  member at the guide, which is still off, so finishing the form lands on the
+  board. The sync gate returns with the form it guards.
+- **Three things removed from the furniture.** The "Top X committed verses to
+  review at a time" field leaves the settings form — `DEFAULT_DUE_TOP_X` still
+  caps the queue, it is just no longer a question anybody is asked. The theme
+  section loses its explanatory sentence; the three buttons say it. And the
+  group name is gone from under the wordmark in the header — the screens that
+  name the group as their own subtitle (the sign-in gate, the board, Stats) are
+  untouched.
+
 - **Speak/Run mode (#66) and Samuel mode (#67) are reverted.** Both were merged
   on 26 August 2026 and are backed out whole (`git revert -m 1` of each merge,
   so the branches and their history are intact and either can be brought back

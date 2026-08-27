@@ -8,7 +8,6 @@ import { features } from "../config.js";
 import {
   DEFAULT_COMMIT_THRESHOLD,
   DEFAULT_DUE_FRESHNESS,
-  DEFAULT_DUE_TOP_X,
   DEFAULT_DIFFICULTY,
   GENDERS,
   MINISTRY_GROUPS,
@@ -175,8 +174,6 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
     gradClass: draft.gradClass == null ? "" : draft.gradClass,
     onGradClass: (e) => actions.setProfileField("gradClass", e.target.value),
 
-    dueTopX: draft.dueTopX !== undefined ? draft.dueTopX : DEFAULT_DUE_TOP_X,
-    onDueTopX: (e) => actions.setProfileField("dueTopX", e.target.value),
     dueFreshness: draft.dueFreshness !== undefined ? draft.dueFreshness : DEFAULT_DUE_FRESHNESS,
     onDueFreshness: (e) => actions.setProfileField("dueFreshness", e.target.value),
     commitThreshold: draft.commitThreshold !== undefined ? draft.commitThreshold : DEFAULT_COMMIT_THRESHOLD,
@@ -210,7 +207,25 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
       style: segButton(state.theme === key),
       onClick: () => actions.setTheme(key),
     })),
-    themeNote: copy.profileForm.themeNote,
+
+    /* Whether the member is on the leaderboard. Offered on Settings and not at
+     * sign-up, for the same reason the review settings are not: it is a choice
+     * about a screen the member has not seen yet. Leaving it out costs nothing
+     * — the default is hidden and submitProfile writes that either way — and
+     * the board itself carries the note that says where to change it.
+     *
+     * The value is read off the draft rather than the saved profile, so the
+     * pressed state is what the member last touched, and it waits on Save like
+     * every other field here. (The theme below is the deliberate exception.) */
+    showSharing: !isSetup,
+    shareRanking: draft.shareRanking === true,
+    shareRankingOptions: [true, false].map((on) => ({
+      key: on ? "on" : "off",
+      label: on ? copy.common.on : copy.common.off,
+      style: segButton((draft.shareRanking === true) === on),
+      onClick: () => actions.setProfileField("shareRanking", on),
+    })),
+    shareRankingNote: copy.profileForm.shareRankingNote,
 
     // How reviews behave is not asked for at sign-up. A member meeting the app
     // for the first time has no way to judge how many verses a sitting should

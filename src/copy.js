@@ -217,8 +217,17 @@ export const copy = {
     /* Shown on the setup form in place of the review settings, which are not
      * asked for until the member has something to judge them against. */
     settingsLater: "You can change how reviews work later, under Settings.",
+    /* The switch that puts a member on the leaderboard, and the sentence under
+     * it. Both say what other people can see, because that is the only thing
+     * the switch changes — the member's own board never hides them from
+     * themselves. It is deliberately not phrased as "hide me": the setting is
+     * off until it is chosen, so the affirmative reads as the action. */
+    sharing: "LEADERBOARD",
+    shareRanking: "Share my ranking",
+    shareRankingNote:
+      "Off by default. While this is off, nobody else sees your name or your place on the leaderboard \u2014 your " +
+      "ministry\u2019s average still counts you, without saying who you are.",
     reviewSettings: "REVIEW SETTINGS",
-    dueTopX: "Top X committed verses to review at a time",
     dueFreshness: "Review a committed verse once it fades to (%)",
     commitThreshold: "Count a verse committed once a write-out gets (%) of the words right",
     difficulty: "Default difficulty",
@@ -231,9 +240,6 @@ export const copy = {
     appearance: "APPEARANCE",
     theme: "Theme",
     themeLabels: { light: "Light", dark: "Dark", system: "System" },
-    themeNote:
-      "System follows whatever your device is set to. Light and dark override it on this device only — your other " +
-      "devices keep following theirs.",
 
     /* Wiping the record. The button is the smaller half of this: what stands
      * beside it has to say plainly what goes, what stays, and that it reaches
@@ -687,6 +693,13 @@ export const copy = {
     filterClassOf: (year) => "Class of " + year,
     count: (n) => plural(n, "person", "people"),
     empty: "No one matches these filters yet.",
+    /* Shown to a member who is hidden, on the board they are hidden from. It
+     * has to do two things: say plainly that the row they can see is one
+     * nobody else can, and say where the switch is — Settings is behind a gear
+     * in the header, which is not somewhere a member finds by looking. */
+    hiddenNote:
+      "You are hidden from this board. Your row is visible only to you, and your name is not shared with anyone " +
+      "else. To appear here, turn on \u201cShare my ranking\u201d under Settings.",
     places: ["First", "Second", "Third"],
     you: "You",
     podiumOf: (total) => "of " + total,

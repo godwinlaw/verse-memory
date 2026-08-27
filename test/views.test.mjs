@@ -47,26 +47,31 @@ test.after(() => restore());
 
 /* ── what the app is currently offering ─────────────────────────────────────
  *
- * Four pieces of the app are switched off rather than taken out (src/config.js
- * `features`), and the two halves of that claim are both worth a test: nothing
- * on screen reaches them, and every one of them still renders when its flag is
- * put back. The second half is not written out below — it is what every other
- * test on this page already does, since `shown()` turns on whatever flag the
- * screen it names is offered under.
+ * `features` in src/config.js decides which pieces of the app are on offer, and
+ * both halves of that are worth a test: what a member actually meets, and that
+ * a piece which is off is hidden rather than gone. The second half is not
+ * written out below — it is what every other test on this page already does,
+ * since `shown()` turns on whatever flag the screen it names is offered under.
  *
- * `asShipped` is the same render with nothing turned on: the app as a member
- * meets it today. */
+ * `asShipped` is the render with the flags exactly as they ship. */
 function asShipped(name) {
   const s = scenarios.find((x) => x.name === name);
   return renderScenario(s.state, s.props).markup;
 }
 
-test("the header offers neither Stats nor the guide", () => {
+test("the header carries Stats, and does not carry the guide", () => {
   const board = asShipped("board/populated");
-  assert.doesNotMatch(board, />Stats</);
+  assert.match(board, />Stats</);
   assert.doesNotMatch(board, />Guide</);
-  // And the rest of the bar is untouched — this is a filter, not a rebuild.
   for (const stop of [/>Home</, />Passages</, />LEARN</, />REVIEW</, />TEST</]) assert.match(board, stop);
+});
+
+test("the wordmark stands on its own, with no group name under it", () => {
+  const board = asShipped("board/populated");
+  assert.match(board, /VERSE MASTERY/);
+  // The header is the only place it was printed under the wordmark; the screens
+  // that name the group as a subtitle of their own are untouched.
+  assert.doesNotMatch(board.slice(0, board.indexOf("board-page")), /Acts 2 Network/);
 });
 
 test("the board prints no verse across the top, and no way into the guide", () => {
@@ -79,35 +84,24 @@ test("the board prints no verse across the top, and no way into the guide", () =
   assert.match(board, /passages committed/);
 });
 
-test("a member with no profile is not asked to register — they get the board", () => {
+test("a member with no profile is asked for one before the app", () => {
   const arriving = asShipped("profile/setup-empty");
-  assert.doesNotMatch(arriving, /SET UP YOUR PROFILE/);
-  assert.doesNotMatch(arriving, /Ministry group/);
-  assert.match(arriving, /passages committed/);
+  assert.match(arriving, /SET UP YOUR PROFILE/);
+  assert.match(arriving, /Ministry group/);
 });
 
-test("nor is one whose record could not be read — the gate went with the form", () => {
-  // The gate exists to keep the sign-up form off the screen (see below). With
-  // no form to keep off, there is nothing for it to stand in front of.
+test("and one whose record could not be read is not — the gate stands in front", () => {
   const refused = asShipped("sync/refused");
-  assert.doesNotMatch(refused, /COULD NOT REACH YOUR RECORD/);
-  assert.match(refused, /passages committed/);
-  // The strip still says the work is staying on this device.
-  assert.match(refused, /saved on this device only/);
+  assert.doesNotMatch(refused, /SET UP YOUR PROFILE/);
+  assert.match(refused, /COULD NOT REACH YOUR RECORD/);
 });
 
-test("the settings form drops the profile's own fields and is still savable", () => {
-  const settings = asShipped("profile/edit");
-  assert.match(settings, />SETTINGS</, "and calls itself what it now is");
-  for (const gone of [/Ministry group/, /Graduating class/, /shape the leaderboard/]) {
-    assert.doesNotMatch(settings, gone);
-  }
-  // Everything that was underneath them is still there, and Save is not held
-  // against fields nobody was asked for.
-  assert.match(settings, /REVIEW SETTINGS/);
-  assert.match(settings, /Appearance|APPEARANCE/i);
-  const [save] = settings.match(/<button[^>]*>Save changes<\/button>/) || [];
-  assert.doesNotMatch(save || "", /disabled=""/);
+test("finishing sign-up is not met with a nudge toward the guide", () => {
+  // The welcome screen exists to point a new member at the guide, so it stays
+  // off with it — the member lands on the board instead.
+  const after = asShipped("welcome/after-signup");
+  assert.doesNotMatch(after, /Start learning right away/);
+  assert.match(after, /passages committed/);
 });
 
 /* No screen prints arithmetic that did not work out.
@@ -314,7 +308,6 @@ test("and the settings form still carries every one of them", () => {
   // The absence above is a choice about when to ask, not a setting being lost.
   const editing = shown("profile/edit");
   assert.match(editing, /REVIEW SETTINGS/);
-  assert.match(editing, /Top X committed verses/);
   assert.match(editing, /once it fades to/);
   assert.match(editing, /Default difficulty/);
   assert.doesNotMatch(editing, /You can change how reviews work later/);
@@ -325,11 +318,10 @@ test("and the settings form still carries every one of them", () => {
  * is asserted here is the part the form owns: that the three choices are offered
  * where a setting belongs, that the one in force is the one standing selected,
  * and that the note does not promise the member's other devices anything. */
-test("the settings form offers the three grounds, and says which device they are for", () => {
+test("the settings form offers the three grounds", () => {
   const editing = shown("profile/edit");
   assert.match(editing, /APPEARANCE/);
   for (const label of [/>Light</, /Dark</, />System</]) assert.match(editing, label);
-  assert.match(editing, /this device only/);
 
   // Sign-up asks who the member is and nothing else; the system already answers
   // this one for a member who has never thought about it.
@@ -384,6 +376,54 @@ test("board shows the committed count", () => {
   const [hero] = markup.match(/<div class="count-up"[^>]*>/) || [];
   assert.match(hero || "", /--count:3"/);
   assert.match(markup, /passages committed/);
+});
+
+/* ── hiding yourself from the board ───────────────────────────────────────── */
+
+test("a hidden member is not named on the people table", () => {
+  const shown_ = shown("leaderboard/all");
+  const hidden = shown("leaderboard/hidden-peer");
+  assert.match(shown_, /Dorothy Vaughan/, "she is there when she is sharing");
+  assert.doesNotMatch(hidden, /Dorothy Vaughan/, "and gone when she is not");
+  // The rest of the board is untouched — this hides a row, not the screen.
+  assert.match(hidden, /Grace Hopper/);
+  assert.match(hidden, /Alan Turing/);
+});
+
+test("but she still counts toward her ministry's average", () => {
+  // The whole reason hiding is applied to the table and not to the rows: a
+  // group's figure is a fact about the group, and nobody should be able to move
+  // it by changing a switch about themselves. USF has two members either way.
+  const shownGroups = shown("leaderboard/by-group");
+  const hiddenGroups = shown("leaderboard/hidden-peer-by-group");
+  const memberCounts = (markup) => (markup.match(/\d+ members?\b/g) || []).join(",");
+  assert.match(shownGroups, /USF/);
+  assert.match(hiddenGroups, /USF/, "the group is still on the board");
+  assert.ok(memberCounts(shownGroups).length > 0, "the groups do report their size");
+  assert.equal(memberCounts(hiddenGroups), memberCounts(shownGroups), "with the same members counted");
+});
+
+test("your own row is always yours to see, hidden or not", () => {
+  const hidden = shown("leaderboard/you-hidden");
+  assert.match(hidden, />You</, "you can still read where you stand");
+  assert.match(hidden, /You are hidden from this board/);
+  assert.match(hidden, /under Settings/, "and where the switch is");
+});
+
+test("the note is gone once the ranking is shared", () => {
+  const shared = shown("leaderboard/you-shared");
+  assert.match(shared, />You</);
+  assert.doesNotMatch(shared, /You are hidden from this board/);
+});
+
+test("the settings form carries the switch, and it is off until it is chosen", () => {
+  const settings = shown("profile/edit");
+  assert.match(settings, /LEADERBOARD/);
+  assert.match(settings, /Share my ranking/);
+  assert.match(settings, /Off by default/);
+  // Sign-up does not ask: the default is hidden and the board says where to
+  // change it, so there is nothing to decide before the app.
+  assert.doesNotMatch(shown("profile/setup-empty"), /Share my ranking/);
 });
 
 test("the empty leaderboard filter shows its empty message", () => {
