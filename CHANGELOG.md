@@ -6,6 +6,13 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **Two fewer sentences on the profile form.** The preamble — "Tell us a bit
+  about yourself…" — is gone: the fields under it are labelled, and a form that
+  explains itself before it starts is a form the member reads past. The sharing
+  note is cut to the one thing turning the switch off would otherwise leave a
+  member wondering: "Your ministry and group average still includes you, without
+  saying who you are."
+
 - **The header's corner is one circle.** The member's name, the settings gear
   and the sign-out button are replaced by a filled circle carrying their
   initials (`profile.initialsOf` — "Godwin Law" is GL, a one-word name gives one

@@ -204,9 +204,6 @@ export const copy = {
     titleSettings: "SETTINGS",
     submitSetup: "Save and continue",
     submitEdit: "Save changes",
-    intro:
-      "Tell us a bit about yourself. Your name, ministry group, gender, and graduating class shape the leaderboard " +
-      "and group stats.",
     name: "Name",
     namePlaceholder: "Your full name",
     ministryGroup: "Ministry group",
@@ -217,15 +214,13 @@ export const copy = {
     /* Shown on the setup form in place of the review settings, which are not
      * asked for until the member has something to judge them against. */
     settingsLater: "You can change how reviews work later, under Settings.",
-    /* The switch that takes a member off the leaderboard, and the sentence
-     * under it. Both say what other people can see, because that is the only
-     * thing the switch changes — the member's own board never hides them from
-     * themselves. */
+    /* The switch that takes a member off the leaderboard, and the one sentence
+     * under it. It says the thing a member turning it off would otherwise
+     * wonder — that their group is not made to look worse for it — and nothing
+     * else: what the switch does is legible from the switch. */
     sharing: "LEADERBOARD",
     shareRanking: "Share my ranking",
-    shareRankingNote:
-      "On by default. Turn it off and nobody else sees your name or your place \u2014 your ministry\u2019s average " +
-      "still counts you, without saying who you are.",
+    shareRankingNote: "Your ministry and group average still includes you, without saying who you are.",
     reviewSettings: "REVIEW SETTINGS",
     dueFreshness: "Review a committed verse once it fades to (%)",
     commitThreshold: "Count a verse committed once a write-out gets (%) of the words right",

@@ -88,8 +88,6 @@ export function profileFormView(v) {
       ${
         v.showIdentity &&
         html`<${React.Fragment}>
-          <p style=${sx(SCREEN_BODY)}>${copy.profileForm.intro}</p>
-
           <label style=${sx(FIELD)}>
             <span style=${sx(LABEL_SECTION)}>${copy.profileForm.name}</span>
             <input
