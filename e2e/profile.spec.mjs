@@ -54,7 +54,7 @@ test("a member with no profile fills one in before the app", async ({ app, page 
   await app.nav("Home").click();
 
   await expect(app.board).toBeVisible();
-  await expect(app.header).toContainText("Grace Hopper");
+  await expect(app.avatar).toHaveText("GH");
 
   // Saved, so the form is not asked for again.
   await app.revisit();
@@ -96,7 +96,7 @@ test("signing up never asks how reviews should work", async ({ app, page }) => {
   });
 
   // And they are all there to change, the moment the member wants them.
-  await app.header.getByRole("button", { name: "Settings" }).click();
+  await app.account("Settings");
   await expect(page.getByText("REVIEW SETTINGS")).toBeVisible();
   await expect(page.getByLabel("Review a committed verse once it fades to (%)")).toHaveValue("75");
 });
@@ -106,7 +106,7 @@ test("the member's freshness threshold decides what comes back round", async ({ 
   await app.boot({ progress: { 2: committed(0.6) }, firebase: signedIn, features: { ...PROFILE_FIELDS, guide: true } });
   await expect(app.queue("Review today")).toContainText(passageById(2).ref);
 
-  await app.header.getByRole("button", { name: "Settings" }).click();
+  await app.account("Settings");
   await expect(page.getByText("EDIT YOUR PROFILE")).toBeVisible();
   await page.getByLabel("Review a committed verse once it fades to (%)").fill("40");
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -124,12 +124,12 @@ test("the member's freshness threshold decides what comes back round", async ({ 
 test("editing can be backed out of", async ({ app, page }) => {
   await app.boot({ progress: {}, firebase: signedIn, features: PROFILE_FIELDS });
 
-  await app.header.getByRole("button", { name: "Settings" }).click();
+  await app.account("Settings");
   await page.getByPlaceholder("Your full name").fill("Someone Else");
   await page.getByRole("button", { name: "Cancel" }).click();
 
   await expect(app.board).toBeVisible();
-  await expect(app.header).toContainText("Ada Lovelace");
+  await expect(app.avatar).toHaveAttribute("aria-label", "Ada Lovelace");
 });
 
 /* Resetting the record. Worth driving in a browser rather than asserting on the
@@ -144,7 +144,7 @@ test("resetting all progress empties the board, and stays empty", async ({ app, 
   });
   expect(await app.figure(app.committedFigure)).toBe(2);
 
-  await app.header.getByRole("button", { name: "Settings" }).click();
+  await app.account("Settings");
   await page.getByRole("button", { name: "Reset all progress" }).click();
 
   // The warning stands in front of it, counting what would go.
@@ -186,35 +186,38 @@ test("resetting all progress empties the board, and stays empty", async ({ app, 
 });
 
 /* Being on the leaderboard, or not — the one setting on this form that decides
- * what other people can see, and the only one that ships off. */
-test("a member is hidden from the board until they say otherwise", async ({ app, page }) => {
+ * what other people can see. It ships on, and the board is where a member finds
+ * out they can leave it. */
+test("a member is on the board by default, and the board says how to leave", async ({ app, page }) => {
   await app.boot({ progress: { 1: committed(1) }, firebase: signedIn, features: BOARD });
 
-  // Nothing was asked at sign-up, so the answer is the default: hidden. The
-  // board says so, and says where the switch is.
   await app.nav("Stats").click();
-  await expect(page.getByText(/You are hidden from this board/)).toBeVisible();
-  await expect(page.getByText(/under Settings/)).toBeVisible();
+  await expect(page.getByText(/Your ranking is visible to the group/)).toBeVisible();
+  await expect(page.getByText(/in Settings/)).toBeVisible();
 
-  // Turning it on is a save like any other on this form, and it sticks.
-  await app.header.getByRole("button", { name: "Settings" }).click();
+  // Turning it off is a save like any other on this form, and it sticks.
+  await app.account("Settings");
   await expect(page.getByText("Share my ranking")).toBeVisible();
-  await page.getByRole("button", { name: "On", exact: true }).click();
+  await page.getByRole("button", { name: "Off", exact: true }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
 
   await app.nav("Stats").click();
-  await expect(page.getByText(/You are hidden from this board/)).toHaveCount(0);
+  await expect(page.getByText(/You are hidden from this board/)).toBeVisible();
 
   // And it is the member's, not the device's: it is in the profile that syncs,
   // so it is still true on the next visit.
   await app.revisit();
-  expect(await app.stored("mv.profile")).toMatchObject({ shareRanking: true });
+  expect(await app.stored("mv.profile")).toMatchObject({ shareRanking: false });
   await app.nav("Stats").click();
-  await expect(page.getByText(/You are hidden from this board/)).toHaveCount(0);
+  await expect(page.getByText(/You are hidden from this board/)).toBeVisible();
 });
 
-test("what goes up for a hidden member carries no name", async ({ app }) => {
+test("what goes up for a hidden member carries no name", async ({ app, page }) => {
   await app.boot({ progress: { 1: committed(1) }, firebase: signedIn, features: BOARD });
+
+  await app.account("Settings");
+  await page.getByRole("button", { name: "Off", exact: true }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
 
   // The summary is written on every push (src/firebase.js). A hidden member's
   // carries the figures their ministry's average needs and nothing that says
@@ -227,4 +230,26 @@ test("what goes up for a hidden member carries no name", async ({ app }) => {
     expect(last.name).toBe("");
     expect(last.ministryGroup).toBeTruthy();
   }).toPass();
+});
+
+/* And the corner the settings form is now reached through. */
+test("the account menu is one circle of initials, opened and dismissed by a press", async ({ app, page }) => {
+  await app.boot({ progress: {}, firebase: signedIn, features: BOARD });
+
+  await expect(app.avatar).toHaveText("AL");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+
+  await app.avatar.click();
+  await expect(page.getByRole("menuitem", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Sign out" })).toBeVisible();
+
+  // A press anywhere else puts it away, without going anywhere.
+  await page.locator(".menu-sheet").click({ position: { x: 40, y: 400 } });
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(app.board).toBeVisible();
+
+  // And picking an item takes the menu with it.
+  await app.account("Settings");
+  await expect(page.getByText("REVIEW SETTINGS")).toBeVisible();
+  await expect(page.getByRole("menu")).toHaveCount(0);
 });

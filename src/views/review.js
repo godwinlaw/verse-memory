@@ -275,14 +275,20 @@ function scramblePanel(v) {
  * the card scrolled the answer it had just produced off the bottom of the
  * screen. Beside what it reveals, the press and the passage are one place.
  *
+ * It shows the passage while the button is held down, and puts it away on
+ * release — a glance, charged as one peek per press.
+ *
  * Not shown on the flashcard, which is already a reveal. */
 function peekRow(v) {
   return html`<div style=${sx(CONTROL_ROW)}>
     <button
-      className="seg-btn"
-      onClick=${v.togglePeek}
-      aria-pressed=${v.peekLatched}
-      style=${sx(v.peekStyle + ";user-select:none")}
+      className="btn btn-ghost"
+      onMouseDown=${v.peekOn}
+      onMouseUp=${v.peekOff}
+      onMouseLeave=${v.peekOff}
+      onTouchStart=${v.peekOn}
+      onTouchEnd=${v.peekOff}
+      style=${sx("font-size:12px;user-select:none;touch-action:none")}
     >
       ${v.helpLabel}
     </button>

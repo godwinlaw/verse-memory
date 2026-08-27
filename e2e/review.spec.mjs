@@ -179,7 +179,7 @@ test("typing a blank in full moves to the next one", async ({ app, page }) => {
   await expect(page.locator(`#blank-${second}`)).toBeFocused();
 });
 
-test("a peek latches the passage on, and is counted", async ({ app, page }) => {
+test("a peek shows the passage while it is held, and is counted", async ({ app, page }) => {
   await app.boot({ progress: PROGRESS });
   await startReview(app);
 
@@ -187,37 +187,31 @@ test("a peek latches the passage on, and is counted", async ({ app, page }) => {
   await expect(page.getByText("Each peek costs 5%")).toBeVisible();
 
   const passage = await currentPassage(page);
-  const peek = page.getByRole("button", { name: "Peek" });
-
-  await peek.click();
+  await page.getByRole("button", { name: "Peek" }).hover();
+  await page.mouse.down();
   await expect(page.locator(".reveal-in")).toContainText(passage.text.slice(0, 40));
-  await expect(peek).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText("1 peek · −5%")).toBeVisible();
+  await page.mouse.up();
 
-  await peek.click();
   await expect(page.locator(".reveal-in")).toHaveCount(0);
-  await expect(peek).toHaveAttribute("aria-pressed", "false");
   // Having seen it is not refunded.
   await expect(page.getByText("1 peek · −5%")).toBeVisible();
 });
 
-/* The half a unit test cannot show: the latch is the card's, so the next verse
+/* The half a unit test cannot show: a peek is the card's, so the next verse
  * arrives closed rather than opening on its answer. */
-test("the latch does not follow the member to the next verse", async ({ app, page }) => {
+test("a peek does not follow the member to the next verse", async ({ app, page }) => {
   await app.boot({ progress: PROGRESS });
   await startReview(app);
   await page.getByRole("button", { name: "Blanks", exact: true }).click();
 
-  await page.getByRole("button", { name: "Peek" }).click();
-  const first = await currentPassage(page);
-  await expect(page.locator(".reveal-in")).toContainText(first.text.slice(0, 40));
+  await page.getByRole("button", { name: "Peek" }).hover();
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect(page.getByText("1 peek · −5%")).toBeVisible();
 
   await page.getByRole("button", { name: "Submit" }).click();
   await page.getByRole("button", { name: /Next passage|Finish session/ }).click();
 
-  const next = await currentPassage(page);
-  expect(next.id, "a different verse").not.toBe(first.id);
-  await expect(page.getByRole("button", { name: "Peek" })).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator(".reveal-in")).toHaveCount(0);
   await expect(page.getByText("Each peek costs 5%")).toBeVisible();
 });

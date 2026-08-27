@@ -1,7 +1,47 @@
-/* Sticky app header: wordmark, primary nav, review shortcut, profile + account. */
+/* Sticky app header: wordmark, primary nav, the three sittings, and the account
+ * circle in the corner. */
 
 import { copy } from "../copy.js";
 import { html, sx, appMark } from "../dom.js";
+
+/* The member, as one mark in the corner: their initials in a filled circle,
+ * with Settings and Sign out under it.
+ *
+ * It replaced a name, a gear and a sign-out button laid out across the bar —
+ * three things competing with the nav for the same row, none of them something
+ * a member presses often. A menu costs one press to open and gives the bar back
+ * to what the app is for.
+ *
+ * The sheet behind it is what closes it: a transparent fixed layer under the
+ * menu and over everything else, so a press anywhere outside dismisses it
+ * without the header having to listen to the document. The same pattern the
+ * dialogs use, minus the wash of colour, since there is nothing to dim. */
+function accountCorner(v) {
+  return html`<div style=${sx("position:relative;display:flex;align-items:center;margin-left:4px")}>
+    ${v.accountOpen && html`<div className="menu-sheet" onClick=${v.closeAccount}></div>`}
+    <button
+      className="avatar-btn"
+      onClick=${v.toggleAccount}
+      title=${v.userName}
+      aria-label=${v.userName}
+      aria-haspopup="menu"
+      aria-expanded=${v.accountOpen}
+    >
+      ${v.userInitials}
+    </button>
+    ${
+      v.accountOpen &&
+      html`<div className="account-menu blueprint" role="menu">
+        ${v.accountItems.map(
+          (item) =>
+            html`<button key=${item.key} role="menuitem" className="account-menu-item" onClick=${item.onClick}>
+              ${item.label}
+            </button>`,
+        )}
+      </div>`
+    }
+  </div>`;
+}
 
 export function headerView(v) {
   return html`<div className="app-header">
@@ -21,43 +61,6 @@ export function headerView(v) {
     <button className="btn btn-primary" onClick=${v.goTest} style=${sx("letter-spacing:.06em")}>
       ${copy.header.test}
     </button>
-    ${
-      v.user &&
-      html`<div
-        style=${sx("display:flex;align-items:center;gap:10px;padding-left:16px;margin-left:4px;border-left:1px solid var(--color-divider)")}
-      >
-        <span
-          title=${v.user.email}
-          style=${sx(`font-family:var(--font-heading);font-weight:600;font-size:14px;color:var(--color-text);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`)}
-          >${v.userName}</span
-        >
-        <button
-          className="btn btn-secondary"
-          onClick=${v.editProfile}
-          title=${copy.header.settings}
-          style=${sx("padding:4px 8px;line-height:1")}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="3" />
-            <path
-              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
-            />
-          </svg>
-        </button>
-        <button className="btn btn-secondary" onClick=${v.signOut} style=${sx("font-size:12px;padding:4px 10px")}>
-          ${copy.header.signOut}
-        </button>
-      </div>`
-    }
+    ${v.user && accountCorner(v)}
   </div>`;
 }

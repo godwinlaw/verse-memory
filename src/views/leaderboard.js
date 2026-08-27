@@ -24,14 +24,14 @@ export function leaderboardView(v) {
     </div>
     <div style=${sx(`font-size:13px;color:${muted(55)}`)}>${v.blurb}</div>
     ${
-      v.hiddenNote &&
+      v.shareNote &&
       html`<div
         className="blueprint"
         style=${sx("padding:14px 18px;font-size:13px;line-height:1.55;display:flex;gap:10px;align-items:flex-start")}
       >
         ${corners()}
         <span aria-hidden="true" style=${sx("opacity:.55;flex:none")}>●</span>
-        <span>${v.hiddenNote}</span>
+        <span>${v.shareNote}</span>
       </div>`
     }
 

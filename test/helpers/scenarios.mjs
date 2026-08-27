@@ -68,9 +68,9 @@ const LOG = {
   "2026-08-05": 2,
 };
 
-/* The roster, as App.loadRoster builds it. Every one of them carries
- * `shareRanking: true`, because a peer the board names is by definition one who
- * asked to be named — see the hidden scenarios below for the other case. `freshnessScore` is Σ retrievability
+/* The roster, as App.loadRoster builds it. None of them mentions
+ * `shareRanking`, which is a member who never chose — and the default is to be
+ * on the board (profile.sharesRanking). `freshnessScore` is Σ retrievability
  * across a member's committed verses, so it is always at or below `count` — and
  * it is not optional: the board ranks on it and quotes it as an average, so a
  * row without one renders "NaN%". */
@@ -83,7 +83,6 @@ const PEERS = [
     ministryGroup: "USF",
     gender: "Female",
     gradClass: 2025,
-    shareRanking: true,
   },
   {
     name: "Alan Turing",
@@ -93,7 +92,6 @@ const PEERS = [
     ministryGroup: "Kairos",
     gender: "Male",
     gradClass: 2026,
-    shareRanking: true,
   },
   {
     name: "Katherine Johnson",
@@ -103,7 +101,6 @@ const PEERS = [
     ministryGroup: "ECM",
     gender: "Female",
     gradClass: 2024,
-    shareRanking: true,
   },
   // A second member of a group that already has one, so a group's figure is
   // visibly an average rather than one person's row relabelled.
@@ -115,7 +112,6 @@ const PEERS = [
     ministryGroup: "USF",
     gender: "Female",
     gradClass: 2025,
-    shareRanking: true,
   },
 ];
 
@@ -370,6 +366,8 @@ export const scenarios = [
 
   // ── board ──────────────────────────────────────────────────────────────────
   { name: "board/populated", state: baseState() },
+  // The header's account menu, open over the board it was opened from.
+  { name: "board/account-menu", state: baseState({ accountOpen: true }) },
   // Nothing committed and nothing started: both queues are empty, for opposite
   // reasons, so both empty states render.
   { name: "board/fresh-account", state: baseState({ progress: {}, log: {}, peers: [] }) },
@@ -465,7 +463,7 @@ export const scenarios = [
   // The other way of looking: held open by the latch rather than by a finger,
   // which is a state of the control as well as of the card (views/review.js,
   // peekRow).
-  { name: "review/peek-latched", state: reviewing({ mode: "blanks", showHelp: true, peeks: 1 }) },
+  { name: "review/peek-held", state: reviewing({ mode: "blanks", showHelp: true, peeks: 1 }) },
   // qi 1 → the card in front of us is passage 2, which is what `results` keys on.
   {
     name: "review/submitted",

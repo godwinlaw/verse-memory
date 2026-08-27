@@ -3,7 +3,7 @@
 
 import { copy } from "../copy.js";
 import { features } from "../config.js";
-import { isProfileComplete } from "../profile.js";
+import { initialsOf, isProfileComplete } from "../profile.js";
 import { muted } from "../ui/tokens.js";
 
 /* `also` lists the views that belong to a nav item without being it — the
@@ -34,6 +34,17 @@ export function chromeVals({ state, groupName, motto, actions }) {
     motto,
     user,
     userName: profile.name || (user && user.name) || (user && user.email) || "",
+    /* The account circle in the corner, and what opens under it. The initials
+     * stand in for the name that used to be printed beside it — one mark rather
+     * than a name, a gear and a sign-out laid out across the bar. */
+    userInitials: initialsOf(profile.name || (user && user.name) || "", (user && user.email) || ""),
+    accountOpen: !!state.accountOpen,
+    toggleAccount: actions.toggleAccount,
+    closeAccount: actions.closeAccount,
+    accountItems: [
+      { key: "settings", label: copy.header.settings, onClick: actions.editProfile },
+      { key: "signOut", label: copy.header.signOut, onClick: actions.signOut },
+    ],
     signOut: actions.signOut,
     editProfile: actions.editProfile,
     profileSummary: isProfileComplete(profile) ? profile.name : copy.header.setUpProfile,

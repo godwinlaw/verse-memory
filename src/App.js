@@ -221,7 +221,7 @@ function initialState() {
     results: {}, // { [passageId]: what submitting that card was worth }
     reviewLeaveAsk: false, // "leave the session?" confirmation is open
     reviewMoveAsk: null, // walking off an unsubmitted card: null | "prev" | "next"
-    showHelp: false, // Peek is latched on, so the passage is up
+    showHelp: false, // Peek is held down, so the passage is up
     peeks: 0, // presses of "Peek" on the card in front of us
     revealed: false,
     flipLetters: false,
@@ -266,6 +266,10 @@ function initialState() {
     // own. Null when there is nothing to extend from, so a shift-click is then
     // just a tick (see viewmodel/list.js).
     selectAnchor: null,
+
+    // The header's account menu, opened by the circle in the corner. Device-
+    // local and not persisted: a menu left open is not a thing to come back to.
+    accountOpen: false,
 
     // account, profile, leaderboard
     auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
@@ -562,10 +566,10 @@ export class App extends React.Component {
       dueFreshness: draft.dueFreshness !== undefined ? Number(draft.dueFreshness) : DEFAULT_DUE_FRESHNESS,
       defaultDifficulty: draft.defaultDifficulty !== undefined ? Number(draft.defaultDifficulty) : DEFAULT_DIFFICULTY,
       commitThreshold: draft.commitThreshold !== undefined ? Number(draft.commitThreshold) : DEFAULT_COMMIT_THRESHOLD,
-      /* Only an explicit yes shows a member (profile.sharesRanking), so an
-       * untouched draft saves as hidden rather than as nothing — which is what
+      /* Only an explicit no takes a member off (profile.sharesRanking), so an
+       * untouched draft saves as shown rather than as nothing — which is what
        * lets the switch read the same on a device that has never seen it. */
-      shareRanking: draft.shareRanking === true,
+      shareRanking: draft.shareRanking !== false,
       updatedAt: Date.now(),
     };
     /* The four identity fields are only required while the app is asking for
@@ -722,7 +726,8 @@ export class App extends React.Component {
   /* ── review session ─────────────────────────────────────────────────────── */
 
   goto(view) {
-    this.setState({ view });
+    // The account menu goes with the screen it was opened over.
+    this.setState({ view, accountOpen: false });
     if (view === "leaderboard") this.loadRoster();
   }
 
@@ -1031,7 +1036,10 @@ export class App extends React.Component {
 
       // account + profile
       signIn: () => this.signIn(),
-      signOut: () => signOutUser().catch(() => {}),
+      signOut: () => {
+        set({ accountOpen: false });
+        signOutUser().catch(() => {});
+      },
       /* Try the cloud again, for a member sitting behind the sync gate or under
        * its banner. Which half to retry depends on how far the boot got: a
        * member who is signed in has a document to re-read, while one whose SDK
@@ -1049,7 +1057,13 @@ export class App extends React.Component {
         await this.startAuth();
         this.setState({ syncRetrying: false });
       },
-      editProfile: () => set({ editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false }),
+      /* The account menu. Every way out of it closes it — picking an item, or
+       * pressing the sheet behind it — so it can never be left hanging over a
+       * screen the member has moved on to. */
+      toggleAccount: () => this.setState((s) => ({ accountOpen: !s.accountOpen })),
+      closeAccount: () => set({ accountOpen: false }),
+      editProfile: () =>
+        set({ accountOpen: false, editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false }),
       cancelEditProfile: () => set({ editingProfile: false, profileDraft: null, resetAsk: false }),
       submitProfile: () => this.submitProfile(),
       dismissWelcome: (view) => {
@@ -1123,12 +1137,15 @@ export class App extends React.Component {
         if (!this.cardSubmitted()) this.resetCard();
         else if (this.cardOpenAgain()) this.retryCard();
       },
-      // Peek is a latch: one press puts the passage up and leaves it there, the
-      // next press puts it away. Peeking is counted, not prevented — opening it
-      // costs the card a peek (srs.reviewAward), and closing it refunds
-      // nothing, since it was seen.
-      togglePeek: () =>
-        this.setState((s) => (s.showHelp ? { showHelp: false } : { showHelp: true, peeks: s.peeks + 1 })),
+      // Peek shows the passage while it is held down and puts it away on
+      // release. Peeking is counted, not prevented: each press costs the card
+      // freshness (srs.reviewAward), so it is the press that is counted and
+      // letting go refunds nothing, since it was seen.
+      setPeek: (showHelp) =>
+        this.setState((s) => ({
+          showHelp,
+          peeks: showHelp && !s.showHelp ? s.peeks + 1 : s.peeks,
+        })),
       submitCard: (score) => this.submitCard(score),
       retryCard: () => this.retryCard(),
       nextCard: () => this.moveCard(1),

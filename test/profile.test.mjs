@@ -8,6 +8,7 @@ import {
   MIN_COMMIT_THRESHOLD,
   GENDERS,
   cleanDisplayName,
+  initialsOf,
   isProfileComplete,
   mergeProfile,
   reviewSettings,
@@ -97,4 +98,31 @@ test("between two complete profiles the most recent edit wins", () => {
 test("nothing on either side stays nothing", () => {
   assert.deepEqual(mergeProfile({}, {}), {});
   assert.deepEqual(mergeProfile(null, undefined), {});
+});
+
+/* ── the account circle's initials ────────────────────────────────────────── */
+
+test("initials are the first letter of the first word and of the last", () => {
+  assert.equal(initialsOf("Godwin Law"), "GL");
+  assert.equal(initialsOf("grace brewster murray hopper"), "GH", "the middle names are not in it");
+  assert.equal(initialsOf("  Ada   Lovelace  "), "AL", "and stray spacing is stepped over");
+});
+
+test("a one-word name gives one letter, not the same one twice", () => {
+  assert.equal(initialsOf("Ada"), "A");
+});
+
+test("punctuation in a name is stepped over rather than printed", () => {
+  assert.equal(initialsOf("mary-jane o'brien"), "MB");
+  assert.equal(initialsOf("Jean-Luc"), "JL", "a hyphenated single name is still two words");
+});
+
+test("a member with no name falls back to their address", () => {
+  assert.equal(initialsOf("", "zed@acts2.network"), "Z");
+  assert.equal(initialsOf(null, "zed@acts2.network"), "Z");
+});
+
+test("and with neither, the circle is simply empty", () => {
+  assert.equal(initialsOf("", ""), "");
+  assert.equal(initialsOf(), "");
 });

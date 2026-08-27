@@ -63,21 +63,20 @@ const clampCommitThreshold = (n) => Math.max(MIN_COMMIT_THRESHOLD, Math.min(MAX_
 /* Whether the member's own row appears on the leaderboard, and the answer for
  * anyone who has never been asked.
  *
- * **The default is hidden, and that is the point.** A member is put on a board
- * their whole ministry can read only because they said so, never because they
- * signed in — so the absence of an answer reads as "no" rather than as "not
- * yet decided". `shareRanking === true` is therefore the only value that shows
- * a member, and every other value — false, undefined, a profile that predates
- * the field entirely — hides them.
+ * **The default is shown.** The board is the group looking at itself, and a
+ * board most of its members are missing from is not one — so the absence of an
+ * answer reads as "yes", and only an explicit `false` takes a member off it.
+ * The leaderboard says as much in a line above itself, so a member who would
+ * rather not be there learns it from the board rather than from a form.
  *
- * What it hides is the member, not their work: a hidden member still counts
+ * What hiding hides is the member, not their work: a hidden member still counts
  * toward their ministry's average (see standings.standingsBy), because a group
  * figure is about the group and nobody should be able to drag theirs down, or
  * prop it up, by changing a switch about themselves. What leaves is the named
  * row — and the name itself, which standings.summarize stops publishing, so
  * hiding is a fact about the wire and not just about the screen. */
-export const DEFAULT_SHARE_RANKING = false;
-export const sharesRanking = (p) => (p || {}).shareRanking === true;
+export const DEFAULT_SHARE_RANKING = true;
+export const sharesRanking = (p) => (p || {}).shareRanking !== false;
 
 /* Default exercise difficulty: 0 = Coarse (fewest blanks / longest phrases),
  * 1 = Medium, 2 = Fine (every key word / shortest phrases). Sets the starting
@@ -106,6 +105,28 @@ export function cleanDisplayName(name) {
   return String(name || "")
     .replace(/\s*\(Berk\)\s*$/i, "")
     .trim();
+}
+
+/* The two letters that stand for a member in the header's account circle.
+ *
+ * First letter of the first word and of the last: "Godwin Law" is GL. A
+ * one-word name gives the one letter rather than two of the same word, and a
+ * member with no name at all falls back to their address, which is the only
+ * other thing the app is ever given. Punctuation and stray spacing are stepped
+ * over, so "mary-jane o'brien" is MO rather than M- or an empty circle. */
+export function initialsOf(name, email = "") {
+  const words = String(name || "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length) {
+    const first = words[0][0];
+    const last = words.length > 1 ? words[words.length - 1][0] : "";
+    return (first + last).toUpperCase();
+  }
+  const at = String(email || "").trim();
+  return at ? at[0].toUpperCase() : "";
 }
 
 /* A profile is complete once name, ministry group, gender, and class are all

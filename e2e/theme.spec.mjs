@@ -23,7 +23,7 @@ const lumaOf = (page, selector, prop = "background-color") =>
   page.evaluate(([s, p]) => getComputedStyle(document.querySelector(s))[p], [selector, prop]).then(luma);
 
 const groundOf = (page) => page.evaluate(() => document.documentElement.dataset.theme);
-const settings = (app) => app.header.getByRole("button", { name: "Settings" }).click();
+const settings = (app) => app.account("Settings");
 const choice = (page, label) => page.getByRole("button", { name: label, exact: true });
 
 test.describe("a reader who asked their system for dark", () => {
