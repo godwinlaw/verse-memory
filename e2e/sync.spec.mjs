@@ -77,7 +77,7 @@ test("a record in the cloud reaches a device that has never seen it", async ({ a
 
   // No sign-up form: the record answered for them.
   await expect(app.board).toBeVisible();
-  await expect(app.header).toContainText("Ada Lovelace");
+  await expect(app.avatar).toHaveAttribute("aria-label", "Ada Lovelace");
   await expect(app.queue("Review today")).toContainText(passageById(2).ref);
 });
 
@@ -297,7 +297,7 @@ test("a device holding an older copy does not roll back a verse committed elsewh
   // Any save here pushes this device's whole record — including its own, older
   // copy of that verse.
   const before = (await app.writes()).length;
-  await app.header.getByRole("button", { name: "Settings" }).click();
+  await app.account("Settings");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(app.board).toBeVisible();
 

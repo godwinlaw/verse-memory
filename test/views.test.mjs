@@ -66,6 +66,25 @@ test("the header carries Stats, and does not carry the guide", () => {
   for (const stop of [/>Home</, />Passages</, />LEARN</, />REVIEW</, />TEST</]) assert.match(board, stop);
 });
 
+test("the corner is one circle of initials, and the menu is closed until pressed", () => {
+  const board = asShipped("board/populated");
+  assert.match(board, /class="avatar-btn"/);
+  assert.match(board, />AL</, "Ada Lovelace, in the fixture");
+  assert.match(board, /aria-expanded="false"/);
+  // The three controls it replaced are gone from the bar.
+  assert.doesNotMatch(board, /class="account-menu"/);
+  assert.doesNotMatch(board, />Sign out</, "which is now behind the circle");
+});
+
+test("pressing it opens Settings and Sign out, over a sheet that closes them", () => {
+  const open = asShipped("board/account-menu");
+  assert.match(open, /class="account-menu blueprint"/);
+  assert.match(open, /aria-expanded="true"/);
+  assert.match(open, />Settings</);
+  assert.match(open, />Sign out</);
+  assert.match(open, /class="menu-sheet"/, "and a press anywhere else closes it");
+});
+
 test("the wordmark stands on its own, with no group name under it", () => {
   const board = asShipped("board/populated");
   assert.match(board, /VERSE MASTERY/);
@@ -403,26 +422,29 @@ test("but she still counts toward her ministry's average", () => {
   assert.equal(memberCounts(hiddenGroups), memberCounts(shownGroups), "with the same members counted");
 });
 
-test("your own row is always yours to see, hidden or not", () => {
+test("the board tells a member they can leave it", () => {
+  // The default is to be on it, so the line worth saying is that leaving is a
+  // choice they have — and where to make it.
+  const shared = shown("leaderboard/you-shared");
+  assert.match(shared, />You</);
+  assert.match(shared, /Your ranking is visible to the group/);
+  assert.match(shared, /in Settings/);
+});
+
+test("and a member who has left it can still see their own row", () => {
   const hidden = shown("leaderboard/you-hidden");
   assert.match(hidden, />You</, "you can still read where you stand");
   assert.match(hidden, /You are hidden from this board/);
-  assert.match(hidden, /under Settings/, "and where the switch is");
+  assert.match(hidden, /in Settings/, "and how to come back");
 });
 
-test("the note is gone once the ranking is shared", () => {
-  const shared = shown("leaderboard/you-shared");
-  assert.match(shared, />You</);
-  assert.doesNotMatch(shared, /You are hidden from this board/);
-});
-
-test("the settings form carries the switch, and it is off until it is chosen", () => {
+test("the settings form carries the switch, and it is on until it is turned off", () => {
   const settings = shown("profile/edit");
   assert.match(settings, /LEADERBOARD/);
   assert.match(settings, /Share my ranking/);
-  assert.match(settings, /Off by default/);
-  // Sign-up does not ask: the default is hidden and the board says where to
-  // change it, so there is nothing to decide before the app.
+  assert.match(settings, /On by default/);
+  // Sign-up does not ask: the default is on and the board says where to change
+  // it, so there is nothing to decide before the app.
   assert.doesNotMatch(shown("profile/setup-empty"), /Share my ranking/);
 });
 
@@ -540,21 +562,21 @@ test("what a card is worth is quoted before it is submitted", () => {
   assert.match(shown("review/blanks"), /Each peek costs 5%/);
 });
 
-test("looking the passage up is one latch, below the activity", () => {
+test("looking the passage up sits below the activity", () => {
   const markup = shown("review/blanks");
   assert.match(markup, /Peek/);
   assert.ok(
     markup.indexOf("Peek") > markup.indexOf("blank-input"),
-    "the control sits below the activity, beside where the passage appears",
+    "beside where the passage appears, rather than up in the card's header",
   );
   assert.doesNotMatch(shown("review/flip-hidden"), /Peek/, "a flashcard is already a reveal");
 });
 
-test("a latched peek reads as pressed, and says what it has cost", () => {
-  const latched = shown("review/peek-latched");
-  assert.match(latched, /aria-pressed="true"/, "the button says which way it is set");
-  assert.match(latched, /1 peek · −5%/, "and the card is a peek down");
-  assert.doesNotMatch(shown("review/blanks"), /aria-pressed="true"/, "unlatched, it is not");
+test("a peek being held shows the passage, and says what it has cost", () => {
+  const held = shown("review/peek-held");
+  assert.match(held, /class="reveal-in"/, "the passage is on screen while the button is down");
+  assert.match(held, /1 peek · −5%/, "and the card is a peek down");
+  assert.doesNotMatch(shown("review/blanks"), /class="reveal-in"/, "let go, it is not");
 });
 
 test("submitting shows the freshness earned as two bars and a signed figure", () => {

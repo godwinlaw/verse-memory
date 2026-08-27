@@ -217,16 +217,15 @@ export const copy = {
     /* Shown on the setup form in place of the review settings, which are not
      * asked for until the member has something to judge them against. */
     settingsLater: "You can change how reviews work later, under Settings.",
-    /* The switch that puts a member on the leaderboard, and the sentence under
-     * it. Both say what other people can see, because that is the only thing
-     * the switch changes — the member's own board never hides them from
-     * themselves. It is deliberately not phrased as "hide me": the setting is
-     * off until it is chosen, so the affirmative reads as the action. */
+    /* The switch that takes a member off the leaderboard, and the sentence
+     * under it. Both say what other people can see, because that is the only
+     * thing the switch changes — the member's own board never hides them from
+     * themselves. */
     sharing: "LEADERBOARD",
     shareRanking: "Share my ranking",
     shareRankingNote:
-      "Off by default. While this is off, nobody else sees your name or your place on the leaderboard \u2014 your " +
-      "ministry\u2019s average still counts you, without saying who you are.",
+      "On by default. Turn it off and nobody else sees your name or your place \u2014 your ministry\u2019s average " +
+      "still counts you, without saying who you are.",
     reviewSettings: "REVIEW SETTINGS",
     dueFreshness: "Review a committed verse once it fades to (%)",
     commitThreshold: "Count a verse committed once a write-out gets (%) of the words right",
@@ -692,13 +691,13 @@ export const copy = {
     filterClassOf: (year) => "Class of " + year,
     count: (n) => plural(n, "person", "people"),
     empty: "No one matches these filters yet.",
-    /* Shown to a member who is hidden, on the board they are hidden from. It
-     * has to do two things: say plainly that the row they can see is one
-     * nobody else can, and say where the switch is — Settings is behind a gear
-     * in the header, which is not somewhere a member finds by looking. */
-    hiddenNote:
-      "You are hidden from this board. Your row is visible only to you, and your name is not shared with anyone " +
-      "else. To appear here, turn on \u201cShare my ranking\u201d under Settings.",
+    /* The one line above the board about the member's own place on it. Said
+     * either way round, and kept to a sentence: the default is to be on the
+     * board, so the thing worth saying is that leaving it is a choice they
+     * have. Settings is behind a gear, which is not somewhere a member finds
+     * by looking, so it is named. */
+    shownNote: "Your ranking is visible to the group. You can hide it in Settings.",
+    hiddenNote: "You are hidden from this board. Only you can see your row. Turn it back on in Settings.",
     places: ["First", "Second", "Third"],
     you: "You",
     podiumOf: (total) => "of " + total,

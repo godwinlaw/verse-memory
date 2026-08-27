@@ -146,7 +146,7 @@ const lastLoggedDay = (log) =>
  * firebase.js already holds. */
 export function summarize({ name = "", profile, progress, log, now = Date.now() } = {}) {
   const p = profile || {};
-  /* A member who has not asked to be shown is not named on the wire.
+  /* A member who has taken themselves off the board is not named on the wire.
    *
    * The row itself still goes up, because their figures still belong to their
    * ministry's average (standingsBy) — but the one field that says who those
@@ -198,10 +198,10 @@ export function rowFromSummary(summary, now = Date.now()) {
   }
   return {
     name: s.name || "",
-    /* Absent on every summary written before the switch existed, and those
-     * members have not asked to be shown either — so anything but an explicit
-     * true reads as hidden, exactly as profile.sharesRanking does. */
-    shareRanking: s.shareRanking === true,
+    /* Absent on every summary written before the switch existed, and none of
+     * those members asked to be taken off — so anything but an explicit false
+     * reads as shown, exactly as profile.sharesRanking does. */
+    shareRanking: s.shareRanking !== false,
     count: Math.floor(fresh.length / PAIR),
     freshnessScore,
     streak: day === dayKey(new Date(now)) || day === yesterdayKey(now) ? s.streak || 0 : 0,

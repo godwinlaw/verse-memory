@@ -129,6 +129,9 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
    * nothing being asked for — see App.submitProfile, which drops the same
    * requirement rather than letting a form save what it then refuses. */
   const showIdentity = features.profileSetup;
+  /* Only an explicit no takes a member off the board (profile.sharesRanking),
+   * so an untouched draft reads as on — the same way submitProfile saves it. */
+  const sharing = draft.shareRanking !== false;
 
   return {
     isSetup,
@@ -211,18 +214,18 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
     /* Whether the member is on the leaderboard. Offered on Settings and not at
      * sign-up, for the same reason the review settings are not: it is a choice
      * about a screen the member has not seen yet. Leaving it out costs nothing
-     * — the default is hidden and submitProfile writes that either way — and
-     * the board itself carries the note that says where to change it.
+     * — the default is on and submitProfile writes that either way — and the
+     * board itself carries the line that says where to change it.
      *
      * The value is read off the draft rather than the saved profile, so the
      * pressed state is what the member last touched, and it waits on Save like
      * every other field here. (The theme below is the deliberate exception.) */
     showSharing: !isSetup,
-    shareRanking: draft.shareRanking === true,
+    shareRanking: sharing,
     shareRankingOptions: [true, false].map((on) => ({
       key: on ? "on" : "off",
       label: on ? copy.common.on : copy.common.off,
-      style: segButton((draft.shareRanking === true) === on),
+      style: segButton(sharing === on),
       onClick: () => actions.setProfileField("shareRanking", on),
     })),
     shareRankingNote: copy.profileForm.shareRankingNote,

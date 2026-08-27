@@ -271,10 +271,8 @@ export function reviewVals({ state, prog, totals, actions }) {
     // which is already a reveal. It is allowed and counted either way; what it
     // is said to cost depends on the errand (see stakeVals).
     helpLabel: copy.review.peek,
-    // One button, latched: it reads pressed while the passage is up.
-    togglePeek: () => actions.togglePeek(),
-    peekLatched: state.showHelp && !isFlip,
-    peekStyle: segButton(state.showHelp && !isFlip),
+    peekOn: () => actions.setPeek(true),
+    peekOff: () => actions.setPeek(false),
     showHelp: state.showHelp && !isFlip,
     peekSpent: state.peeks > 0,
 

@@ -121,41 +121,42 @@ test("each peek costs the card freshness", () => {
 
   const peeked = session("blanks");
   for (let i = 0; i < 2; i++) {
-    peeked.actions.togglePeek();
-    peeked.actions.togglePeek();
+    peeked.actions.setPeek(true);
+    peeked.actions.setPeek(false);
   }
-  assert.equal(peeked.state.peeks, 2, "only opening it counts, not putting it away");
+  assert.equal(peeked.state.peeks, 2, "only the press counts, not letting go");
   peeked.actions.submitCard(1);
 
   assert.equal(peeked.state.results[1].after, clean.state.results[1].after - 10);
   assert.equal(peeked.state.results[1].peeks, 2);
 });
 
-test("Peek is a latch: one press opens the passage and leaves it there", () => {
+test("Peek shows the passage while it is held, and puts it away on release", () => {
   const a = session("blanks");
 
-  a.actions.togglePeek();
-  assert.equal(a.state.showHelp, true, "one press is the reveal");
-  assert.equal(a.state.peeks, 1, "and is charged as a peek, exactly once");
+  a.actions.setPeek(true);
+  assert.equal(a.state.showHelp, true);
+  assert.equal(a.state.peeks, 1, "charged once, on the press");
 
-  a.actions.togglePeek();
-  assert.equal(a.state.showHelp, false, "pressing again puts it away");
+  a.actions.setPeek(false);
+  assert.equal(a.state.showHelp, false, "letting go puts it away");
   assert.equal(a.state.peeks, 1, "having seen it is not refunded");
 });
 
-test("the latch belongs to the card, so the next verse opens closed", () => {
+test("a peek belongs to the card, so the next verse starts clean", () => {
   const a = session("blanks");
-  a.actions.togglePeek();
+  a.actions.setPeek(true);
+  a.actions.setPeek(false);
   a.actions.submitCard(1);
   a.actions.nextCard();
 
-  assert.equal(a.state.showHelp, false, "a passage left on screen was done to that verse, not to the sitting");
-  assert.equal(a.state.peeks, 0, "so the next card is not charged for it either");
+  assert.equal(a.state.showHelp, false);
+  assert.equal(a.state.peeks, 0);
 });
 
 test("a new sitting starts with nothing on screen", () => {
   const a = session("blanks");
-  a.actions.togglePeek();
+  a.actions.setPeek(true);
   a.actions.startSession("blanks", [1, 2]);
 
   assert.equal(a.state.showHelp, false);
@@ -424,8 +425,8 @@ test("no other activity commits a verse, however well it goes", () => {
 
 test("a passage that was peeked at was not written from memory", () => {
   const peeked = learnSession("type");
-  peeked.actions.togglePeek();
-  peeked.actions.togglePeek();
+  peeked.actions.setPeek(true);
+  peeked.actions.setPeek(false);
   peeked.actions.submitCard(1);
   assert.equal(peeked.state.progress[4].status, "learning", "a passage read is not a passage recalled");
 });
@@ -891,34 +892,34 @@ test("finishing the profile form for the first time is met with the welcome prom
 
 /* ── being on the leaderboard, or not ─────────────────────────────────────── */
 
-test("a member who signs up without touching the switch is saved as hidden", () => {
-  // The whole point of the default: nobody is put on a board their ministry can
-  // read because they filled in a form, only because they said so.
+test("a member who signs up without touching the switch is on the board", () => {
+  // The board is the group looking at itself, so the default is to be on it —
+  // and the board itself carries the line saying how to leave.
   const a = app(baseState({ profile: {}, profileDraft: { ...PROFILE } }));
   a.actions.submitProfile();
-  assert.equal(a.state.profile.shareRanking, false);
+  assert.equal(a.state.profile.shareRanking, true);
   assert.equal(a.state.profile.ministryGroup, "Kairos", "and what the draft carried is still written");
 });
 
-test("turning it on is what shares the ranking, and it survives the save", () => {
+test("turning it off is what hides the ranking, and it survives the save", () => {
   const a = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE } }));
-  a.actions.setProfileField("shareRanking", true);
+  a.actions.setProfileField("shareRanking", false);
   a.actions.submitProfile();
-  assert.equal(a.state.profile.shareRanking, true);
+  assert.equal(a.state.profile.shareRanking, false);
 
-  const b = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE, shareRanking: true } }));
-  b.actions.setProfileField("shareRanking", false);
+  const b = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE, shareRanking: false } }));
+  b.actions.setProfileField("shareRanking", true);
   b.actions.submitProfile();
-  assert.equal(b.state.profile.shareRanking, false, "and turning it back off hides them again");
+  assert.equal(b.state.profile.shareRanking, true, "and turning it back on puts them back");
 });
 
-test("nothing but an explicit yes counts as sharing", () => {
-  // A profile from before the switch existed, and a truthy-looking value that
-  // is not `true` — both are members who have never asked to be shown.
-  for (const value of [undefined, "yes", 1, null]) {
+test("nothing but an explicit no takes a member off the board", () => {
+  // A profile from before the switch existed, and a falsy-looking value that is
+  // not `false` — none of them is a member who asked to be taken off.
+  for (const value of [undefined, null, "", 0]) {
     const a = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE, shareRanking: value } }));
     a.actions.submitProfile();
-    assert.equal(a.state.profile.shareRanking, false, `${String(value)} is not consent`);
+    assert.equal(a.state.profile.shareRanking, true, `${String(value)} is not a decision to hide`);
   }
 });
 

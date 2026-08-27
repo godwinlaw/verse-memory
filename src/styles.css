@@ -792,6 +792,70 @@ textarea.input {
 }
 
 /* — app header responsive — */
+/* The account circle in the header's corner, and the menu under it.
+ *
+ * `.menu-sheet` is the press-anywhere-else that closes the menu: transparent,
+ * fixed, and sitting just under it, so it catches the click without dimming a
+ * screen that has nothing to dim. */
+.avatar-btn {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+.avatar-btn:hover {
+  background: var(--color-accent-900);
+}
+.avatar-btn:active {
+  transform: scale(0.96);
+}
+.menu-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+}
+.account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 26;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+.account-menu-item {
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-text);
+  transition: background 0.12s ease;
+}
+.account-menu-item + .account-menu-item {
+  border-top: 1px solid var(--color-divider);
+}
+.account-menu-item:hover {
+  background: var(--color-accent-100);
+}
+
 .app-header {
   display: flex;
   align-items: center;

@@ -226,6 +226,18 @@ export class AppHarness {
     return this.header.getByRole("button", { name: label, exact: true });
   }
 
+  /* The account circle in the header's corner. */
+  get avatar() {
+    return this.header.locator(".avatar-btn");
+  }
+
+  /* Settings and Sign out live behind that circle now, so reaching either is
+   * two presses: open the menu, pick the item. */
+  async account(item) {
+    await this.avatar.click();
+    await this.page.getByRole("menuitem", { name: item }).click();
+  }
+
   /* The queue card under a board heading ("Review today" / "Learn today"). */
   queue(title) {
     return this.board

@@ -273,12 +273,14 @@ The two halves drifting apart is not a hypothetical: a client that admits a doma
 
 ### Who is on the leaderboard
 
-**A member is not on the board until they say so.** `shareRanking` on the
+**A member is on the board unless they say otherwise.** `shareRanking` on the
 profile is the switch, `profile.sharesRanking()` is the only reader, and **only
-an explicit `true` counts** — a profile that predates the field, or was saved
-without touching it, is a member who never asked, which is the same answer.
-`App.submitProfile` writes `draft.shareRanking === true` for that reason, so an
-untouched draft saves as a decision rather than as an absence.
+an explicit `false` counts** — a profile that predates the field, or was saved
+without touching it, is a member who never chose, and the board is the group
+looking at itself. `App.submitProfile` writes `draft.shareRanking !== false` for
+that reason, so an untouched draft saves as a decision rather than as an
+absence. The board carries one line about it either way (`shareNote`), because
+the thing worth saying to a member who is on it is that leaving is a choice.
 
 Two things about what hiding does are deliberate and easy to get backwards.
 
@@ -288,9 +290,9 @@ nobody should be able to move it — up or down — by changing a switch about
 themselves. So the filter is applied in `viewmodel/leaderboard.js` to the
 **people table only** (`ranked`), while `standingsBy` is fed the unfiltered
 `counted`. Your own row survives the filter (`p.me`), so a hidden member can
-still read where they stand; `hiddenNote` is what tells them nobody else can,
-and points at Settings, which is behind a gear and not somewhere a member finds
-by looking.
+still read where they stand; `shareNote` is what tells them nobody else can,
+and points at Settings — which is behind the account circle in the header and
+not somewhere a member finds by looking.
 
 **The name is withheld at the source.** `standings` is readable by every signed-in
 member (`deploy/firestore.rules`), so a name filtered out in the view-model would

@@ -27,7 +27,7 @@ test("an Acts 2 account signs in and lands on the board", async ({ app, page }) 
   await page.getByRole("button", { name: /Sign in with Google/ }).click();
 
   await expect(app.board).toBeVisible();
-  await expect(app.header).toContainText("Ada Lovelace");
+  await expect(app.avatar).toHaveAttribute("aria-label", "Ada Lovelace");
 });
 
 test("an outside account is refused and told why", async ({ app, page }) => {
@@ -88,7 +88,7 @@ test("finishing a card pushes it to the member's document", async ({ app, page }
 test("signing out puts the gate back", async ({ app, page }) => {
   await app.boot({ firebase: { session: MEMBER } });
 
-  await app.header.getByRole("button", { name: "Sign out" }).click();
+  await app.account("Sign out");
 
   await expect(page.getByRole("button", { name: /Sign in with Google/ })).toBeVisible();
 });
@@ -101,7 +101,7 @@ test("an unreachable Firebase runs local-only rather than locking the member out
   // is still the member's.
   await expect(app.board).toBeVisible();
   await expect(page.getByRole("button", { name: /Sign in with Google/ })).toHaveCount(0);
-  await expect(app.header.getByRole("button", { name: "Sign out" })).toHaveCount(0);
+  await expect(app.avatar).toHaveCount(0);
   expect(await app.figure(app.committedFigure)).toBe(1);
   // Local-only, but not silently so: there is an account this build could not
   // reach, which is different from a build that has none (see sync.spec.mjs).

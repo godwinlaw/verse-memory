@@ -50,7 +50,8 @@ test("a restored session goes straight to the board, never past the sign-in gate
   await expect(app.board).toBeVisible();
   await expect(page.getByRole("button", { name: /Sign in with Google/ })).toHaveCount(0);
   // The Workspace campus tag is stripped on the way in (profile.cleanDisplayName).
-  await expect(app.header).toContainText(PROFILE.name);
+  // The name is on the account circle now, as its initials and its label.
+  await expect(app.avatar).toHaveAttribute("aria-label", PROFILE.name);
 });
 
 test("a deploy's config.js decides the group and the deadline", async ({ app, page }) => {

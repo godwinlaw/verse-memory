@@ -6,6 +6,23 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **The header's corner is one circle.** The member's name, the settings gear
+  and the sign-out button are replaced by a filled circle carrying their
+  initials (`profile.initialsOf` — "Godwin Law" is GL, a one-word name gives one
+  letter, and a member with no name falls back to their address). Pressing it
+  opens a menu with **Settings** and **Sign out**. A transparent fixed sheet
+  under the menu is what closes it, so the header does not have to listen to the
+  document; navigating anywhere closes it too.
+- **Peek shows the passage only while it is held.** The latch is gone: press and
+  hold to look, release to put it away, one peek charged per press. `PEEK_FLOOR`
+  stays — peeking still cannot take a card below a fifth of what it was worth.
+- **Being on the leaderboard is now the default.** `sharesRanking` reads
+  anything but an explicit `false` as shown, so a member is on the board unless
+  they choose otherwise, and every profile written before the switch existed
+  reads as shown. The board carries one line either way — "Your ranking is
+  visible to the group. You can hide it in Settings." — since the thing worth
+  saying to a member who is on it is that leaving is a choice they have.
+
 - **Peek is one button, and it latches.** The "Keep shown" On/Off switch beside
   it is gone: pressing Peek puts the passage up and leaves it there, pressing it
   again puts it away. It stays at the foot of the card, directly above what it

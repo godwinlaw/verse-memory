@@ -87,10 +87,10 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
    * see: `me` survives the filter, so a hidden member can still read where
    * they stand while nobody else can. `hiddenNote` is what says so.
    *
-   * Only an explicit `true` shows a row, exactly as profile.sharesRanking has
-   * it — a row carrying nothing is a member who never asked, not one whose
-   * answer went missing. */
-  const ranked = counted.filter((p) => p.me || p.shareRanking === true);
+   * Only an explicit `false` takes a row off, exactly as profile.sharesRanking
+   * has it — a row carrying nothing is a member who never chose, and the board
+   * is the group looking at itself. */
+  const ranked = counted.filter((p) => p.me || p.shareRanking !== false);
   const top = Math.max(1, ranked[0] ? ranked[0].freshnessScore : 1);
 
   // Ranking groups is the same board asked a different question, so it runs off
@@ -114,11 +114,10 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   return {
     daysLeftLabel: copy.leaderboard.daysLeft(totals.daysLeft),
 
-    /* Said only to the member it is true of, and only on the board it is about:
-     * your row is on this screen but on nobody else's, and the switch that
-     * changes that is on the settings form. Empty when they are sharing, so
-     * the view has one thing to test rather than two. */
-    hiddenNote: sharesRanking(me) ? "" : copy.leaderboard.hiddenNote,
+    /* One line, said to the member it is about. Shown either way, because the
+     * default is to be on the board and a member who would rather not be needs
+     * to be told they can leave — which is the whole reason this line exists. */
+    shareNote: sharesRanking(me) ? copy.leaderboard.shownNote : copy.leaderboard.hiddenNote,
 
     rankByLabel: copy.leaderboard.rankByLabel,
     rankByOptions: RANK_BY.map((r) => ({
