@@ -179,6 +179,11 @@ export const FIRST_LETTER_AWARD = 0.92;
  * allowed, and often the right thing to do — it just isn't free. */
 export const PEEK_COST = 0.05;
 
+/* The lowest a card can be driven by peeking alone. Peeks cost, but they stop
+ * costing here: an attempt already worth less than this on its own mark keeps
+ * that mark, and one worth more can be brought down to it and no further. */
+export const PEEK_FLOOR = 0.2;
+
 /* Freshness a completed card is worth, in [R_FLOOR, 1]. */
 export function reviewAward(ctx = {}) {
   let award = MODE_AWARD[ctx.mode] != null ? MODE_AWARD[ctx.mode] : 1.0;
@@ -186,7 +191,8 @@ export function reviewAward(ctx = {}) {
   if (ctx.mode === "scramble") award *= LEVEL_AWARD[ctx.scrambleLevel] != null ? LEVEL_AWARD[ctx.scrambleLevel] : 1.0;
   if (ctx.mode === "type" && ctx.firstLetters) award *= FIRST_LETTER_AWARD;
   if (typeof ctx.score === "number") award *= Math.max(0, Math.min(1, ctx.score));
-  return clampR(award - PEEK_COST * (ctx.peeks || 0));
+  const peeked = award - PEEK_COST * (ctx.peeks || 0);
+  return clampR(Math.max(peeked, Math.min(award, PEEK_FLOOR)));
 }
 
 /* The most a card can pay before the attempt is marked — what the member is

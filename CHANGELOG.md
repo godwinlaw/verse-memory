@@ -6,6 +6,17 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **Peek is one button, and it latches.** The "Keep shown" On/Off switch beside
+  it is gone: pressing Peek puts the passage up and leaves it there, pressing it
+  again puts it away. It stays at the foot of the card, directly above what it
+  reveals. `state.peekStick` goes with the switch, and the latch is now the
+  card's rather than the sitting's — a passage left on screen is a thing done to
+  that verse, so the next card opens closed and is not charged a peek for it.
+- **Peeking stops costing at 20%.** `PEEK_FLOOR` in `srs.js`: peeks can bring a
+  card down to a fifth of what it would have been worth and no further. The
+  floor is the peek's alone — an attempt already worth less than that on its own
+  mark keeps its mark, and peeking cannot lift it up to the floor either.
+
 - **A member is not on the leaderboard until they say so.** Stats is back on
   (`features.leaderboard`), and with it a **Share my ranking** switch on the
   settings form — **off by default**, because nobody should be put on a board

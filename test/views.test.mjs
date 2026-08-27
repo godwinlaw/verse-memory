@@ -540,21 +540,20 @@ test("what a card is worth is quoted before it is submitted", () => {
   assert.match(shown("review/blanks"), /Each peek costs 5%/);
 });
 
-test("looking the passage up is offered two ways, below the activity", () => {
+test("looking the passage up is one latch, below the activity", () => {
   const markup = shown("review/blanks");
-  assert.match(markup, /Peek/, "held down for a glance");
-  assert.match(markup, /Keep shown/, "or latched on, for a member checking line by line");
+  assert.match(markup, /Peek/);
   assert.ok(
-    markup.indexOf("Keep shown") > markup.indexOf("blank-input"),
-    "and the control sits below the activity, beside where the passage appears",
+    markup.indexOf("Peek") > markup.indexOf("blank-input"),
+    "the control sits below the activity, beside where the passage appears",
   );
-  assert.doesNotMatch(shown("review/flip-hidden"), /Keep shown/, "a flashcard is already a reveal");
+  assert.doesNotMatch(shown("review/flip-hidden"), /Peek/, "a flashcard is already a reveal");
 });
 
-test("a latched peek reads as on, and says what it has cost", () => {
+test("a latched peek reads as pressed, and says what it has cost", () => {
   const latched = shown("review/peek-latched");
-  assert.match(latched, /aria-label="Keep shown" aria-pressed="true"/, "the switch says which way it is set");
-  assert.match(latched, /1 peek · −5%/, "and the sitting is a peek down on this card");
+  assert.match(latched, /aria-pressed="true"/, "the button says which way it is set");
+  assert.match(latched, /1 peek · −5%/, "and the card is a peek down");
   assert.doesNotMatch(shown("review/blanks"), /aria-pressed="true"/, "unlatched, it is not");
 });
 

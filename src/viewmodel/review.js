@@ -271,18 +271,12 @@ export function reviewVals({ state, prog, totals, actions }) {
     // which is already a reveal. It is allowed and counted either way; what it
     // is said to cost depends on the errand (see stakeVals).
     helpLabel: copy.review.peek,
-    peekOn: () => actions.setPeek(true),
-    peekOff: () => actions.setPeek(false),
+    // One button, latched: it reads pressed while the passage is up.
+    togglePeek: () => actions.togglePeek(),
+    peekLatched: state.showHelp && !isFlip,
+    peekStyle: segButton(state.showHelp && !isFlip),
     showHelp: state.showHelp && !isFlip,
     peekSpent: state.peeks > 0,
-    // Holding the button down is one press per look, which is a lot of presses
-    // for a member checking themselves line by line. The latch beside it is the
-    // same reveal held open — one press, one cost — and it is a segmented
-    // On/Off like the scaffold's, because it is the same kind of switch.
-    peekStickLabel: copy.review.peekStick,
-    peekStickOn: state.peekStick,
-    peekStickStyle: segButton(state.peekStick),
-    togglePeekStick: () => actions.togglePeekStick(),
 
     isFlip,
     flipShown: isFlip && state.revealed,
