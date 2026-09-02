@@ -1,4 +1,4 @@
-/* Test mode — a graded exam over a chosen slice of the set.
+/* Test mode, a graded exam over a chosen slice of the set.
  *
  * Self study (review.js) is untimed, ungraded, and one passage at a time: the
  * act of reviewing is the whole signal, so it can only ever raise a verse's
@@ -8,7 +8,7 @@
  * moves its freshness up *or down* (srs.nextStep / srs.testedLast).
  *
  * Everything here is pure. buildExam() takes a seed, so the same setup and seed
- * always produce the same paper — that is what makes the generator testable and
+ * always produce the same paper, that is what makes the generator testable and
  * what stops a re-render from quietly rewriting the question under the member.
  * The running session (which question, what has been typed) belongs to the
  * component, exactly as a review session does.
@@ -40,7 +40,7 @@ export const SIZE_OPTIONS = [10, 20, 30, 40, 50, 70, 100, 0];
 export const FRESHNESS_STEP = 10;
 
 /* `key` is persisted in the saved setup and read back by normalizeSetup(), so
- * these keys are part of the stored data — renaming one drops that activity
+ * these keys are part of the stored data, renaming one drops that activity
  * from a member's saved preferences. */
 export const ACTIVITIES = [
   {
@@ -53,7 +53,7 @@ export const ACTIVITIES = [
     key: "pick-ref",
     name: "Pick the reference",
     short: "Pick",
-    desc: "The same question as multiple choice — four references and none of the above.",
+    desc: "The same question as multiple choice, four references and none of the above.",
   },
   {
     key: "finish",
@@ -77,7 +77,7 @@ export const ACTIVITIES = [
     key: "blanks",
     name: "Fill the blanks",
     short: "Blanks",
-    desc: "The key words — verbs, actions, and names — are removed. Type what belongs there.",
+    desc: "The key words, verbs, actions, and names, are removed. Type what belongs there.",
   },
   {
     key: "type",
@@ -95,14 +95,14 @@ export const DEFAULT_SETUP = {
   size: 10,
   committedOnly: false,
   maxFreshness: 100, // include verses at or below this freshness
-  // null is "All". See categories.js — the paper is narrowed to one shelf, but
+  // null is "All". See categories.js, the paper is narrowed to one shelf, but
   // the decoy references it offers are not (see buildExam).
   category: null,
   activities: ACTIVITY_KEYS,
 };
 
 /* Verses per matching question, and the size its reference column is padded to
- * with decoys — so the last block of a test, however short it lands, is still a
+ * with decoys, so the last block of a test, however short it lands, is still a
  * real choice rather than a giveaway. */
 export const MATCH_BLOCK = 4;
 
@@ -114,7 +114,7 @@ const MIN_FINISH_WORDS = 8;
 const FINISH_LEAD = 0.45;
 
 /* "Finish the sentence" also asks where the sentence is from. Recalling the
- * words is the exercise, so the reference is a quarter of the mark — enough to
+ * words is the exercise, so the reference is a quarter of the mark, enough to
  * be worth answering, not enough to sink a member who knows the verse but not
  * its address. */
 export const FINISH_REF_WEIGHT = 0.25;
@@ -150,7 +150,7 @@ export function normalizeSetup(raw) {
 
 /* ── choosing what to test ────────────────────────────────────────────────── */
 
-/* Every verse the setup admits, stalest first — so slicing the top N tests what
+/* Every verse the setup admits, stalest first, so slicing the top N tests what
  * the member is least likely to still hold. */
 export function eligiblePassages(passages, progress, setup, now = Date.now()) {
   const read = progressReader(progress, now);
@@ -176,7 +176,7 @@ export function examPassages(passages, progress, setup, now = Date.now()) {
 
 const pickOne = (rnd, arr) => arr[Math.floor(rnd() * arr.length)];
 
-/* Fisher–Yates over the seeded generator — an unbiased permutation, and the
+/* Fisher–Yates over the seeded generator, an unbiased permutation, and the
  * same one every time for a given seed. */
 function shuffle(rnd, items) {
   const out = [...items];
@@ -290,7 +290,7 @@ function typeQuestion(p) {
  *
  * Activities are dealt round-robin across the chosen verses, so every activity
  * the member asked for turns up and each verse is asked about once. The verses
- * dealt "match" are then gathered into blocks — a matching question covers
+ * dealt "match" are then gathered into blocks, a matching question covers
  * several verses at once, which is why a question carries `ids` rather than a
  * single id, and why scoring is per verse rather than per question. */
 export function buildExam({ passages, progress, setup, now = Date.now(), seed = 1 }) {
@@ -305,7 +305,7 @@ export function buildExam({ passages, progress, setup, now = Date.now(), seed = 
     const act = acts[i % acts.length];
     if (act === "match") forMatch.push(p);
     else if (act === "name-ref") questions.push(nameRefQuestion(p, rnd));
-    // Decoys are drawn from the whole set, not just the slice under test — the
+    // Decoys are drawn from the whole set, not just the slice under test, the
     // wrong answers should be the rest of the board.
     else if (act === "pick-ref") questions.push(pickRefQuestion(p, passages, rnd));
     else if (act === "finish") questions.push(finishQuestion(p, rnd));
@@ -327,7 +327,7 @@ export function buildExam({ passages, progress, setup, now = Date.now(), seed = 
 
 /* How many questions a paper over `count` verses will come to, so the setup
  * screen can say what it is about to hand out. Mirrors the dealing rule in
- * buildExam() above — a test asserts the two stay in step. */
+ * buildExam() above, a test asserts the two stay in step. */
 export function plannedQuestions(count, activities) {
   const acts = ACTIVITY_KEYS.filter((k) => activities.includes(k));
   if (!count || !acts.length) return 0;
@@ -340,9 +340,9 @@ export function plannedQuestions(count, activities) {
 
 /* Mark one answer. Every kind returns the same shape: a score in [0, 1] per
  * verse the question covers, plus whatever the summary needs to show its
- * working. `answer` is whatever the view collected — a string for a typed
+ * working. `answer` is whatever the view collected, a string for a typed
  * reference, a { text, ref } pair for a finished sentence, an option key for
- * multiple choice, a { verseKey: refKey } map for a matching grid — and is
+ * multiple choice, a { verseKey: refKey } map for a matching grid, and is
  * allowed to be missing (an unanswered question). */
 export function gradeQuestion(q, answer) {
   if (q.kind === "name-ref") {
@@ -443,7 +443,7 @@ export function scoreExam(questions, answers = {}) {
  * actually demonstrated.
  *
  * A test moves freshness, never status. Committing is reserved for writing the
- * passage out in full in a learn session (srs.commitsVerse) — a paper of
+ * passage out in full in a learn session (srs.commitsVerse), a paper of
  * multiple choice and matching, however well it goes, is not that. Nor is a
  * failure a demotion: a verse already committed keeps the status it earned, so
  * nothing is lost to one bad morning. Pure: returns the next map. */

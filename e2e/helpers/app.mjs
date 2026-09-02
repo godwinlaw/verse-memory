@@ -3,12 +3,12 @@
  * One object holds the three things every spec needs and no spec should have to
  * repeat: the state the browser starts with, the two seams the page reaches out
  * to (the CDN scripts and Firebase), and the handful of locators that are
- * structural rather than wording — the splash, the header, the board's figures.
+ * structural rather than wording, the splash, the header, the board's figures.
  * Everything else a spec finds the way a member would, by role and by the words
  * on the screen, so the copy stays the single definition of what the app says.
  *
  * Two rules keep it honest. The app under test is the shipped tree, served as
- * `npm run dev` serves it — nothing is stubbed that the member would not also
+ * `npm run dev` serves it, nothing is stubbed that the member would not also
  * be missing. And nothing here reaches past the front door: seeding is
  * localStorage and a deploy-time config.js, which are the app's own documented
  * ways in (see src/storage.js and config.example.js). */
@@ -21,8 +21,8 @@ import { PROFILE } from "./seed.mjs";
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 /* index.html loads React, ReactDOM and htm from unpkg as classic scripts. They
- * are fulfilled from the dev-only npm copies of the same versions — the same
- * substitution test/helpers/dom-env.mjs makes for the render suite — so the
+ * are fulfilled from the dev-only npm copies of the same versions, the same
+ * substitution test/helpers/dom-env.mjs makes for the render suite, so the
  * suite is neither slowed nor grounded by the network. E2E_LIVE_CDN=1 puts the
  * real CDN back, which is worth a run before a deploy. */
 const CDN = "https://unpkg.com/**";
@@ -38,7 +38,7 @@ export class AppHarness {
     page.on("pageerror", (err) => this.consoleErrors.push(String(err)));
   }
 
-  /* Errors this test means to provoke — a blocked CDN is a network error the
+  /* Errors this test means to provoke, a blocked CDN is a network error the
    * browser logs whatever the app then does about it. Everything else still
    * fails the test (see fixtures.mjs). */
   allowConsoleErrors(...patterns) {
@@ -56,8 +56,8 @@ export class AppHarness {
    *   progress / log / profile  what storage.js will find (profile: null leaves
    *                             the member at the profile form);
    *   local                     any other localStorage key, written raw;
-   *   firebase                  false for cloud sync off — the default, and what
-   *                             most specs want — or a scenario for the stub
+   *   firebase                  false for cloud sync off, the default, and what
+   *                             most specs want, or a scenario for the stub
    *                             (see firebase-stub.mjs);
    *   splashMinMs               the splash's floor, normally 0 so it is out of
    *                             the way; boot.spec.mjs is what raises it;
@@ -66,14 +66,14 @@ export class AppHarness {
    *                             "stub" for one the test can speak into,
    *                             through window.__E2E_SAY__(text, settled);
    *   reducedMotion             "reduce" by default, so screens are settled the
-   *                             moment they arrive — the app drops every
+   *                             moment they arrive, the app drops every
    *                             animation under that query. motion.spec.mjs is
    *                             what passes "no-preference";
    *   features                  flags from src/config.js, off by default as they
    *                             ship. A screen that is switched off is hidden
    *                             rather than deleted, so a spec that means to
    *                             press it turns its flag back on the way a
-   *                             deploy would — through config.js, which is the
+   *                             deploy would, through config.js, which is the
    *                             app's own door and not a seam of our own. */
   async boot({
     progress = {},
@@ -130,7 +130,7 @@ export class AppHarness {
         if (voice === "stub") {
           // A microphone the test can speak into. Chrome will not grant one in
           // CI, and recognition is the browser's own anyway (src/recognizer.js
-          // is the seam, exactly as src/firebase.js is) — so this stands in for
+          // is the seam, exactly as src/firebase.js is), so this stands in for
           // the engine and nothing else. `window.__E2E_SAY__(text, settled)`
           // delivers a phrase the way onresult does: the running guess first,
           // then the settled version.
@@ -188,7 +188,7 @@ export class AppHarness {
 
   /* The deploy-time override index.html loads before the app (config.example.js).
    * Serving it rather than injecting the globals keeps the test on the same seam
-   * a real deploy uses — and stops a stray local config.js from deciding what
+   * a real deploy uses, and stops a stray local config.js from deciding what
    * the suite sees. */
   async serveConfig({ splashMinMs, deadline, groupName, features, firebase }) {
     const appConfig = {
@@ -248,7 +248,7 @@ export class AppHarness {
   }
 
   /* The board's five hero figures are drawn by CSS from a registered --count
-   * (styles.css, .count-up), so they are not text nodes — the number is read off
+   * (styles.css, .count-up), so they are not text nodes, the number is read off
    * the custom property the view set, exactly as test/views.test.mjs reads it. */
   get committedFigure() {
     return this.board.locator(".board-hero .count-up").first();
@@ -281,7 +281,7 @@ export class AppHarness {
     return this.page.evaluate(() => window.__E2E_WRITES__ || []);
   }
 
-  /* The member's document as it now stands in the cloud — what another device
+  /* The member's document as it now stands in the cloud, what another device
    * signing in would read. The stub keys its documents by collection, since a
    * push writes the record and the leaderboard summary beside it; this is the
    * record, which is what a spec means by "the cloud". */

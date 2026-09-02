@@ -1,6 +1,6 @@
 /* View-model for Test mode: the setup form, the running paper, the summary.
  *
- * The exam itself — which questions, and what they are worth — is built and
+ * The exam itself, which questions, and what they are worth, is built and
  * marked in exam.js. This turns the current question into the shapes and style
  * strings the three screens render, and the marked paper into rows.
  *
@@ -160,7 +160,7 @@ function questionVals({ state, actions }) {
   const vals = {
     examActivityName: activity.name,
     // The view keys the question panel on this, so each question arrives as a
-    // replacement rather than a redraw (styles.css, .card-swap) — the same
+    // replacement rather than a redraw (styles.css, .card-swap), the same
     // gesture a review card is dealt with.
     examCardKey: String(state.examIndex),
     examPosLabel: copy.exam.position(state.examIndex + 1, questions.length),
@@ -323,7 +323,7 @@ function givenLabel(m) {
 
 /* What it should have been. Multiple choice is answered by an option, not by a
  * reference, so when the right option was "None of the above" the summary has
- * to say both — otherwise it reads as if the reference shown was on offer. */
+ * to say both, otherwise it reads as if the reference shown was on offer. */
 function expectedLabel(m) {
   if (m.q.kind === "finish") return copy.exam.expectedFinish(m.q.answer, m.q.ref);
   if (m.q.kind === "match") return "";

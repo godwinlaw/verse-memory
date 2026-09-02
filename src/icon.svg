@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Verse Mastery">
-  <!-- "Marked passage" — the ribbon marker cut from paper on a steel field,
+  <!-- "Marked passage", the ribbon marker cut from paper on a steel field,
        rules standing in for the passage it holds. Square-cornered and edge to
        edge like every other object in the blueprint system.
 
@@ -20,7 +20,7 @@
        reach, and there is no version of it that could: the browser fetches this
        file on its own, outside the page, so it has no data-theme to read and no
        localStorage to ask. A tab icon therefore keeps following the system even
-       for a member who asked the app for the other ground — which is the right
+       for a member who asked the app for the other ground, which is the right
        way round anyway, since the tab strip it sits in belongs to the browser
        and is painted the system's way too. -->
   <style>

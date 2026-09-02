@@ -19,7 +19,7 @@ test("the alternating level blanks every other word, whatever the words are", ()
     [...keyBlankSet(SAMPLE, 999, ALTERNATE, 1)].sort((a, b) => a - b),
     [1, 3, 5, 7, 9],
   );
-  // Together they are the whole passage and they never overlap — which is what
+  // Together they are the whole passage and they never overlap, which is what
   // makes turning it over worth doing.
   const a = keyBlankSet(SAMPLE, 999, ALTERNATE, 0);
   const b = keyBlankSet(SAMPLE, 999, ALTERNATE, 1);
@@ -85,7 +85,7 @@ test("chunksFor splits a passage into ordered chunks that rejoin to the text", (
 
 /* Nine verses, the shape of one section of a long chapter (Hebrews 11:8-16).
  * Deliberately written so every verse is long enough that punctuation alone
- * would cut them into far more pieces than there are verses — which is exactly
+ * would cut them into far more pieces than there are verses, which is exactly
  * the difference the verse path exists to make. */
 const VERSES = Array.from({ length: 9 }, (_, i) => `Verse ${i + 1} says one thing, and then it says another thing.`);
 const VERSE_TEXT = VERSES.join(" ");
@@ -131,7 +131,7 @@ test("a passage with no verses chunks exactly as it did before", () => {
 });
 
 test("a passage of one or two verses takes the punctuation path", () => {
-  // Two verses would be two tiles — a choice between two, which is no exercise.
+  // Two verses would be two tiles, a choice between two, which is no exercise.
   // Under the threshold the punctuation cut gives a real one.
   const two = ["The Lord is my shepherd; I shall not want.", "He makes me lie down in green pastures."];
   const text = two.join(" ");

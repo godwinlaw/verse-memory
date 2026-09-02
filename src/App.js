@@ -1,13 +1,13 @@
-/* Verse Mastery — root component.
+/* Verse Mastery, root component.
  *
  * This is the only stateful module in the app. It owns the member's progress and
  * the running review session, exposes an `actions` table for the UI to call, and
  * dispatches to a view. It deliberately holds no rendering or derivation logic:
  *
  *   viewmodel/  turns (state, actions) into one plain object of strings and
- *               callbacks — all the derivation lives there
- *   views/      turn that object into markup — no state, no imports from here
- *   srs, blanks, grading, progress, exam, text — the pure domain, unit-tested
+ *               callbacks, all the derivation lives there
+ *   views/      turn that object into markup, no state, no imports from here
+ *   srs, blanks, grading, progress, exam, text, the pure domain, unit-tested
  *               in Node
  *
  * So a change to how something looks belongs in views/, a change to what is
@@ -86,19 +86,19 @@ const MINISTRY_CLOSE_MS = 120;
 /* How long to wait for Firebase before sending the member to the sign-in screen
  * anyway. Auth normally answers in a moment; if the SDK never loads (offline, a
  * blocked CDN) nothing else would ever arrive to move the splash on. A late
- * answer still lands — the observer in componentDidMount keeps running. */
+ * answer still lands, the observer in componentDidMount keeps running. */
 const SPLASH_MAX_MS = 8000;
 
 /* How long a fetched leaderboard roster is reused before it is read again.
  * The board is one press away in the header, and the figures on it move at the
- * speed of somebody sitting down to review — not at the speed of a member
+ * speed of somebody sitting down to review, not at the speed of a member
  * clicking back and forth between screens. */
 const ROSTER_TTL_MS = 60000;
 
 /* The shortest time the opening splash stays up. Local data loads in a blink and
  * a restored Firebase session usually answers in well under a second, so without
  * a floor the mark would be a flicker rather than a screen. The figure is
- * `appConfig.splashMinMs` — retune it there, or per deploy in config.js — and is
+ * `appConfig.splashMinMs`, retune it there, or per deploy in config.js, and is
  * clamped under SPLASH_MAX_MS, since a floor above the ceiling would hold the
  * member on the splash past the point the app had given up waiting. */
 const splashMinMs = () => {
@@ -139,13 +139,13 @@ function caretAfterRecitation(rest) {
  * window, and its type settles a little when the web font arrives. A number
  * written into the stylesheet would be right for one of those and wrong for
  * the rest, so it is measured. The observer is what covers the font, and
- * `attach` — called again on every update — is what covers the header not
+ * `attach`, called again on every update, is what covers the header not
  * being on the page yet: the splash and the sign-in gate come first, so at
  * mount there is nothing to measure.
  *
  * Absent ResizeObserver (or a document at all, under node:test) the CSS
  * fallback stands, which sticks the table head to the top of the window
- * instead of below the header — degraded, not broken. */
+ * instead of below the header, degraded, not broken. */
 function watchHeaderHeight() {
   if (typeof document === "undefined" || typeof ResizeObserver === "undefined") return { attach() {}, stop() {} };
   let watched = null;
@@ -168,8 +168,8 @@ function watchHeaderHeight() {
   };
 }
 
-/* A session opens at the top of the page, so the mode switch — all four
- * activities — is on screen from the first card rather than scrolled past
+/* A session opens at the top of the page, so the mode switch, all four
+ * activities, is on screen from the first card rather than scrolled past
  * from wherever the board or setup screen left off. */
 function scrollToTop() {
   if (typeof window.scrollTo === "function") window.scrollTo(0, 0);
@@ -178,7 +178,7 @@ function scrollToTop() {
 /* Send focus back to the recall box after a control beside it is pressed. The
  * voice switch and the first-letter toggle are both buttons, so clicking
  * either steals focus from the box the member was just writing or reciting
- * into — and the point of a box that stays live across both is that they
+ * into, and the point of a box that stays live across both is that they
  * should not have to click back into it themselves. */
 function focusRecall() {
   const el = document.getElementById(RECALL_INPUT_ID);
@@ -199,7 +199,7 @@ function initialState() {
     isMobile: detectMobile(),
     loaded: false,
     // The splash stands in front of everything until local data has loaded and
-    // Firebase has said whether there is a session to restore — only then does
+    // Firebase has said whether there is a session to restore, only then does
     // the app know whether the member is going to their board or to sign-in.
     // `splashHold` is the minimum it stays up (SPLASH_MIN_MS), so the boot reads
     // as a screen rather than a flash.
@@ -211,7 +211,7 @@ function initialState() {
     progress: {}, // { [passageId]: { hits, status, last, step, stability } }
     log: {}, // { [YYYY-MM-DD]: reviews that day }
 
-    // running session — review keeps committed verses fresh, learn commits new
+    // running session, review keeps committed verses fresh, learn commits new
     // ones. Same cards, same activities; see review.js for what separates them.
     sessionKind: REVIEW,
     mode: null,
@@ -242,7 +242,7 @@ function initialState() {
     scrambleMisses: 0, // chunks tried in the wrong place on this card
     scrambleLevel: 1,
 
-    // running test (Test mode — see exam.js)
+    // running test (Test mode, see exam.js)
     examSetup: DEFAULT_SETUP,
     exam: null, // { questions, ids }, built once when the test starts
     examIndex: 0,
@@ -255,7 +255,7 @@ function initialState() {
     search: "",
     filter: "All",
     /* Which part of the set the passage list is showing; null is all of it.
-     * Device-local and deliberately unpersisted, like `search` and `filter` —
+     * Device-local and deliberately unpersisted, like `search` and `filter`,
      * where a member last left the tabs is worth nothing on the next visit. */
     listCategory: null,
     // Passage ids ticked on the list, so a sitting can be hand-picked rather
@@ -274,7 +274,7 @@ function initialState() {
     // account, profile, leaderboard
     auth: { status: "loading" }, // loading | signing-in | signed-out | denied | signed-in | disabled
     /* How the member's cloud record is doing, kept apart from `auth` because
-     * being signed in and having your record in hand are different things — and
+     * being signed in and having your record in hand are different things, and
      * conflating them is what asked a returning member to sign up again on every
      * device. idle (nothing to sync) | pulling | synced | error. */
     sync: { status: "idle" },
@@ -289,7 +289,7 @@ function initialState() {
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
     // Who the board is ranking: people, or one of the three things a member
     // says about themselves (see src/standings.js). Not persisted, like the
-    // filters beside it — which question you asked last visit is worth nothing
+    // filters beside it, which question you asked last visit is worth nothing
     // this one.
     leaderRankBy: "people",
 
@@ -302,14 +302,14 @@ function initialState() {
     explainerOpen: false,
 
     // the guide: where the freshness demonstration's slider sits. Not
-    // persisted — a slider position is worth nothing on the next visit,
+    // persisted, a slider position is worth nothing on the next visit,
     // unlike the setups above.
     guideDays: 6,
 
     // Which way round the page is printed: "light", "dark", or "system", which
     // is the default and follows the reader's own machine. Device-local like
     // the setups above, and the one preference the app has already acted on
-    // before this state exists — index.html stamps the ground before the first
+    // before this state exists, index.html stamps the ground before the first
     // paint, so this is the app catching up with the page it booted on rather
     // than the other way round (see theme.js).
     theme: DEFAULT_THEME,
@@ -327,8 +327,8 @@ export class App extends React.Component {
   componentDidMount() {
     const profile = storage.loadProfile();
     const defaultDiff = profile.defaultDifficulty != null ? Number(profile.defaultDifficulty) : DEFAULT_DIFFICULTY;
-    /* The theme is already on the page — index.html settled it before the first
-     * paint — so this is only the app learning what the member chose, plus a
+    /* The theme is already on the page, index.html settled it before the first
+     * paint, so this is only the app learning what the member chose, plus a
      * standing subscription for a reader who turns their system over with the
      * app open. Stamped again all the same, so a stored value the pre-paint
      * line could not make sense of is corrected by normalizeTheme rather than
@@ -377,7 +377,7 @@ export class App extends React.Component {
     this.headerHeight.attach();
   }
 
-  /* The header arrives on the page some renders after mount — see
+  /* The header arrives on the page some renders after mount, see
    * watchHeaderHeight for why this is where it is picked up. */
   componentDidUpdate() {
     if (this.headerHeight) this.headerHeight.attach();
@@ -391,7 +391,7 @@ export class App extends React.Component {
   startAuth() {
     return initAuth({
       onChange: (auth) => {
-        // Whatever it says, Firebase has answered — the splash can stop waiting.
+        // Whatever it says, Firebase has answered, the splash can stop waiting.
         clearTimeout(this.authWaitTimer);
         this.setState({ auth });
         if (auth.status === "signed-in") this.loadRoster();
@@ -415,18 +415,18 @@ export class App extends React.Component {
   /* Recitation is a second way to fill the recall box, not a second exercise:
    * what a member says lands in `state.typed`, where grading.js finds it and
    * srs.js marks it exactly as it marks something typed. So the only state
-   * unique to it is the microphone's — whether it is on, why it stopped, and
+   * unique to it is the microphone's, whether it is on, why it stopped, and
    * where the phrase still being heard begins (see voice.js).
    *
    * The recognizer itself is not state. It is a live object holding a
    * microphone, so it hangs off the instance and is torn down rather than
-   * re-rendered — and it is never started by anything but the member. */
+   * re-rendered, and it is never started by anything but the member. */
 
   setVoice(patch) {
     this.setState((s) => ({ voice: { ...s.voice, ...patch } }));
   }
 
-  /* Let the microphone go, without touching state — so the callers that are
+  /* Let the microphone go, without touching state, so the callers that are
    * already writing a state patch of their own can do both in one pass. */
   stopListening() {
     if (this.recognizer) this.recognizer.stop();
@@ -451,7 +451,7 @@ export class App extends React.Component {
 
   stopVoice() {
     this.stopListening();
-    // Whatever was still provisional when they stopped is theirs to keep — it
+    // Whatever was still provisional when they stopped is theirs to keep, it
     // is the last thing they said, and it is already in the box.
     this.setState((s) => ({ voice: { ...s.voice, status: "off", tail: s.typed.length, rest: 0 } }));
   }
@@ -464,7 +464,7 @@ export class App extends React.Component {
     focusRecall();
   }
 
-  /* A phrase from the engine, settled or still being revised (see voice.js —
+  /* A phrase from the engine, settled or still being revised (see voice.js,
    * an unsettled one replaces the last version rather than piling up after it).
    *
    * Guarded rather than trusted: a phrase can arrive after the member has moved
@@ -475,7 +475,7 @@ export class App extends React.Component {
     let landed = 0;
     this.setState(
       (s) => {
-        // The verse is handed over so the words can be fitted back onto it —
+        // The verse is handed over so the words can be fitted back onto it,
         // the passage's own spelling and punctuation, which the engine has no
         // way to know (see voice.js).
         const verse = s.passages.find((p) => p.id === s.queue[s.qi]);
@@ -515,7 +515,7 @@ export class App extends React.Component {
    * then persist the result (which pushes the merge back to the cloud).
    *
    * The local side is read from storage rather than from `this.state`, because
-   * the pull can land before componentDidMount's setState has flushed — and
+   * the pull can land before componentDidMount's setState has flushed, and
    * state, at that moment, is still the empty initial map. Merging against it
    * would drop this device's records, and the queued setState would then
    * overwrite the merge with the local copy alone. Storage is the source of
@@ -567,15 +567,15 @@ export class App extends React.Component {
       defaultDifficulty: draft.defaultDifficulty !== undefined ? Number(draft.defaultDifficulty) : DEFAULT_DIFFICULTY,
       commitThreshold: draft.commitThreshold !== undefined ? Number(draft.commitThreshold) : DEFAULT_COMMIT_THRESHOLD,
       /* Only an explicit no takes a member off (profile.sharesRanking), so an
-       * untouched draft saves as shown rather than as nothing — which is what
+       * untouched draft saves as shown rather than as nothing, which is what
        * lets the switch read the same on a device that has never seen it. */
       shareRanking: draft.shareRanking !== false,
       updatedAt: Date.now(),
     };
     /* The four identity fields are only required while the app is asking for
      * them. With `profileSetup` off they are not on the form at all, so holding
-     * Save against them would make the settings screen — review settings, the
-     * difficulty, the reset — unsavable for everybody. What the draft already
+     * Save against them would make the settings screen, review settings, the
+     * difficulty, the reset, unsavable for everybody. What the draft already
      * carries is written back either way, so a member who filled the form in
      * before the flag moved does not lose it by changing a setting. */
     if (features.profileSetup && !isProfileComplete(next)) return;
@@ -586,8 +586,8 @@ export class App extends React.Component {
 
   /* Start the set over: every passage back to Not started.
    *
-   * What goes is the record of what has been memorized — the progress map and
-   * the daily log — and nothing else. The profile, the settings sitting on the
+   * What goes is the record of what has been memorized, the progress map and
+   * the daily log, and nothing else. The profile, the settings sitting on the
    * same screen, and the device-local exercise preferences are not that record,
    * so they stay. The wipe goes to the cloud copy as a replacement rather than
    * a merge (storage.clearProgressAndLog), because a wipe that only reached
@@ -603,7 +603,7 @@ export class App extends React.Component {
 
   /* Pull the leaderboard roster. Self is dropped here and re-added from local
    * state by the view-model, so "You" always reflects the newest, not-yet-synced
-   * progress. Members the board cannot place are skipped — a row with no
+   * progress. Members the board cannot place are skipped, a row with no
    * ministry, gender or class cannot be filtered or grouped, so it is not a row
    * (standings.rankable, which asks for those three and deliberately not for a
    * name: a member who has hidden themselves has no name in their summary to
@@ -656,14 +656,14 @@ export class App extends React.Component {
 
   /* Record a completed card. There is still no self-report: the activity, the
    * mark the attempt earned, and the peeks it took decide one figure
-   * (srs.reviewAward), and that figure does both jobs — it moves the verse
+   * (srs.reviewAward), and that figure does both jobs, it moves the verse
    * along the interval ladder (srs.nextStep) and it is the freshness the verse
    * is dated to. The result is kept for the session so the card can show what it
    * was worth, and so a verse walked back to is not marked twice.
    *
    * This is also the one place a verse becomes committed, and only by the one
    * thing that commits it: writing the passage out in full from memory
-   * (srs.commitsVerse). Nothing demotes a verse — a bad morning costs freshness
+   * (srs.commitsVerse). Nothing demotes a verse, a bad morning costs freshness
    * and a rung, never the status the member has already earned. */
   record(id, score) {
     const now = Date.now();
@@ -680,7 +680,7 @@ export class App extends React.Component {
       ...cur,
       hits: (cur.hits || 0) + 1,
       // `last` is the point on the new curve the attempt earned, so it is not
-      // the moment of writing — hence updatedAt (see storage.mergeProgress).
+      // the moment of writing, hence updatedAt (see storage.mergeProgress).
       last: reviewedLast(stability, award, now),
       updatedAt: now,
       step,
@@ -691,7 +691,7 @@ export class App extends React.Component {
     const today = dayKey(new Date());
     log[today] = (log[today] || 0) + 1;
     this.save(progress, log);
-    // Only an actual submission — never the flashcard's unmarked auto-record
+    // Only an actual submission, never the flashcard's unmarked auto-record
     // (moveCard calls record(id) with no score), which the member never chose
     // to hand in.
     if (score != null) {
@@ -715,7 +715,7 @@ export class App extends React.Component {
           peeks: s.peeks,
           before: freshness(prev, now),
           after: freshness(progress[id], now),
-          // Whether this card is what committed the verse — the moment a learn
+          // Whether this card is what committed the verse, the moment a learn
           // session is working towards, so the summary can mark it.
           committed: prev.status !== "memorized" && committed,
         },
@@ -734,7 +734,7 @@ export class App extends React.Component {
   /* Start a session over `ids`, or over the stalest SESSION_SIZE passages.
    *
    * `kind` says which sitting this is (review or learn). It only changes how the
-   * session frames itself and what finishing a card can earn — the cards, the
+   * session frames itself and what finishing a card can earn, the cards, the
    * activities, and the walk through the queue are identical. */
   startSession(mode, ids, kind = REVIEW) {
     const queue =
@@ -758,7 +758,7 @@ export class App extends React.Component {
     scrollToTop();
   }
 
-  /* Clear everything that belongs to the card being left — including what it
+  /* Clear everything that belongs to the card being left, including what it
    * cost, since peeks and wrong tries are per attempt. What a submitted card
    * was worth lives in `results`, keyed by passage, and survives. Peek goes
    * with them: a passage left on screen is a thing done to that verse, so the
@@ -803,7 +803,7 @@ export class App extends React.Component {
 
   /* Try the same card again after a learn attempt did not commit the verse.
    * Clears the mark so Submit is live again, and gives the card the same clean
-   * slate resetCard gives a fresh one — without moving off it, so the second
+   * slate resetCard gives a fresh one, without moving off it, so the second
    * attempt is still this passage. record() reads whatever progress the first
    * attempt already left, so nothing about it is undone; a second clean recall
    * can still commit the verse. */
@@ -818,14 +818,14 @@ export class App extends React.Component {
     this.resetCard();
   }
 
-  /* Whether the card in front of us has already been handed in — after which it
+  /* Whether the card in front of us has already been handed in, after which it
    * cannot be marked again this session. */
   cardSubmitted() {
     const id = this.state.queue[this.state.qi];
     return id != null && !!this.state.results[id];
   }
 
-  /* Whether the mark on this card was earned in the exercise now on screen — in
+  /* Whether the mark on this card was earned in the exercise now on screen, in
    * which case that exercise is showing its marked paper, and must stop taking
    * answers so the paper cannot change under the mark.
    *
@@ -842,7 +842,7 @@ export class App extends React.Component {
   /* Whether this card can still be handed in again: the mark it got left the
    * verse uncommitted, so what the sitting is for is still open. A review
    * session only ever deals committed verses, so this is only ever a learn card
-   * that fell short — the same case "Try again" is offered for (see
+   * that fell short, the same case "Try again" is offered for (see
    * viewmodel/review.js, learnRetryShown). */
   cardOpenAgain() {
     const id = this.state.queue[this.state.qi];
@@ -853,7 +853,7 @@ export class App extends React.Component {
   /* Walk one card forward or back, ending the session past the queue's end.
    *
    * A card that was never submitted records nothing and its answers are not
-   * kept, so the member is asked first — in either direction, since leaving a
+   * kept, so the member is asked first, in either direction, since leaving a
    * card unmarked costs the same whichever way they walk off it. The flashcard
    * is the exception: nothing marks it, so it is recorded on the way out (an
    * unmarked activity earns the plain "I reviewed it" award). */
@@ -881,8 +881,8 @@ export class App extends React.Component {
     this.resetCard();
   }
 
-  /* Leaving part-way through keeps every card already submitted — only the rest
-   * of the queue is dropped — which is still worth confirming. */
+  /* Leaving part-way through keeps every card already submitted, only the rest
+   * of the queue is dropped, which is still worth confirming. */
   leaveReview() {
     this.stopListening();
     this.setState((s) => ({
@@ -987,7 +987,7 @@ export class App extends React.Component {
     this.setState({ examPick: null });
   }
 
-  /* Questions can be walked in both directions until the paper is handed in —
+  /* Questions can be walked in both directions until the paper is handed in,
    * answers are held by question index, so going back shows what was left
    * there and lets it be changed. */
   nextQuestion() {
@@ -1019,7 +1019,7 @@ export class App extends React.Component {
   }
 
   /* Leaving part-way through is a walk-out, not a fail: nothing is marked and
-   * no verse moves — which is worth confirming, since a half-finished paper is
+   * no verse moves, which is worth confirming, since a half-finished paper is
    * thrown away rather than kept. */
   leaveExam() {
     this.setState({ view: "board", exam: null, examPick: null, examLeaveAsk: false });
@@ -1057,8 +1057,8 @@ export class App extends React.Component {
         await this.startAuth();
         this.setState({ syncRetrying: false });
       },
-      /* The account menu. Every way out of it closes it — picking an item, or
-       * pressing the sheet behind it — so it can never be left hanging over a
+      /* The account menu. Every way out of it closes it, picking an item, or
+       * pressing the sheet behind it, so it can never be left hanging over a
        * screen the member has moved on to. */
       toggleAccount: () => this.setState((s) => ({ accountOpen: !s.accountOpen })),
       closeAccount: () => set({ accountOpen: false }),
@@ -1073,7 +1073,7 @@ export class App extends React.Component {
       setProfileField: (key, value) => this.setProfileField(key, value),
       /* Appearance is not one of the profile's fields, and the way it behaves
        * says so: it is saved and on screen the moment it is pressed, rather
-       * than waiting for the form's Save with the rest — there is nothing to
+       * than waiting for the form's Save with the rest, there is nothing to
        * confirm about a choice the member can already see, and nothing to
        * cancel back to. */
       setTheme: (theme) => {
@@ -1082,7 +1082,7 @@ export class App extends React.Component {
         set({ theme });
       },
       // Wiping the record is asked about first, and the dialog is the only way
-      // to reach resetProgress — the button on the form only opens it.
+      // to reach resetProgress, the button on the form only opens it.
       askResetProgress: () => set({ resetAsk: true }),
       cancelResetProgress: () => set({ resetAsk: false }),
       resetProgress: () => this.resetProgress(),
@@ -1100,7 +1100,7 @@ export class App extends React.Component {
       setFilter: (filter) => set({ filter }),
       setListCategory: (listCategory) => set({ listCategory }),
       // A row ticked on its own also becomes the anchor a later shift-click
-      // measures its range from — including a row just unticked, since that is
+      // measures its range from, including a row just unticked, since that is
       // the end a shift-click would clear a run from.
       toggleSelect: (id) =>
         this.setState((s) => ({
@@ -1118,20 +1118,20 @@ export class App extends React.Component {
           const held = new Set(s.selection);
           return { selection: [...s.selection, ...ids.filter((id) => !held.has(id))] };
         }),
-      // Ticking every shown row, and clearing, are both a whole new selection —
+      // Ticking every shown row, and clearing, are both a whole new selection,
       // the view-model works out which ids that is, since it is what knows
       // which rows the search and filter have left on screen. Neither leaves an
       // end to extend from, so both drop the anchor.
       setSelection: (selection) => set({ selection, selectAnchor: null }),
 
-      // review — shared
+      // review, shared
       setMode: (mode) => {
         set({ mode });
         // A card not yet handed in starts the new exercise clean. One already
         // handed in is not cleared: the answers sit in a slot per activity, so
         // the marked paper stays there to come back to and the exercise switched
         // to is live because the mark is not its (see activityMarked). The
-        // exception is a mark that left the verse uncommitted — what the sitting
+        // exception is a mark that left the verse uncommitted, what the sitting
         // is for is still open, so the switch reopens the card exactly as "Try
         // again" does, and the new exercise can be handed in.
         if (!this.cardSubmitted()) this.resetCard();
@@ -1156,7 +1156,7 @@ export class App extends React.Component {
       cancelLeaveReview: () => set({ reviewLeaveAsk: false }),
       leaveReview: () => this.leaveReview(),
 
-      // review — flashcard
+      // review, flashcard
       setRevealed: (revealed) => set({ revealed }),
       // Both the passage and the first-letter scaffold are on the back, so each
       // of the two buttons below the card turns it over to its own side of the
@@ -1169,7 +1169,7 @@ export class App extends React.Component {
           s.revealed && s.flipLetters === letters ? { revealed: false } : { revealed: true, flipLetters: letters },
         ),
 
-      // review — fill the blanks
+      // review, fill the blanks
       setAnswer: (index, value, focusIndex) => {
         if (this.activityMarked()) return;
         this.setState(
@@ -1183,7 +1183,7 @@ export class App extends React.Component {
         set({ blankLevel: level, answers: {}, blanksChecked: false });
       },
       // Turning the passage over asks for a different set of words, so what was
-      // filled in against the old set is dropped — the same clean slate
+      // filled in against the old set is dropped, the same clean slate
       // setBlankLevel gives, and for the same reason.
       setBlankParity: (parity) => {
         storage.saveBlankParity(parity);
@@ -1195,7 +1195,7 @@ export class App extends React.Component {
         set({ blankHint: on });
       },
 
-      // review — from memory (typed, or recited aloud)
+      // review, from memory (typed, or recited aloud)
       // A hand edit settles everything in the box: the member has taken the
       // transcript over, so the next phrase heard starts after what they left
       // rather than overwriting it.
@@ -1219,7 +1219,7 @@ export class App extends React.Component {
       },
       // Moving the cursor without typing anything says the same thing a hand
       // edit does about where the next phrase belongs. Only worth tracking
-      // while the microphone is open — nothing else in the app reads it, and a
+      // while the microphone is open, nothing else in the app reads it, and a
       // member who is only typing should not pay for a setState per keystroke.
       setCaret: (caret) => {
         if (this.state.voice.status === "off" || this.activityMarked()) return;
@@ -1249,11 +1249,11 @@ export class App extends React.Component {
         );
       },
 
-      // review — reciting aloud. One switch, and nothing else: correcting a
+      // review, reciting aloud. One switch, and nothing else: correcting a
       // misheard word is what the textarea is already for.
       toggleVoice: () => this.toggleVoice(),
 
-      // review — order the phrases
+      // review, order the phrases
       placeChunk: (index) => this.placeChunk(index),
       // Starting over is the ordering attempted again from scratch, so the board
       // and the wrong tries both go: a tally carried over from an attempt the
@@ -1302,14 +1302,14 @@ export class App extends React.Component {
   render() {
     const { isMobile, loaded, splashHold, auth, sync, profile, editingProfile, welcomePrompt } = this.state;
 
-    // Nothing is offered on a phone or a tablet — and the refusal comes before
+    // Nothing is offered on a phone or a tablet, and the refusal comes before
     // the splash, since a member who is not getting in should not be made to
     // watch the boot first. It is a dead end, so no other screen follows it.
     if (isMobile) return mobileGateView(mobileGateVals({ groupName: this.groupName() }));
 
     // The splash is up until the app knows where the member is going: their
     // board if Firebase restores a session, the sign-in screen if it does not.
-    // Deciding behind the splash is the point — otherwise a returning member
+    // Deciding behind the splash is the point, otherwise a returning member
     // would be shown a sign-in prompt for the moment the check takes.
     if (!loaded || auth.status === "loading" || splashHold) {
       // The set's size comes from the module rather than from state: state.passages
@@ -1318,7 +1318,7 @@ export class App extends React.Component {
     }
 
     // Sign-in is required before the app. "disabled" means Firebase is
-    // unreachable — fall through to local-only rather than lock members out.
+    // unreachable, fall through to local-only rather than lock members out.
     if (auth.status !== "signed-in" && auth.status !== "disabled") {
       return authGateView(
         authGateVals({ auth, groupName: this.groupName(), motto: this.motto(), actions: this.actions }),
@@ -1330,7 +1330,7 @@ export class App extends React.Component {
      *
      * But an incomplete profile only means "new member" once the cloud record
      * has actually been read. While the read is in flight, or after it has
-     * failed, the app does not know what this member has — and sending them
+     * failed, the app does not know what this member has, and sending them
      * through sign-up would stamp a fresh profile that then wins the merge and
      * replaces the real one. So the sync gate stands in front of the form (and
      * only of the form: a member whose profile is already complete on this
@@ -1339,7 +1339,7 @@ export class App extends React.Component {
     /* Only when the app is still asking for a profile. With `profileSetup` off
      * (config.js) it never is: sign-in lands on the board, and the form behind
      * the header's gear is the settings screen rather than a gate. A profile
-     * already filled in is untouched either way — nothing here reads it. */
+     * already filled in is untouched either way, nothing here reads it. */
     const needsProfile = features.profileSetup && !isProfileComplete(profile);
     const syncStatus = (sync || {}).status;
     /* Three ways the app can fail to know what this member has, and all three
@@ -1373,7 +1373,7 @@ export class App extends React.Component {
     }
 
     // A one-time nudge toward the guide, shown between finishing sign-up and
-    // landing on the board — see submitProfile.
+    // landing on the board, see submitProfile.
     if (features.welcome && welcomePrompt) {
       return welcomeView(welcomeVals({ groupName: this.groupName(), actions: this.actions }));
     }

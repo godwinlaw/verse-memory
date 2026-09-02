@@ -1,7 +1,7 @@
 /* Turning a feature flag on for the length of one render.
  *
  * `features` (src/config.js) is what decides which pieces of the app are on
- * offer, and several of them are currently off — the Stats board, the guide,
+ * offer, and several of them are currently off, the Stats board, the guide,
  * the sign-up form and the welcome nudge that followed it. They are hidden
  * rather than deleted, and this is what keeps that claim honest: the render
  * suite reaches every one of those screens by flipping its flag, so a screen

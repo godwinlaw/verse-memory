@@ -127,7 +127,7 @@ test("peeking buys freshness and costs the rung", () => {
 
 test("a flashcard holds the rung it is on and can never lengthen it", () => {
   // Nothing measures a flashcard, so it pays a full freshness award and is no
-  // evidence at all — otherwise a member could click a verse onto a year.
+  // evidence at all, otherwise a member could click a verse onto a year.
   assert.equal(reviewAward({ mode: "flip" }), 1, "still worth a full review in freshness");
   for (const step of [0, 4, MAX_STEP]) assert.equal(nextStep(on(step), reviewAward({ mode: "flip" }), "flip"), step);
 });
@@ -159,7 +159,7 @@ test("writing it out fully is worth the most, ordering the least", () => {
 
 test("alternating blanks pays the mode's full ceiling, and says so in the table", () => {
   // Half the passage gone, function words included, so there is nothing left to
-  // lean on — at least as hard as blanking every key word, and paid the same.
+  // lean on, at least as hard as blanking every key word, and paid the same.
   const alternate = BLANK_LEVELS.findIndex((l) => l.alternate);
   const full = reviewAward({ mode: "blanks", blankLevel: 2, score: 1 });
   assert.equal(reviewAward({ mode: "blanks", blankLevel: alternate, score: 1 }), full);
@@ -278,7 +278,7 @@ test("the first-letter scaffold does not commit outside Learn", () => {
   );
 });
 
-test("the first-letter scaffold commits a clean write-out in Learn — that is what Learn is for", () => {
+test("the first-letter scaffold commits a clean write-out in Learn, that is what Learn is for", () => {
   assert.equal(commitsVerse({ mode: "type", score: 1, firstLetters: true, sessionKind: "learn" }), true);
   assert.equal(
     commitsVerse({ mode: "type", score: COMMIT_SCORE - 0.01, firstLetters: true, sessionKind: "learn" }),

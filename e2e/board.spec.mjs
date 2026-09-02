@@ -2,7 +2,7 @@
  *
  * The figures are the part a render test cannot read. They are drawn by CSS from
  * a registered --count (styles.css, .count-up), so the element carries no text
- * node at all — what a browser can check, and nothing else can, is that the
+ * node at all, what a browser can check, and nothing else can, is that the
  * counter the member actually sees is the one the model computed. */
 
 import { test, expect } from "./fixtures.mjs";
@@ -48,7 +48,7 @@ test("the two queues split the set by what commits a verse", async ({ app }) => 
   await expect(learn).toContainText(passageById(4).ref);
   await expect(learn).toContainText(passageById(5).ref);
   await expect(learn).not.toContainText(passageById(2).ref);
-  // A learn queue never quotes freshness — the member cannot act on it yet.
+  // A learn queue never quotes freshness, the member cannot act on it yet.
   await expect(learn).not.toContainText("%");
 });
 
@@ -100,8 +100,8 @@ test("the map draws one cell per passage, and says what each one is", async ({ a
 
   const cells = page.locator(".board-map-grid > button");
   await expect(cells).toHaveCount(TOTAL);
-  await expect(cells.first()).toHaveAttribute("title", `${passageById(1).ref} — Committed · 98% fresh`);
-  await expect(cells.nth(5)).toHaveAttribute("title", `${passageById(6).ref} — Not started`);
+  await expect(cells.first()).toHaveAttribute("title", `${passageById(1).ref}, Committed · 98% fresh`);
+  await expect(cells.nth(5)).toHaveAttribute("title", `${passageById(6).ref}, Not started`);
 });
 
 /* And the bar as a member meets it, with the flags where they ship. */

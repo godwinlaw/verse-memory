@@ -1,7 +1,7 @@
 /* View-models for the full-screen gates that stand in front of the app, in the
  * order a member meets them: the refusal on a phone, the opening splash, the
- * Google sign-in prompt, the member profile form, and — once, for a member who
- * just finished that form for the first time — a nudge toward the guide. */
+ * Google sign-in prompt, the member profile form, and, once, for a member who
+ * just finished that form for the first time, a nudge toward the guide. */
 
 import { copy } from "../copy.js";
 import { features } from "../config.js";
@@ -30,7 +30,7 @@ export function mobileGateVals({ groupName }) {
 
 /* The splash carries nothing but the app's identity and the shape of the wait:
  * it is up before there is any progress, profile, or account to show. The three
- * steps are the only thing on it drawn from data, and only just — `count` is
+ * steps are the only thing on it drawn from data, and only just, `count` is
  * the size of the set, which is known from the passage module at import time
  * rather than from anything still loading. */
 export function splashVals({ groupName, passageCount }) {
@@ -62,7 +62,7 @@ export function authGateVals({ auth, groupName, motto, actions }) {
  * Firestore error so the sentence can name the likely cause without the view
  * knowing anything about Firebase. */
 export function syncGateVals({ sync, auth, groupName, busy, actions }) {
-  /* The SDK never loaded, so there was no sign-in and no read to fail — a
+  /* The SDK never loaded, so there was no sign-in and no read to fail, a
    * different sentence from a read that was refused, and a different thing to
    * go and check. */
   const unreachable = (auth || {}).status === "disabled" && auth.reason === "unreachable";
@@ -118,7 +118,7 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
   const name = draft.name != null ? draft.name : googleName;
   const query = (draft.ministryGroup || "").trim().toLowerCase();
 
-  /* Who the member is — name, ministry group, gender, class. The whole point of
+  /* Who the member is, name, ministry group, gender, class. The whole point of
    * asking is to slice the leaderboard, so the fields are offered under the
    * same flag as the sign-up screen they were introduced on (config.js): with
    * `profileSetup` off this is Settings and nothing else. Anything already
@@ -126,11 +126,11 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
    * so hiding the fields loses nobody's answers.
    *
    * `complete` is what holds Save, and it has nothing to hold when there is
-   * nothing being asked for — see App.submitProfile, which drops the same
+   * nothing being asked for, see App.submitProfile, which drops the same
    * requirement rather than letting a form save what it then refuses. */
   const showIdentity = features.profileSetup;
   /* Only an explicit no takes a member off the board (profile.sharesRanking),
-   * so an untouched draft reads as on — the same way submitProfile saves it. */
+   * so an untouched draft reads as on, the same way submitProfile saves it. */
   const sharing = draft.shareRanking !== false;
 
   return {
@@ -200,7 +200,7 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
      * not waiting on Save, and not cancelled by Cancel: pressing one of these
      * turns the page over there and then, which is also the only demonstration
      * the setting needs. Offered on the settings form for the same reason as
-     * the review settings below — the system already answers for a member who
+     * the review settings below, the system already answers for a member who
      * has never thought about it. */
     showAppearance: !isSetup,
     theme: state.theme,
@@ -213,8 +213,8 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
 
     /* Whether the member is on the leaderboard. Offered on Settings and not at
      * sign-up, for the same reason the review settings are not: it is a choice
-     * about a screen the member has not seen yet. Leaving it out costs nothing
-     * — the default is on and submitProfile writes that either way — and the
+     * about a screen the member has not seen yet. Leaving it out costs nothing,
+     * the default is on and submitProfile writes that either way, and the
      * board itself carries the line that says where to change it.
      *
      * The value is read off the draft rather than the saved profile, so the
@@ -232,17 +232,17 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
 
     // How reviews behave is not asked for at sign-up. A member meeting the app
     // for the first time has no way to judge how many verses a sitting should
-    // hold or how far one may fade before it comes back — the questions only
+    // hold or how far one may fade before it comes back, the questions only
     // mean something once they have used it. Nothing is lost by leaving them:
     // submitProfile writes the same defaults either way, and Settings is where
     // they are changed afterwards.
     showReviewSettings: !isSetup,
 
-    // Resetting the record. Offered only to a member who already has a profile
-    // — the setup form is a gate, and there is nothing behind it yet to clear.
+    // Resetting the record. Offered only to a member who already has a profile,
+    // the setup form is a gate, and there is nothing behind it yet to clear.
     showReset: !isSetup,
-    // Anything at all recorded is something to reset — a passage can carry
-    // freshness and a stability without having reached either count — so both
+    // Anything at all recorded is something to reset, a passage can carry
+    // freshness and a stability without having reached either count, so both
     // the button and the line above it read the record itself, not the counts.
     canReset: hasRecord,
     resetStanding: hasRecord
@@ -260,7 +260,7 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
 }
 
 /* Shown once, right after a member finishes the profile form for the first
- * time — before they are turned loose on the board. A nudge toward the guide,
+ * time, before they are turned loose on the board. A nudge toward the guide,
  * with a way out for anyone who would rather start memorizing right away. */
 export function welcomeVals({ groupName, actions }) {
   return {

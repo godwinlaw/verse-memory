@@ -13,10 +13,10 @@
  *
  * A copy function is a formatter and nothing more: it takes values already
  * worked out by the caller and returns a string. It must not import from srs,
- * progress, or any other model — the numbers are computed where the rule lives
+ * progress, or any other model, the numbers are computed where the rule lives
  * and passed in, so this file cannot become a second place the model is
- * described. (The member's commit threshold — profile.reviewSettings, read in
- * viewmodel/explainer.js — stays there; only the sentence around it lives here.)
+ * described. (The member's commit threshold, profile.reviewSettings, read in
+ * viewmodel/explainer.js, stays there; only the sentence around it lives here.)
  *
  * What deliberately is NOT here: the `name`/`short`/`desc` on MODES
  * (review.js), ACTIVITIES (exam.js), and the two difficulty tables (blanks.js).
@@ -25,7 +25,7 @@
  * saves. STATUS_LABEL is the exception and is defined below, because it is
  * pure wording that four screens quote; progress.js re-exports it.
  *
- * Ordered to mirror src/views/ and src/viewmodel/ — one block per screen. */
+ * Ordered to mirror src/views/ and src/viewmodel/, one block per screen. */
 
 /* n with a unit that agrees with it: plural(1, "verse", "verses") → "1 verse". */
 const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
@@ -38,8 +38,8 @@ export const copy = {
     /* The epigraph under the wordmark, on the sign-in gate and the board hero. */
     epigraph:
       '"For the word of God is living and active, sharper than any two-edged sword, piercing to the division of ' +
-      'soul and of spirit, of joints and of marrow, and discerning the thoughts and intentions of the heart." — ' +
-      "Hebrews 4:12",
+      'soul and of spirit, of joints and of marrow, and discerning the thoughts and intentions of the heart." ' +
+      "(Hebrews 4:12)",
     /* Stands in for a member who has not filled in their profile yet. */
     anonymousMember: "Member",
   },
@@ -56,9 +56,9 @@ export const copy = {
     startOver: "Start over",
   },
 
-  /* The words around choosing a category. The category *names* are not here —
+  /* The words around choosing a category. The category *names* are not here,
    * they sit beside their keys in categories.js, for the same reason MODES and
-   * ACTIVITIES keep theirs — so this is only the wording that frames the
+   * ACTIVITIES keep theirs, so this is only the wording that frames the
    * choice, shared by the passage list and all three setup screens. */
   category: {
     label: "Which passages",
@@ -77,8 +77,8 @@ export const copy = {
   },
 
   /* The member-facing word for each stored gender value. GENDERS in profile.js
-   * ("Male"/"Female") stays the persisted key — it is what is written to a
-   * profile and what the filters match against — this is only what gets said
+   * ("Male"/"Female") stays the persisted key, it is what is written to a
+   * profile and what the filters match against, this is only what gets said
    * on screen: the profile form's buttons, the leaderboard's gender filter, and
    * the group name when the standings are ranked by gender. */
   gender: {
@@ -131,7 +131,7 @@ export const copy = {
   /* The splash the app opens on, while it works out whether the member is
    * already signed in.
    *
-   * `steps` are the three lines the registration mark cycles through — they
+   * `steps` are the three lines the registration mark cycles through, they
    * name the boot rather than measure it, since none of the three has a figure
    * the member could act on. `note` is the one truthful line underneath, read
    * aloud but not drawn: the cycle is on a CSS timer, so announcing it would
@@ -156,7 +156,7 @@ export const copy = {
   },
 
   /* The gate between signing in and the app, for the moment the member's saved
-   * record is being fetched — and for when it cannot be. It is a gate rather
+   * record is being fetched, and for when it cannot be. It is a gate rather
    * than a banner because the screen it stands in front of is the sign-up form,
    * and showing that to a member who already has a record is what makes them
    * fill it in again and overwrite the record they had. */
@@ -164,7 +164,7 @@ export const copy = {
     titlePulling: "FINDING YOUR RECORD",
     pulling: "Checking your account for passages you have already committed…",
     titleError: "COULD NOT REACH YOUR RECORD",
-    /* Deliberately does not say "you have no progress" — the whole point is
+    /* Deliberately does not say "you have no progress", the whole point is
      * that the app does not know yet. */
     error:
       "You are signed in, but your saved passages could not be loaded. Starting now would set up a new record and " +
@@ -191,14 +191,14 @@ export const copy = {
    * app works, but nothing they do is leaving the device, and they should know
    * that before they spend a sitting on it. */
   syncBanner: {
-    message: "Not syncing — your work is being saved on this device only.",
+    message: "Not syncing, your work is being saved on this device only.",
     retry: "Retry sync",
   },
 
   profileForm: {
     titleSetup: "SET UP YOUR PROFILE",
     titleEdit: "EDIT YOUR PROFILE",
-    /* What the same screen is called when the identity fields are not on it —
+    /* What the same screen is called when the identity fields are not on it,
      * with the profile put away (config.js features.profileSetup) there is no
      * profile to edit, only the settings that were sitting underneath it. */
     titleSettings: "SETTINGS",
@@ -216,7 +216,7 @@ export const copy = {
     settingsLater: "You can change how reviews work later, under Settings.",
     /* The switch that takes a member off the leaderboard, and the one sentence
      * under it. It says the thing a member turning it off would otherwise
-     * wonder — that their group is not made to look worse for it — and nothing
+     * wonder, that their group is not made to look worse for it, and nothing
      * else: what the switch does is legible from the switch. */
     sharing: "LEADERBOARD",
     shareRanking: "Share my ranking",
@@ -229,7 +229,7 @@ export const copy = {
 
     /* Which way round the page is printed. Its own block rather than another
      * review setting, because it is not one: it is about the screen the member
-     * is reading on, which is why the note says "this device" — the settings
+     * is reading on, which is why the note says "this device", the settings
      * above travel with the profile and this one cannot. */
     appearance: "APPEARANCE",
     theme: "Theme",
@@ -237,7 +237,7 @@ export const copy = {
 
     /* Wiping the record. The button is the smaller half of this: what stands
      * beside it has to say plainly what goes, what stays, and that it reaches
-     * the member's other devices — nothing here is recoverable afterwards. */
+     * the member's other devices, nothing here is recoverable afterwards. */
     reset: {
       section: "RESET",
       note: "Clear everything you have memorized and start the set from the beginning. Your profile and the settings above are kept.",
@@ -269,7 +269,7 @@ export const copy = {
   welcome: {
     title: "You're all set",
     lead:
-      "Before you dive in, the guide is worth two minutes — it walks through how committing a verse, freshness, " +
+      "Before you dive in, the guide is worth two minutes, it walks through how committing a verse, freshness, " +
       "and the three ways through the set all work.",
     guideCta: "Check out the guide",
     learnCta: "Start learning right away",
@@ -298,7 +298,7 @@ export const copy = {
     queueCount: (n) => plural(n, "passage", "passages"),
     reviewQueueNote: (dueFreshness) => "committed · faded to " + dueFreshness + "% or below",
     reviewQueueEmpty: "Nothing to review. Every verse you have committed is still fresh.",
-    reviewQueueEmptyNoneCommitted: "Nothing to review yet — a verse arrives here once you have committed it.",
+    reviewQueueEmptyNoneCommitted: "Nothing to review yet, a verse arrives here once you have committed it.",
     learnQueueNote: "not committed · give one back in full to commit it",
     learnQueueEmpty: "Every passage in the set is committed. Nothing left to learn.",
     /* A verse in the learn queue has no freshness worth quoting yet. */
@@ -312,7 +312,7 @@ export const copy = {
     /* Hover text on one cell: the passage, its status, and its freshness if it
      * has been reviewed at all. */
     mapCellTitle: (ref, statusLabel, fresh) =>
-      ref + " — " + statusLabel + (fresh == null ? "" : " · " + fresh + "% fresh"),
+      ref + ", " + statusLabel + (fresh == null ? "" : " · " + fresh + "% fresh"),
 
     activityTitle: (days) => "Last " + days + " days",
     activityAxis: "reviews per day",
@@ -354,7 +354,7 @@ export const copy = {
     colAction: "Action",
     fading: "Fading",
     /* A passage never reviewed has no freshness to show. */
-    freshNone: "—",
+    freshNone: "–",
     /* The heading above a run of sections cut from one long chapter. */
     groupHeading: (group) => group,
 
@@ -385,22 +385,22 @@ export const copy = {
 
     freshnessTitle: "How it works",
     freshnessBody: (dueFreshness) =>
-      "Every passage carries a freshness — how much of it you would still recall right now. It falls a little " +
+      "Every passage carries a freshness, how much of it you would still recall right now. It falls a little " +
       "every day along a forgetting curve, fast at first and then more slowly the better you know it. Once a " +
       "committed passage has faded to " +
       dueFreshness +
       "% it comes back round to you, most faded first. (That mark is yours to set, on your profile.)",
     /* The flashcard is the one activity with nothing to grade. */
-    ruleUnmarked: "Unmarked — nothing to grade, so it counts as reviewed in full, but builds the least lasting memory.",
+    ruleUnmarked: "Unmarked, nothing to grade, so it counts as reviewed in full, but builds the least lasting memory.",
     ruleCeiling: (ceiling) => "Up to " + ceiling + "%, on a clean attempt.",
     noteSubmitting: "Submitting is what marks a passage: what you get right is what it earns.",
     noteDifficulty:
-      "Harder settings pay more — the finest cut of phrases and the fullest set of blanks are worth the most.",
+      "Harder settings pay more, the finest cut of phrases and the fullest set of blanks are worth the most.",
     notePeek: (cost) => "Each press of Peek costs " + cost + "%, so a passage you look up stays due sooner.",
 
     commitTitle: "How it works",
     commitBody: (bar) =>
-      "A passage is committed when you give the whole thing back from memory — recited aloud or typed, " +
+      "A passage is committed when you give the whole thing back from memory, recited aloud or typed, " +
       bar +
       "% of the words right and without peeking; the first-letter scaffold is still allowed here. " +
       "Take as many attempts as you like; only the one you get right counts, and none of them cost you anything.",
@@ -421,7 +421,7 @@ export const copy = {
 
     targetDue: (dueFreshness) => "Reviewing the committed verses that have faded to " + dueFreshness + "% or below.",
     targetCaughtUp:
-      "You're all caught up — nothing you have committed has faded that far. Set up some extra review below.",
+      "You're all caught up, nothing you have committed has faded that far. Set up some extra review below.",
     targetNothingCommitted:
       "You have not committed a verse yet, so there is nothing to review. Start with a learn session instead.",
     noteDue: (n) => plural(n, "verse is due right now.", "verses are due right now."),
@@ -479,28 +479,28 @@ export const copy = {
     blanksLevelDesc: (desc) => "Blanking " + desc,
     /* Shown only at the alternating level, where there are two halves of the
      * passage and the member picks which one goes. The button labels count the
-     * words off rather than saying "odd" and "even" — see BLANK_PARITIES. */
+     * words off rather than saying "odd" and "even", see BLANK_PARITIES. */
     blanksParityLabel: "Take away",
     blanksResult: (right, total) => right + " of " + total + " right",
     blanksCount: (total) => total + " blanks",
 
-    /* from memory — typed, or recited aloud */
+    /* from memory, typed, or recited aloud */
     typeFirstLetterLabel: "First letters only",
     typeFirstLetterNote:
       "Type just the first letter of each word instead of the whole passage. " +
-      "A wrong letter shows you the word and moves on — you cannot go back and change it.",
+      "A wrong letter shows you the word and moves on, you cannot go back and change it.",
     typePlaceholder: "Type the passage from memory, or recite it aloud. Punctuation and capitals are ignored.",
     typeFirstLetterPlaceholder:
-      "Type just the first letter of each word — e.g. “f t h w”. Spacing and punctuation are ignored, " +
+      "Type just the first letter of each word, e.g. “f t h w”. Spacing and punctuation are ignored, " +
       "and there is no backspace: type each letter once.",
     typeRevealed: "words revealed",
     typeMatched: "words matched",
 
-    /* reciting aloud — one toggle beside the scaffold's, and the only two
+    /* reciting aloud, one toggle beside the scaffold's, and the only two
      * things worth saying: that this browser cannot listen, and why it stopped
      * if it did. The words themselves land in the box, which needs no label. */
     voiceLabel: "Voice",
-    voiceNote: "Say the passage — the words appear as you go.",
+    voiceNote: "Say the passage, the words appear as you go.",
     voiceUnsupported: "Not available in this browser.",
     voiceErrors: {
       "not-allowed": "The microphone was blocked. Allow it in your browser, then try again.",
@@ -513,18 +513,18 @@ export const copy = {
     scrambleLabel: "Granularity",
     scrambleLevelDesc: (desc) => "Cutting into " + desc,
     scrambleEmptyHint: "Click the phrases below in the right order.",
-    scrambleDone: "Complete — in order.",
+    scrambleDone: "Complete, in order.",
     scrambleProgress: (placed, total) => placed + " of " + total + " placed",
     scrambleMisses: (n) => plural(n, "wrong try", "wrong tries"),
 
-    /* what the card is playing for — a learn session's voice */
+    /* what the card is playing for, a learn session's voice */
     commitDoneTag: "Committed",
     commitTodoTag: "To commit",
     commitDoneNote: "Committed. You have given this one back in full from memory.",
     commitWritingNote: (bar) => "Get " + bar + "% of the words right, without peeking, and this verse is committed.",
     commitOtherNote: "Head over to the Recall tab to commit it into your memory bank.",
     peekCostsCommit: "A peek means this attempt cannot commit the verse.",
-    peekSpentCommit: "Peeked — this attempt can no longer commit the verse.",
+    peekSpentCommit: "Peeked, this attempt can no longer commit the verse.",
 
     /* and a review session's */
     peekCost: (cost) => "Each peek costs " + cost + "%",
@@ -551,7 +551,7 @@ export const copy = {
     learnCommittedNote: "You gave the passage back in full from memory. It moves to your review list from here.",
     learnStillCommittedNote: "You already have this one. Keep it in your review list.",
     learnWriteOutNote: (bar) =>
-      "Giving the whole passage back from memory is what commits it — " + bar + "% of the words, unaided.",
+      "Giving the whole passage back from memory is what commits it, " + bar + "% of the words, unaided.",
     learnPracticeNote: "Practice recorded. Giving the passage back in full is what commits it.",
     tryAgain: "Try again",
 
@@ -584,7 +584,7 @@ export const copy = {
     kicker: "Session complete",
     headlineLearn: (n) => plural(n, "passage committed", "passages committed"),
     headlineReview: (n) => plural(n, "passage refreshed", "passages refreshed"),
-    leadCommitted: "Written out in full from memory — that is what commits a passage. ",
+    leadCommitted: "Written out in full from memory, that is what commits a passage. ",
     leadNothingCommitted:
       "Nothing was committed this time. A passage is committed by writing it out in full, so keep at these until " +
       "you can. ",
@@ -614,7 +614,7 @@ export const copy = {
       plural(chosen, "verse", "verses") +
       " under test, out of " +
       pool +
-      " that match — " +
+      " that match, " +
       plural(questions, "question", "questions") +
       ".",
     setupPoolEmpty: "No verses match these settings yet. Widen the freshness ceiling, or let uncommitted verses in.",
@@ -651,7 +651,7 @@ export const copy = {
     doneHeadlineMid: "Mostly held.",
     doneHeadlineLow: "Worth another week on these.",
     doneBody:
-      "Each verse's freshness now reflects how it went — the ones that slipped have been dated back, and will come " +
+      "Each verse's freshness now reflects how it went, the ones that slipped have been dated back, and will come " +
       "round again sooner.",
     doneAgain: "Another test",
     doneVersesTitle: "Where each verse landed",
@@ -667,9 +667,9 @@ export const copy = {
     givenBlank: "Left blank",
     givenPairs: (hits, total) => plural(hits, "pair", "pairs") + " right of " + total,
     givenParts: (hits, total) => plural(hits, "part", "parts") + " right of " + total,
-    givenFinish: (text, ref) => (text || "nothing written") + " — " + (ref || "no reference"),
-    expectedFinish: (answer, ref) => answer + " — " + ref,
-    expectedNoneOfTheAbove: (ref) => "None of the above — it is " + ref,
+    givenFinish: (text, ref) => (text || "nothing written") + ", " + (ref || "no reference"),
+    expectedFinish: (answer, ref) => answer + ", " + ref,
+    expectedNoneOfTheAbove: (ref) => "None of the above, it is " + ref,
     versesUnderTest: (n) => plural(n, "verse", "verses"),
   },
 
@@ -677,7 +677,7 @@ export const copy = {
 
   leaderboard: {
     title: "Leaderboard",
-    blurb: "Ranked by freshness score — committed verses weighted by how well they are retained right now.",
+    blurb: "Ranked by freshness score, committed verses weighted by how well they are retained right now.",
     daysLeft: (n) => n + " days remaining",
     filterGroup: "Ministry group",
     filterGender: "Gender",
@@ -705,8 +705,8 @@ export const copy = {
     colFreshness: "Freshness",
     colStreak: "Streak",
 
-    /* Ranking groups rather than people. The measure is per member throughout
-     * — see src/standings.js for why a total would rank by attendance — so the
+    /* Ranking groups rather than people. The measure is per member throughout,
+     * see src/standings.js for why a total would rank by attendance, so the
      * wording says "each" wherever a figure could be mistaken for a total. */
     rankByLabel: "Rank",
     rankBy: {
@@ -732,7 +732,7 @@ export const copy = {
   /* Written at about a middle-school reading level on purpose: short sentences,
    * plain words, one idea at a time. This is the screen a member reads when they
    * do not yet know how any of this works, so it does not get to use the voice
-   * the rest of the app does — keep it plain when editing.
+   * the rest of the app does, keep it plain when editing.
    *
    * Two words are the exception: "committed" and "freshness" are printed on
    * every other screen, so the guide teaches them rather than inventing easier
@@ -743,20 +743,20 @@ export const copy = {
     lead:
       "Two ideas run this whole app. First: a verse only counts as committed when you can say or write the whole " +
       "thing from memory. Second: after you learn a verse, you slowly start to forget it. " +
-      "The app keeps track of how much you still remember — it calls that freshness — and asks for the verse back " +
+      "The app keeps track of how much you still remember, it calls that freshness, and asks for the verse back " +
       "before you lose it.",
 
     commitTitle: "Committing a verse to memory",
     commitBody: (bar) =>
-      "A verse becomes committed when you give the whole thing back from memory. Say it out loud, or type it " +
-      "— either one counts, and the first-letter hints can stay on. You need " +
+      "A verse becomes committed when you give the whole thing back from memory. Say it out loud, or type it, " +
+      "either one counts, and the first-letter hints can stay on. You need " +
       bar +
       "% of the words right, and no peeking. " +
       "Try as many times as you want. Only the try you get right counts, and the ones you miss cost you nothing.",
     commitFrom: "Learn",
     commitFromNote: "not committed yet",
     commitTo: "Review",
-    commitToNote: "committed — now you keep it fresh",
+    commitToNote: "committed, now you keep it fresh",
     commitStamp: "gave it back from memory",
     commitFoot:
       "Nothing sends a verse back the other way. Mistakes can cost you freshness, but you won't lose a verse you " +
@@ -766,7 +766,7 @@ export const copy = {
     freshNote: "drag the slider",
     freshBody: (dueFreshness) =>
       "Every committed verse has a freshness score. It is how much of the verse you would still remember right " +
-      "now. It drops a little every day — quickly at first, then slower once you know the verse well. When it " +
+      "now. It drops a little every day, quickly at first, then slower once you know the verse well. When it " +
       "drops to " +
       dueFreshness +
       "%, the app puts the verse back on your list. Drag the slider to visualize how freshness decays.",
@@ -792,7 +792,7 @@ export const copy = {
       "about " +
       holdsFor +
       " days. The one you just learned is back tomorrow. Every review you get right stretches that gap out " +
-      "further — by one step, in the order below.",
+      "further, by one step, in the order below.",
 
     ladderTitle: "How often you will see a verse",
     ladderNote: "the schedule",
@@ -822,7 +822,7 @@ export const copy = {
     ruleResetWhen: (pct) => "You get under " + pct + "% right",
     ruleResetThen: "Back to the bottom, and the ladder starts again.",
     ladderFoot: (peek) =>
-      "Two things never move you up. Flashcards do not count, because turning a card over shows you the verse — " +
+      "Two things never move you up. Flashcards do not count, because turning a card over shows you the verse, " +
       "it cannot prove you knew it, so a flashcard leaves you on the step you are on. And each peek costs you " +
       peek +
       "%, which is often enough to keep you there too.",

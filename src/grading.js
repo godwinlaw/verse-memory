@@ -3,11 +3,11 @@
  * Three exercises need real matching logic: "Write it out" (free recall, graded
  * word by word), its first-letter variant (a live reveal as you type), and Test
  * mode's typed reference ("where is this from?"). All are pure functions of the
- * passage — or its reference — and the raw text the member typed, so they can be
+ * passage, or its reference, and the raw text the member typed, so they can be
  * unit-tested without a browser.
  *
  * Comparison always runs through text.norm(), which lowercases and drops
- * punctuation — members are never marked wrong for a missing comma or capital. */
+ * punctuation, members are never marked wrong for a missing comma or capital. */
 
 import { norm } from "./text.js";
 
@@ -35,11 +35,11 @@ export const matchesWord = (expected, answer) => norm(answer || "") === norm(exp
  * per passage word plus the tally.
  *
  * A miss also carries `typed`: whatever token was waiting at the cursor when
- * this word was checked, i.e. what the member wrote in its place — mirroring
+ * this word was checked, i.e. what the member wrote in its place, mirroring
  * revealFirstLetters, which shows a wrong letter rather than just flagging it.
  * That token may still go on to match a later word within LOOKAHEAD (the
- * member wrote it one word early); it is shown here anyway, since the mistake
- * — this word did not come out where it belonged — is real either way. */
+ * member wrote it one word early); it is shown here anyway, since the mistake,
+ * this word did not come out where it belonged, is real either way. */
 export function gradeWritten(words, typed, { firstLetters = false } = {}) {
   const tokens = attemptTokens(typed, { firstLetters });
   const keyOf = (w) => (firstLetters ? norm(w).slice(0, 1) : norm(w));
@@ -59,7 +59,7 @@ export function gradeWritten(words, typed, { firstLetters = false } = {}) {
   return { diff, hits, total: words.length, score: words.length ? hits / words.length : 0 };
 }
 
-/* A masked word's stand-in — the same three dots for every word, so a hidden
+/* A masked word's stand-in, the same three dots for every word, so a hidden
  * word gives away nothing about how long it is. One dot per letter would turn
  * the mask into a length hint, which defeats the point of hiding it. */
 const HIDDEN_WORD = "···";
@@ -69,13 +69,13 @@ const HIDDEN_WORD = "···";
  * A correct initial pops the whole word into view ("right"); a wrong one shows
  * the word the member missed, marked wrong, and the drill moves on to the next
  * one; anything not yet reached stays masked ("hidden"). Unlike gradeWritten
- * this is strictly positional — it is a live reveal, so word N must correspond
+ * this is strictly positional, it is a live reveal, so word N must correspond
  * to keystroke N.
  *
  * A miss shows the answer rather than the letter that was typed, and that is
  * the whole point of the exercise rather than a nicety: the member finds out
  * what the word was at the moment they could not produce it, which is when it
- * is worth knowing. It only works because the letter cannot be taken back —
+ * is worth knowing. It only works because the letter cannot be taken back,
  * see lockedInput, which is what makes the score mean something. */
 export function revealFirstLetters(words, typed) {
   const tokens = attemptTokens(typed, { firstLetters: true });
@@ -93,7 +93,7 @@ export function revealFirstLetters(words, typed) {
   return { words: revealed, hits, total: words.length, score: words.length ? hits / words.length : 0 };
 }
 
-/* What the first-letter box is allowed to become — the rule that makes the
+/* What the first-letter box is allowed to become, the rule that makes the
  * drill a recall test rather than a typing exercise.
  *
  * Without it a member can always reach 100%: type a letter, see the word fail
@@ -101,7 +101,7 @@ export function revealFirstLetters(words, typed) {
  * answering its own question. So the box only ever grows: an edit that is not
  * `prev` with something added is refused outright and the box keeps what it
  * had. That covers backspace, select-all-and-retype, and putting the cursor
- * back into the middle, without any of them needing to be named — the one
+ * back into the middle, without any of them needing to be named, the one
  * shape that is allowed is the one a member typing forwards produces.
  *
  * Starting over is still allowed, just not silently: Try again and switching
@@ -133,7 +133,7 @@ export const REF_BOOK_WEIGHT = 0.5;
 /* "1 Samuel 15:22" → { book: "1 Samuel", key: "1samuel", chapter: 15, verse: 22 }.
  *
  * The book part is whatever precedes the first number that is followed by the
- * end of the reference or a verse — non-greedy, so the leading digit of "1 John"
+ * end of the reference or a verse, non-greedy, so the leading digit of "1 John"
  * stays with the book. A trailing verse range keeps only its first verse; a
  * missing chapter comes back as null. */
 export function parseReference(ref) {
@@ -151,7 +151,7 @@ export function parseReference(ref) {
  *
  * Book and chapter carry half a mark each. The book matches on a prefix, so a
  * member who writes "Ps 119" or "Rom 12" is not marked down for not spelling
- * the book out — but "John" never matches "1 John", since the numeral is part
+ * the book out, but "John" never matches "1 John", since the numeral is part
  * of the stem. The verse is never scored: Test mode asks for book and chapter,
  * and offers the verse as optional, so getting it wrong costs nothing. */
 export function gradeReference(typed, ref) {

@@ -2,8 +2,8 @@
  *
  * src/firebase.js loads the SDK from a CDN by dynamic import, so a browser test
  * can answer that import itself (e2e/helpers/firebase-stub.mjs) and press the
- * real button. What is under test is the app's half of the bargain — who it lets
- * in, what it does with a refused account, what it pulls down and pushes back —
+ * real button. What is under test is the app's half of the bargain, who it lets
+ * in, what it does with a refused account, what it pulls down and pushes back,
  * not Google's. The authoritative check is deploy/firestore.rules, and nothing
  * here says otherwise. */
 

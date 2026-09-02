@@ -3,8 +3,8 @@
  * There is nothing to drive here, because there is nothing to use: The Memory
  * Board is not offered on a device you hold, so a phone gets one screen with
  * one sentence on it and no way past. What these check is that the refusal is
- * total — it arrives before anything else, it does not depend on what the
- * member has already done, and nothing behind it leaks through — since the rule
+ * total, it arrives before anything else, it does not depend on what the
+ * member has already done, and nothing behind it leaks through, since the rule
  * only means anything if none of the app is reachable around it.
  *
  * The rule itself (which user agents count) is asserted in test/device.test.mjs;
@@ -63,7 +63,7 @@ test("reloading does not get past it", async ({ app, page }) => {
 test("the sentence is what is read out; the drawing beside it is not", async ({ app, page }) => {
   await app.boot();
 
-  // Two marks — the device refused and the one to open it on — drawn as SVG and
+  // Two marks, the device refused and the one to open it on, drawn as SVG and
   // hidden from assistive tech, since the sentence under them already says it.
   const marks = page.locator("[aria-hidden='true'] svg");
   await expect(marks).toHaveCount(3);

@@ -1,6 +1,6 @@
 /* Review mode, before the session begins: which committed verses to keep fresh.
  *
- * Uncommitted verses are not on offer here — learning those is a learn session's
+ * Uncommitted verses are not on offer here, learning those is a learn session's
  * job (see views/learn-setup.js). */
 
 import { copy } from "../copy.js";

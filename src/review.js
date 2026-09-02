@@ -1,12 +1,12 @@
 /* The review session: what the modes are and how a session is shaped.
  *
- * Pure descriptions and helpers only — the running session's state (which card,
+ * Pure descriptions and helpers only, the running session's state (which card,
  * what has been typed) belongs to the component. */
 
 /* The four ways to review a passage, in the order the board presents them.
  * `key` is persisted in state and read by srs.reviewAward() / srs.nextStep() to
  * decide what a completed review is worth and whether it lengthens the verse's
- * interval, so these keys are part of the data model — renaming one changes how
+ * interval, so these keys are part of the data model, renaming one changes how
  * reviews are scored. */
 export const MODES = [
   {
@@ -25,12 +25,12 @@ export const MODES = [
     key: "blanks",
     name: "Fill the blanks",
     short: "Blanks",
-    desc: "The key words — verbs, actions, and names — are removed. Type what belongs there, and dial how many blanks you get.",
+    desc: "The key words, verbs, actions, and names, are removed. Type what belongs there, and dial how many blanks you get.",
   },
   // The one activity that can commit a verse (see srs.commitsVerse), and the
   // only one that takes the passage whole. It is called "From memory" rather
   // than "Write it out" because there are two ways to give it: typed, or recited
-  // aloud into the same box (see voice.js). The `key` stays "type" — it is
+  // aloud into the same box (see voice.js). The `key` stays "type", it is
   // persisted in every progress record and read by srs.reviewAward, so it is
   // data, not wording.
   {
@@ -46,7 +46,7 @@ export const DEFAULT_MODE = "flip";
 
 /* The two kinds of sitting. They run the same card UI and offer the same four
  * activities; what separates them is the half of the set they draw from, and
- * what finishing a card can do — only a learn session can commit a verse.
+ * what finishing a card can do, only a learn session can commit a verse.
  * Persisted in session state, so these keys are part of the data model. */
 export const REVIEW = "review";
 export const LEARN = "learn";
@@ -70,7 +70,7 @@ export const modeByKey = (key) => MODES.find((m) => m.key === key) || MODES[0];
 
 /* What each chunk put in the wrong place costs the ordering mark. The exercise
  * refuses a wrong chunk rather than accepting it, so a finished ordering is
- * always in the right order — how many wrong chunks were tried on the way is
+ * always in the right order, how many wrong chunks were tried on the way is
  * the only thing separating recall from trial and error. */
 export const SCRAMBLE_MISS_COST = 0.05;
 
@@ -81,7 +81,7 @@ export function scrambleScore(placed, total, misses = 0) {
   return Math.max(0, placed / total - SCRAMBLE_MISS_COST * misses);
 }
 
-/* mulberry32 — a small, well-distributed 32-bit PRNG. Math.imul and `>>> 0` keep
+/* mulberry32, a small, well-distributed 32-bit PRNG. Math.imul and `>>> 0` keep
  * every step inside 32 bits, so it stays exact in doubles (a plain `s * bigConst`
  * LCG silently loses precision past 2^53 and degenerates).
  *
@@ -103,7 +103,7 @@ export function mulberry32(seed) {
  * `{ v, i }` pairs, `i` being each item's position in the original order, which
  * is how the exercise knows whether a chunk was placed correctly.
  *
- * Fisher–Yates — an unbiased permutation. (Shuffling via `Array.sort` with a
+ * Fisher–Yates, an unbiased permutation. (Shuffling via `Array.sort` with a
  * random comparator, as this once did, is not: the comparator must be a
  * consistent ordering, and engines are free to produce anything when it isn't.) */
 export function seededShuffle(items, seed) {

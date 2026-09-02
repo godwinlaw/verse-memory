@@ -1,7 +1,7 @@
 /* The explainer both setup screens carry.
  *
  * Freshness and the commit rule are the two ideas the whole app turns on, and a
- * member meets one of these screens before their first sitting either way — so
+ * member meets one of these screens before their first sitting either way, so
  * the explanation lives here and is rendered by both rather than written twice
  * and allowed to drift. */
 
@@ -11,7 +11,7 @@ import { LABEL_META, muted } from "../ui/tokens.js";
 
 const TOGGLE_STYLE = LABEL_META + ";cursor:pointer;background:none;border:none;padding:0;flex:none";
 
-/* The disclosure control both cards share. One flag drives both — they are the
+/* The disclosure control both cards share. One flag drives both, they are the
  * same "how it works" explanation, just split across two screens. */
 function toggle(v) {
   return html`<button onClick=${v.toggleExplainer} style=${sx(TOGGLE_STYLE)}>

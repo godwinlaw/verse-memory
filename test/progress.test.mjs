@@ -157,7 +157,7 @@ test("a selection is split by the same rule the pools use", () => {
 });
 
 test("a picked verse is taken however fresh it is", () => {
-  // reviewPool() would leave this one out — it is holding at ~100%. Picking it
+  // reviewPool() would leave this one out, it is holding at ~100%. Picking it
   // by hand is a request, not a due date.
   const passages = [{ id: 1 }];
   const progress = { 1: committed(0) };

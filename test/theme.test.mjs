@@ -1,6 +1,6 @@
 /* Which way round the page is printed (src/theme.js).
  *
- * The whole of the rule is two pure functions — what a stored value is allowed
+ * The whole of the rule is two pure functions, what a stored value is allowed
  * to be, and what "system" comes out as once the reader's machine has answered.
  * The stamping itself is the window seam and is asserted in a browser
  * (e2e/theme.spec.mjs), where there is a root element to read it off. */

@@ -1,10 +1,10 @@
-/* The guide — the app explained, drawn rather than listed.
+/* The guide, the app explained, drawn rather than listed.
  *
  * Four things are shown here rather than described: a passage crossing from the
  * learn half of the set to the review half, the real forgetting curve under a
  * slider, the interval ladder with a marker climbing it, and a small looping
  * demonstration of each of the four activities.
- * The drawings are SVG and CSS keyframes (see the guide block in styles.css) —
+ * The drawings are SVG and CSS keyframes (see the guide block in styles.css),
  * no canvas, no library, and every animation is dropped under
  * prefers-reduced-motion. */
 
@@ -128,7 +128,7 @@ function curveChart(v) {
 function curvePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:16px")}>
     <label style=${sx("display:flex;flex-direction:column;gap:7px")}>
-      <span style=${sx(LABEL_SECTION)}>${v.guideDaysPrompt} — ${v.guideDaysLabel}</span>
+      <span style=${sx(LABEL_SECTION)}>${v.guideDaysPrompt}, ${v.guideDaysLabel}</span>
       <input
         type="range"
         min="0"
@@ -168,7 +168,7 @@ function curvePanel(v) {
 
 /* srs.INTERVALS drawn as what it is: a ladder, one rung per gap, each rung's bar
  * as long as the gap it stands for. A marker climbs it on a loop, which is the
- * only thing here that moves — the rungs themselves are the model's own list, so
+ * only thing here that moves, the rungs themselves are the model's own list, so
  * retuning INTERVALS redraws this without anyone editing it. */
 function ladderPanel(v) {
   return html`<div className="guide-ladder" role="img" aria-label=${v.guideRungsAria}>
@@ -182,8 +182,8 @@ function ladderPanel(v) {
   </div>`;
 }
 
-/* The four bands of srs.nextStep. The arrow is decorative — each row says in
- * words which way the verse moves — so it is hidden from a screen reader. */
+/* The four bands of srs.nextStep. The arrow is decorative, each row says in
+ * words which way the verse moves, so it is hidden from a screen reader. */
 const RULE_GLYPH = { up: "↑", same: "=", down: "↓", reset: "↧" };
 
 function ladderRules(v) {
@@ -209,7 +209,7 @@ function ladderRules(v) {
 function activityDemo(key, sample) {
   if (key === "flip") {
     // The real component (styles.css, the two-sided card), turned by a loop
-    // instead of by the member — so the demonstration cannot drift from it.
+    // instead of by the member, so the demonstration cannot drift from it.
     return html`<div className="guide-demo guide-flip flip-card">
       <div className="flip-card-inner">
         <div className="flip-card-face">${sample.ref}</div>

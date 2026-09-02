@@ -1,4 +1,4 @@
-/* The board — the app's home view.
+/* The board, the app's home view.
  *
  * Top to bottom: the progress hero, the two queues (what to review, what to
  * learn), a cell-per-passage map of the whole set, and the last fortnight's

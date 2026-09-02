@@ -45,15 +45,15 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      # Both Playwright projects — the desktop "chromium" project and the
-      # "mobile" project that claims to be a Pixel 5 — run on the Chromium
+      # Both Playwright projects, the desktop "chromium" project and the
+      # "mobile" project that claims to be a Pixel 5, run on the Chromium
       # engine, so that is all we install. --with-deps adds the OS libraries a
       # headless browser needs on the runner.
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
       # playwright.config.mjs starts the static server itself (its webServer
-      # block), so there is nothing to launch here. CI=true — set by Actions —
+      # block), so there is nothing to launch here. CI=true, set by Actions,
       # is what turns on retries, two workers, and forbid-only.
       - name: Browser tests
         run: npm run test:e2e

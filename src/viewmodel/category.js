@@ -1,7 +1,7 @@
 /* The category picker, built once for the four screens that offer it.
  *
  * The passage list, the two setup screens and the test setup all ask the same
- * question — which shelf of the set are we talking about — and all four answer
+ * question, which shelf of the set are we talking about, and all four answer
  * it the same way: "All", then one option per category, in the order
  * categories.js lists them. Only the styling differs (the list dresses it as
  * filter tabs beside the status tabs, the setup screens as a segmented

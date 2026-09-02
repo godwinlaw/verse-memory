@@ -1,4 +1,4 @@
-/* App footer — a persistent feedback prompt linking to the bug / feature-request
+/* App footer, a persistent feedback prompt linking to the bug / feature-request
  * form, and the ESV copyright notice. Rendered below the current view on every
  * signed-in screen.
  *

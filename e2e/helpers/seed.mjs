@@ -3,7 +3,7 @@
  * A record is seeded rather than earned: driving twenty cards to get one verse
  * to 40% freshness would test the setup, not the thing under test. The builders
  * below call the real model (src/srs.js) for the arithmetic, so a seed says what
- * it means — `committed(0.4)` is a verse the app will read as 40% fresh — and a
+ * it means, `committed(0.4)` is a verse the app will read as 40% fresh, and a
  * retune of the curve moves the fixtures with it rather than stranding them.
  *
  * Everything here is pure and runs in node: specs import it, and the harness
@@ -18,7 +18,7 @@ export { passages };
 
 /* Two different sizes, and specs have to pick the right one on purpose.
  *
- * GOAL is what the board counts down to — the goal category alone, which is
+ * GOAL is what the board counts down to, the goal category alone, which is
  * what "n / 171" and the weekly pace are measured against (see
  * viewmodel/totals.js). TOTAL is every passage on every shelf: the size of the
  * list, the board's map, and the set the splash names while it loads. */
@@ -26,7 +26,7 @@ export const GOAL = inCategory(passages, GOAL_CATEGORY).length;
 export const TOTAL = passages.length;
 
 /* A complete profile, so the profile form is not in the way of every spec. The
- * two review settings are left off deliberately — the defaults (10 verses, due
+ * two review settings are left off deliberately, the defaults (10 verses, due
  * at 75%) are what the board and both setup screens are written against. */
 export const PROFILE = {
   name: "Ada Lovelace",
@@ -40,8 +40,8 @@ export const passageById = (id) => passages.find((p) => p.id === id);
 export const passageByRef = (ref) => passages.find((p) => p.ref === ref);
 
 /* A committed verse, dated so it reads at `fresh` (0–1) right now. `step` is the
- * rung of the interval ladder it has climbed to (srs.INTERVALS) — 6 is the week
- * rung — and it decides how fast the verse will fade from here. */
+ * rung of the interval ladder it has climbed to (srs.INTERVALS), 6 is the week
+ * rung, and it decides how fast the verse will fade from here. */
 export function committed(fresh = 1, { step = 6, hits = 4, now = Date.now() } = {}) {
   const stability = stabilityFor(step);
   return { hits, status: "memorized", step, stability, last: backdatedLast(stability, fresh, now), updatedAt: now };
@@ -57,7 +57,7 @@ export function started(fresh = 0.5, { step = 0, hits = 1, now = Date.now() } = 
 /* A progress map from `{ [passageId]: record }`, keyed the way storage keys it. */
 export const progressOf = (records) => ({ ...records });
 
-/* The whole set committed and fully fresh — nothing due, nothing left to learn. */
+/* The whole set committed and fully fresh, nothing due, nothing left to learn. */
 export const everythingCommitted = (now = Date.now()) =>
   Object.fromEntries(passages.map((p) => [p.id, committed(1, { step: 9, hits: 6, now })]));
 

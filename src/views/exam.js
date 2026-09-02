@@ -1,4 +1,4 @@
-/* A test in progress — one question at a time.
+/* A test in progress, one question at a time.
  *
  * The frame mirrors the review session (progress bar, card, advance button) so
  * the app doesn't feel like two apps, but nothing here reveals an answer: there
@@ -40,7 +40,7 @@ function pickPanel(v) {
 }
 
 /* Finish the sentence: the lead-in, free recall of the rest, and where it is
- * from — the reference is a quarter of this question's mark. */
+ * from, the reference is a quarter of this question's mark. */
 function finishPanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:20px")}>
     <p style=${sx(QUOTE)}>${v.qLead}<span style=${sx(`color:${muted(45)}`)}> …</span></p>
@@ -150,7 +150,7 @@ function blanksPanel(v) {
 }
 
 /* Write it out: the one activity that quotes nothing of the passage, so it has
- * to say which passage — the reference is the question here, not the answer. */
+ * to say which passage, the reference is the question here, not the answer. */
 function typePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:18px")}>
     <div style=${sx("display:flex;flex-direction:column;gap:6px")}>

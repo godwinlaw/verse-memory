@@ -1,4 +1,4 @@
-/* Leaderboard — the roster ranked by passages committed, sliceable by the
+/* Leaderboard, the roster ranked by passages committed, sliceable by the
  * profile attributes members set (ministry group, gender, graduating class),
  * and rankable BY those same attributes: the groups themselves against each
  * other, per member (see src/standings.js).
@@ -113,7 +113,7 @@ export function leaderboardView(v) {
 }
 
 /* The groups themselves, ranked. Every figure on this table is per member, and
- * the headings say so — a column called "Committed" beside a group's name would
+ * the headings say so, a column called "Committed" beside a group's name would
  * read as a total, which is the one thing it must not be. */
 function standingsTable(v) {
   return html`<div className="blueprint" style=${sx("padding:0 20px 10px")}>
@@ -158,7 +158,7 @@ function standingsTable(v) {
   </div>`;
 }
 
-/* The roster, one row per member — the board as it has always been. */
+/* The roster, one row per member, the board as it has always been. */
 function peopleTable(v) {
   return html`<div className="blueprint" style=${sx("padding:0 20px 10px")}>
     ${corners()}

@@ -188,7 +188,7 @@ test("the run is bounded by what the search and filter have left on screen", () 
 });
 
 test("a run drawn from a row just unticked clears the rows it covers", () => {
-  // The anchor is the row last clicked on its own — here one that was clicked
+  // The anchor is the row last clicked on its own, here one that was clicked
   // off, so the run follows it off rather than back on.
   const { v, capture } = build({ selection: [2, 3], selectAnchor: 1 });
   shiftClick(v, 4);
@@ -290,7 +290,7 @@ test("the first shown section of a chapter carries the heading and the rest do n
 
 test("a filter that hides the first section moves the heading to the one still shown", () => {
   // Only id 4 survives the search, so it becomes the first shown row of the run
-  // and has to carry the heading itself — otherwise the section would appear
+  // and has to carry the heading itself, otherwise the section would appear
   // with nothing saying which chapter it is from.
   const { v } = build({ search: "verse 4" }, {}, SHELVED);
   assert.deepEqual(

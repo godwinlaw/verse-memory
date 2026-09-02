@@ -28,7 +28,7 @@ export default [
   },
   {
     // Node tooling: build scripts, the offline generators, and the node:test
-    // suite. tools/ holds the two things that run by hand at authoring time —
+    // suite. tools/ holds the two things that run by hand at authoring time,
     // the ESV fetch and the keyword generator's JS side.
     files: ["scripts/**/*.mjs", "tools/**/*.mjs", "test/**/*.mjs", "eslint.config.js"],
     languageOptions: {
@@ -38,8 +38,8 @@ export default [
     },
   },
   {
-    // The Playwright suite runs in node, but its page callbacks — everything
-    // passed to evaluate() or addInitScript() — are serialized and run in the
+    // The Playwright suite runs in node, but its page callbacks, everything
+    // passed to evaluate() or addInitScript(), are serialized and run in the
     // browser, so both sets of globals are in scope in one file.
     files: ["e2e/**/*.mjs", "playwright.config.mjs"],
     languageOptions: {

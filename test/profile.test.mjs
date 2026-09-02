@@ -69,7 +69,7 @@ test("mergeProfile keeps the most recently edited profile", () => {
  *
  * The rule these pin down is "a real profile is never lost to a lesser one".
  * An empty object is what both an unseeded device and a cloud document with no
- * profile field look like, and it is truthy — so it used to survive the merge
+ * profile field look like, and it is truthy, so it used to survive the merge
  * against a real profile that happened to tie on `updatedAt`, which reads to
  * the member as being asked to set up a profile they already have. */
 

@@ -2,8 +2,8 @@
  * ESV API's licence.
  *
  * The licence half is the point of this file. Crossway's v3 terms cap how much
- * of their text may be stored and displayed — no more than 500 consecutive
- * verses, and no more than half of any one book — and the natural way to breach
+ * of their text may be stored and displayed, no more than 500 consecutive
+ * verses, and no more than half of any one book, and the natural way to breach
  * that is not a bad line of code but a well-meant addition to
  * tools/new-passages.json. So the limits are asserted over what we actually
  * ship, where they can fail the build, rather than left in the README where
@@ -19,7 +19,7 @@ import { CATEGORIES, categoryOf } from "../src/categories.js";
 const KEYS = new Set(CATEGORIES.map((c) => c.key));
 
 /* Verses per book, for the books the set actually draws on. Only needed for the
- * half-a-book rule, so it is not the whole canon — a book added to the set
+ * half-a-book rule, so it is not the whole canon, a book added to the set
  * without a total here fails loudly below rather than skipping the check. */
 const BOOK_VERSES = {
   Genesis: 1533,
@@ -143,7 +143,7 @@ test("no book is stored past half its verses", () => {
   }
   for (const [book, verses] of Object.entries(stored)) {
     const total = BOOK_VERSES[book];
-    assert.ok(total, `${book} has no verse total — add it to BOOK_VERSES`);
+    assert.ok(total, `${book} has no verse total, add it to BOOK_VERSES`);
     assert.ok(
       verses.size <= total / 2,
       `${book}: ${verses.size} of ${total} verses stored, over the half-a-book limit`,

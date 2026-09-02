@@ -1,6 +1,6 @@
 /* How the app works, in the member's terms.
  *
- * Two ideas carry the whole thing — what commits a verse, and freshness — and a
+ * Two ideas carry the whole thing, what commits a verse, and freshness, and a
  * member meets one of the setup screens before their first sitting either way.
  * Both explanations are built here, once, so they cannot drift apart, and the
  * numbers are read off the model rather than written out, so retuning srs.js
@@ -19,7 +19,7 @@ import { awardCeiling, freshColor, PEEK_COST } from "../srs.js";
 
 export const points = (r) => Math.round(r * 100);
 
-/* What one activity pays, quoted at its hardest setting — the one that earns its
+/* What one activity pays, quoted at its hardest setting, the one that earns its
  * full ceiling. The modes without a difficulty setting only have the one.
  *
  * Exported because the guide (viewmodel/guide.js) lists the same four activities
@@ -39,7 +39,7 @@ export function explainerVals({ state, actions }) {
 
   return {
     // Hidden by default on both setup screens; a member who opens it stays
-    // opened until they collapse it again. One flag for both cards — they are
+    // opened until they collapse it again. One flag for both cards, they are
     // the same "How it works" explanation, just split across two screens.
     explainerOpen: state.explainerOpen,
     toggleExplainer: actions.toggleExplainer,

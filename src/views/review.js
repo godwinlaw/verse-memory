@@ -1,4 +1,4 @@
-/* The review session — one card at a time.
+/* The review session, one card at a time.
  *
  * A shared frame (progress bar, reference, mode switch, "next") wraps whichever
  * mode panel is active. Each mode gets its own function below; they are mutually
@@ -8,7 +8,7 @@ import { copy } from "../copy.js";
 import { html, sx, corners, React } from "../dom.js";
 import { COLOR_ERROR, CONTROL_ROW, LABEL_META, LABEL_SECTION, muted } from "../ui/tokens.js";
 
-/* Flashcard: a real two-sided card (styles.css, the two-sided card — the guide
+/* Flashcard: a real two-sided card (styles.css, the two-sided card, the guide
  * demonstrates this same component). The reference is on the front and the
  * passage on the back, and the card turns over rather than swapping its
  * contents, so the member can see which way round they are.
@@ -130,15 +130,15 @@ function blanksPanel(v) {
 }
 
 /* Reciting aloud is one switch, on a line of its own directly above the box it
- * fills. It is built like the scaffold's row above it — label, segmented
- * On/Off, a note — because it is the same kind of thing: a way of working the
+ * fills. It is built like the scaffold's row above it, label, segmented
+ * On/Off, a note, because it is the same kind of thing: a way of working the
  * card, not a feature of its own. What a member says lands in the box below, so
  * there is nothing else to draw: no transcript panel, no undo buttons. The box
  * is a textarea the whole time, and backspace is backspace.
  *
  * The dot is the one part that has to move: a microphone is the only control
  * here whose state cannot be seen by looking at it, and "switched on" is not
- * the same as "listening" — there is a permission prompt in between. */
+ * the same as "listening", there is a permission prompt in between. */
 function voiceRow(v) {
   return html`<div style=${sx(CONTROL_ROW)}>
     <span style=${sx(LABEL_SECTION)}>${v.voiceLabel}</span>
@@ -155,7 +155,7 @@ function voiceRow(v) {
  * than merely flagged.
  *
  * Shared by the marked paper and the live first-letter reveal on purpose: both
- * are saying the same thing — here is the word, here is what you put — so they
+ * are saying the same thing, here is the word, here is what you put, so they
  * should not say it two different ways. */
 const attemptWord = (key, w) =>
   w.typed
@@ -172,7 +172,7 @@ const attemptWord = (key, w) =>
 
 /* From memory: free recall, graded word by word, given either by typing or by
  * reciting into the same box (see voiceRow). In first-letter mode it is a
- * live drill instead — the reveal updates as you type, with no separate grade
+ * live drill instead, the reveal updates as you type, with no separate grade
  * step, and there is nothing to recite. */
 function typePanel(v) {
   return html`<div style=${sx("display:flex;flex-direction:column;gap:18px")}>
@@ -276,7 +276,7 @@ function scramblePanel(v) {
  * screen. Beside what it reveals, the press and the passage are one place.
  *
  * It shows the passage while the button is held down, and puts it away on
- * release — a glance, charged as one peek per press.
+ * release, a glance, charged as one peek per press.
  *
  * Not shown on the flashcard, which is already a reveal. */
 function peekRow(v) {
@@ -299,7 +299,7 @@ function peekRow(v) {
 /* Whichever activity is running, wrapped in the one thing all four share: they
  * are dealt rather than redrawn. The wrapper is keyed on the card and the mode
  * together (v.cardKey), so moving to the next verse and switching exercise on
- * this one are the same gesture — the panel is replaced and enters from the
+ * this one are the same gesture, the panel is replaced and enters from the
  * side (styles.css, .card-swap), while the frame around it holds still. */
 function activityPanel(v) {
   return html`<div key=${v.cardKey} className="card-swap" style=${sx("display:flex;flex-direction:column;gap:26px")}>
@@ -308,7 +308,7 @@ function activityPanel(v) {
   </div>`;
 }
 
-/* In a learn session, what this card would take to commit the verse — said on
+/* In a learn session, what this card would take to commit the verse, said on
  * the card rather than only on the setup screen, because it is the thing the
  * sitting is for and the member is looking here, not there. */
 function commitBanner(v) {
@@ -333,7 +333,7 @@ function commitBanner(v) {
 }
 
 /* What handing a learn card in was worth: whether it committed the verse.
- * Deliberately not the freshness strip below — a member committing a passage
+ * Deliberately not the freshness strip below, a member committing a passage
  * for the first time has no use for a number that decays, and showing one
  * invites them to optimise it instead of writing the passage out. */
 function learnResultStrip(v) {
@@ -366,7 +366,7 @@ function learnResultStrip(v) {
 }
 
 /* What handing a review card in was worth: the mark, then the freshness it had
- * and the freshness it earned as two bars — the second animating from the first,
+ * and the freshness it earned as two bars, the second animating from the first,
  * so the gain (or the loss) is something you watch happen rather than read. */
 function resultStrip(v) {
   return html`<div
@@ -407,7 +407,7 @@ function resultStrip(v) {
   </div>`;
 }
 
-/* Leaving mid-session drops the rest of the queue, so it is asked about — the
+/* Leaving mid-session drops the rest of the queue, so it is asked about, the
  * same dialog Test mode uses (see views/exam.js). */
 function leaveDialog(v) {
   return html`<div className="dialog-backdrop" onClick=${v.reviewLeaveCancel} style=${sx("z-index:30")}>

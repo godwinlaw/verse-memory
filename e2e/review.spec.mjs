@@ -3,7 +3,7 @@
  * Everything here is the session as a member meets it: a card turned over, a
  * blank typed into and the focus that follows it, a peek held down, a paper
  * handed in and the freshness it moved. The marks themselves are src/srs.js's
- * and are unit-tested there — what this asserts is that pressing the buttons in
+ * and are unit-tested there, what this asserts is that pressing the buttons in
  * order produces them. */
 
 import { test, expect } from "./fixtures.mjs";
@@ -80,7 +80,7 @@ test("the flashcard turns over, and is recorded on the way out", async ({ app, p
   const turn = await page.locator(".flip-card-inner").evaluate((el) => getComputedStyle(el).transform);
   expect(turn).not.toBe("none");
 
-  // Nothing marks a flashcard, so there is no Submit and no confirmation —
+  // Nothing marks a flashcard, so there is no Submit and no confirmation,
   // it is recorded at the full award on the way to the next card.
   await expect(page.getByRole("button", { name: "Submit" })).toHaveCount(0);
   await page.getByRole("button", { name: "Next passage" }).click();
@@ -96,7 +96,7 @@ test("fill the blanks is marked when it is handed in, and moves the freshness", 
   const passage = await currentPassage(page);
   const blanks = await fillBlanks(page, passage);
 
-  // Nothing is marked until the paper is in — the card counts the blanks, it
+  // Nothing is marked until the paper is in, the card counts the blanks, it
   // does not grade them.
   await expect(page.getByText(`${blanks.length} blanks`)).toBeVisible();
   await page.getByRole("button", { name: "Submit" }).click();

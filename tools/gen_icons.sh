@@ -4,7 +4,7 @@
 # The mark is "Marked passage" (1C in the design project's "App Icon.dc.html"):
 # a ribbon marker cut from paper on a steel field, rules standing in for the
 # passage it holds. The design draws it three times rather than once, because a
-# rule that reads at 220px closes up into grey at 16px — so each size is cut
+# rule that reads at 220px closes up into grey at 16px, so each size is cut
 # from the drawing made for it, and this script is where that mapping lives.
 #
 #   48, 32  src/icon.svg      the design's 48px cut, two rules at 3.2
@@ -13,7 +13,7 @@
 # The 16px source is nudged off the design's own coordinates so that every edge
 # lands on a whole pixel once 64 is divided by 4: the ribbon to x20-44, the
 # rules to stroke 4 on y22/y34. Unhinted, those edges fall on half pixels and
-# the whole mark renders soft. That is hinting, not redrawing — it is the same
+# the whole mark renders soft. That is hinting, not redrawing, it is the same
 # ribbon, moved by a quarter of a pixel.
 set -euo pipefail
 cd "$(dirname "$0")/.."

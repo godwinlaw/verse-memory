@@ -30,7 +30,7 @@ export const RECALL_INPUT_ID = "recall-input";
 const BLANK_PX_PER_CHAR = 13;
 const BLANK_MIN_WIDTH = 64;
 
-const percent = (score, total) => (total ? Math.round(score * 100) + "%" : "—");
+const percent = (score, total) => (total ? Math.round(score * 100) + "%" : "–");
 
 /* Freshness as a whole number of points, the unit the session talks in. */
 const points = (r) => Math.round(r * 100);
@@ -58,7 +58,7 @@ function blankWords({ words, blanks, state, actions }) {
       word,
       isBlank,
       id: "blank-" + i,
-      hint: state.blankHint ? norm(word)[0] + "—" : "",
+      hint: state.blankHint ? norm(word)[0] + "–" : "",
       value,
       wrapStyle: "display:inline-flex;align-items:baseline",
       inputStyle:
@@ -101,13 +101,13 @@ const levelButtons = (levels, current, onPick) =>
  * decays, and quoting one invites them to optimise the wrong number.
  *
  * So everything the card says about what an attempt is worth comes from here,
- * in one voice or the other. The scheduling underneath is unchanged — a learn
- * card still earns stability and still costs freshness for a peek — it is only
+ * in one voice or the other. The scheduling underneath is unchanged, a learn
+ * card still earns stability and still costs freshness for a peek, it is only
  * never the thing the screen is about. */
 function stakeVals({ state, prog, cur, isLearn, result, commitThreshold }) {
   const commitDone = cur ? prog.statusOf(cur.id) === "memorized" : false;
   // The activity that can commit: the passage given back from memory. In Learn
-  // the first-letter scaffold still counts — that is where an uncommitted verse
+  // the first-letter scaffold still counts, that is where an uncommitted verse
   // is trying to become one (see srs.commitsVerse); in Review it does not, since
   // every card there is already committed and the scaffold's own vocabulary
   // (commitOtherNote) still fits it best.
@@ -153,7 +153,7 @@ function stakeVals({ state, prog, cur, isLearn, result, commitThreshold }) {
 /* Reciting the passage aloud, as the card offers it: one switch.
  *
  * Speaking fills the same box as typing, so there is no second exercise and no
- * second grade — and no controls of its own, because correcting a misheard word
+ * second grade, and no controls of its own, because correcting a misheard word
  * is what the textarea was already for. The switch is offered on exactly one
  * card: the recall activity, with the first-letter scaffold off (there is no
  * reciting a scaffold) and the paper not yet handed in. Whether this browser
@@ -172,7 +172,7 @@ function voiceVals({ state, actions, submitted }) {
     voiceOn: on,
     voiceToggle: actions.toggleVoice,
     // The dot beats only once the engine is actually listening, which is what
-    // separates "switched on" from "the microphone is open" — there is a
+    // separates "switched on" from "the microphone is open", there is a
     // permission prompt in between, and it is not instant.
     voiceListening: status === "listening",
     voiceStyle: segButton(on) + ";display:inline-flex;align-items:center;gap:7px",
@@ -210,8 +210,8 @@ export function reviewVals({ state, prog, totals, actions }) {
   const scrambleMark = scrambleScore(placed.length, chunks.length, state.scrambleMisses);
 
   // ── the flashcard ─────────────────────────────────────────────────────────
-  // The back of the card holds two things — the passage and the first-letter
-  // scaffold that stands in for it — so what is on screen is the turn and the
+  // The back of the card holds two things, the passage and the first-letter
+  // scaffold that stands in for it, so what is on screen is the turn and the
   // switch together, and each of the two buttons reads off its own one.
   const isFlip = state.mode === "flip";
   const lettersShown = state.revealed && state.flipLetters;
@@ -234,7 +234,7 @@ export function reviewVals({ state, prog, totals, actions }) {
   // back to a verse shows what it was worth rather than marking it again.
   const result = cur ? state.results[cur.id] : null;
   const drift = result ? result.after - result.before : 0;
-  // Committed, but not by this card — the member is meeting a verse they had
+  // Committed, but not by this card, the member is meeting a verse they had
   // already written out, so the learn card congratulates rather than instructs.
   const wasAlreadyCommitted = !!(result && !result.committed && cur && prog.statusOf(cur.id) === "memorized");
   const lastCard = state.qi >= state.queue.length - 1;
@@ -288,7 +288,7 @@ export function reviewVals({ state, prog, totals, actions }) {
     flipFirstLetters: firstLetterScaffold(curText),
     toggleFlipLetters: () => actions.revealFlipSide(true),
     // The card is two-sided, so the front says which side it is, and the whole
-    // card is a control — hence a label for it that names the turn, not the
+    // card is a control, hence a label for it that names the turn, not the
     // state, since a screen reader reads it before the member acts. Clicking
     // the card is only ever the turn: which of the two the back is showing is
     // the buttons' business, so a click never swaps it under the member.
@@ -328,14 +328,14 @@ export function reviewVals({ state, prog, totals, actions }) {
     typeScore: percent(written.score, words.length),
     // A missed word carries what was written in its place, so the mistake is
     // legible rather than just flagged (see grading.gradeWritten). The live
-    // reveal below hands back the same shape — { text, style, typed } — because
+    // reveal below hands back the same shape, { text, style, typed }, because
     // the view draws both with one helper.
     typeDiff: written.diff.map((d) => ({ text: d.word, style: d.hit ? WORD_RIGHT : WORD_WRONG, typed: d.typed })),
     // First-letter mode is a live drill: the reveal updates as you type and
     // there is no separate "Grade it" step.
     typeLive: state.mode === "type" && state.typeFirstLetter,
     // A wrong initial reveals the word itself, marked wrong, with the letter
-    // that was typed struck through beneath it — the drill teaches at the one
+    // that was typed struck through beneath it, the drill teaches at the one
     // moment the member has shown they need it. It is honest only because the
     // box is forward-only (grading.lockedInput, wired in App.setTyped).
     typeReveal: (live ? live.words : []).map((w) => ({
@@ -386,7 +386,7 @@ export function reviewVals({ state, prog, totals, actions }) {
     canGoBack: state.qi > 0,
     nextLabel: lastCard ? copy.review.finish : copy.review.next,
 
-    // What the submission was worth. A review card reports it as freshness —
+    // What the submission was worth. A review card reports it as freshness,
     // the mark, the value before and after, and the two bars the view animates
     // between them. A learn card reports whether it committed the verse, which
     // is the only outcome that sitting is playing for.
@@ -429,7 +429,7 @@ export function reviewVals({ state, prog, totals, actions }) {
             : copy.review.learnPracticeNote,
     learnResultDone: !!(result && (result.committed || wasAlreadyCommitted)),
     // A first attempt that did not commit the verse is not the only chance
-    // this sitting gives it — offered beside the verdict, since that is where
+    // this sitting gives it, offered beside the verdict, since that is where
     // the member is looking, rather than making them walk off and back on.
     learnRetryShown: isLearn && !!result && !result.committed && !wasAlreadyCommitted,
     retryCard: actions.retryCard,
@@ -446,7 +446,7 @@ export function reviewVals({ state, prog, totals, actions }) {
         ? copy.review.leaveLearn(committedHere)
         : copy.review.leaveReview(submittedCount),
 
-    // Walking off a card that was never handed in — forwards or back — throws
+    // Walking off a card that was never handed in, forwards or back, throws
     // the attempt away, so either direction asks first.
     reviewMoveAsk: !!state.reviewMoveAsk,
     reviewMoveTitle: state.reviewMoveAsk === "prev" ? copy.review.moveBackTitle : copy.review.moveOnTitle,
@@ -471,7 +471,7 @@ export function reviewVals({ state, prog, totals, actions }) {
  *
  * Review is the upkeep half of the app: it draws only on verses already
  * committed, and only those that have faded to the member's threshold. An empty
- * due queue therefore means they have genuinely caught up — and only then do the
+ * due queue therefore means they have genuinely caught up, and only then do the
  * manual controls come into play, which reach further up the same committed
  * shelf rather than into uncommitted verses. Learning those is a learn session's
  * job (see viewmodel/learn.js). */
@@ -483,7 +483,7 @@ export function reviewSetupVals({ state, actions, now = Date.now() }) {
 
   // The chosen shelf, or the whole set. Narrowing happens here, before the
   // pools, so reviewPool() stays the one definition of what a review sitting
-  // can contain — a category only decides which passages it is asked about.
+  // can contain, a category only decides which passages it is asked about.
   // It narrows the due queue as well as the manual one, so the picker means the
   // same thing on both paths; with "All" chosen (the default) this list is
   // state.passages and the screen agrees with the board exactly.

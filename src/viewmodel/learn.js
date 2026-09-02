@@ -3,7 +3,7 @@
  * Learning is the other half of the app from review. Review keeps committed
  * verses from fading; a learn session works on the verses that are not committed
  * yet and tries to commit them. It runs the same cards and the same four
- * activities as a review session — the difference is the shelf it draws from,
+ * activities as a review session, the difference is the shelf it draws from,
  * and that writing a passage out in full here is what commits it
  * (see srs.commitsVerse). */
 

@@ -6,28 +6,28 @@ Members work through a set of passages, review them in several modes, and watch 
 know what to revisit and when.
 
 It is a **static, no-build, client-side app**: React and [htm](https://github.com/developit/htm)
-are loaded from a CDN, and the source ships as native ES modules — there is no
+are loaded from a CDN, and the source ships as native ES modules, there is no
 bundler or transpile step. Progress is stored in the browser (`localStorage`),
 with an optional Firebase seam for cloud sync.
 
 ## Features
 
-- **Four review modes** — Flashcard, Fill the blanks, Write it out, Order the phrases.
-- **Spaced repetition** — each verse's stability grows with successful reviews;
+- **Four review modes**, Flashcard, Fill the blanks, Write it out, Order the phrases.
+- **Spaced repetition**, each verse's stability grows with successful reviews;
   free recall builds more durable memory than cued recall than recognition.
-- **Intelligent blanks** — key words are chosen by an offline spaCy pass
+- **Intelligent blanks**, key words are chosen by an offline spaCy pass
   (`tools/gen_keywords.py`), not by naive position.
 - **Progress board, passage list, and leaderboard** views.
 
 ## Quick start
 
 ```bash
-npm install       # dev tooling only — eslint, prettier, serve, wrangler, plus
+npm install       # dev tooling only, eslint, prettier, serve, wrangler, plus
                    # react/react-dom/htm for the render smoke tests (see test/)
 npm run dev       # serve at http://localhost:8080
 ```
 
-Any static file server works too (e.g. `python3 -m http.server 8080`) — the app
+Any static file server works too (e.g. `python3 -m http.server 8080`), the app
 has no server-side component. Because it uses ES modules, it must be served over
 HTTP; opening `index.html` from the filesystem will not work.
 
@@ -38,7 +38,7 @@ HTTP; opening `index.html` from the filesystem will not work.
 ├── index.html            # entry document: loads CDN libs, config.js, src/main.js
 ├── config.example.js     # deploy-time config template (copy to config.js)
 ├── src/                   # application source (ES modules)
-│   ├── main.js            #   entry point — mounts <App/>
+│   ├── main.js            #   entry point, mounts <App/>
 │   ├── App.js             #   stateful shell: state, actions, view dispatch
 │   ├── dom.js             #   React/htm globals, sx() style parser, corners()
 │   ├── config.js          #   app config + defaults (reads deploy overrides)
@@ -69,13 +69,13 @@ HTTP; opening `index.html` from the filesystem will not work.
 │   └── new-passages.json  #   what that fetch should pull
 ├── scripts/
 │   └── build.mjs          # assembles ./dist for the Cloudflare Workers deploy
-├── test/                  # node:test suite — pure modules + view render tests
+├── test/                  # node:test suite, pure modules + view render tests
 │   └── helpers/            #  dom-env.mjs (render harness), scenarios.mjs (fixtures)
 ├── deploy/
 │   ├── nginx.conf         # static-serving config for the container
 │   └── firestore.rules    # Firestore security rules (cloud sync)
 ├── design/                # provenance: source docs + original design export
-│                           #  (design/claude-design/ is gitignored — absent on a fresh clone)
+│                           #  (design/claude-design/ is gitignored, absent on a fresh clone)
 ├── docs/                  # standards & reference (A2N dev best practices)
 ├── wrangler.jsonc         # Cloudflare Workers static-assets config
 ├── Dockerfile             # nginx image (container-based deploy, per A2N)
@@ -85,7 +85,7 @@ HTTP; opening `index.html` from the filesystem will not work.
 The rule for where a change belongs: **how something looks** goes in `views/`,
 **what is shown** goes in `viewmodel/`, **how memory/grading/scheduling work**
 goes in `srs.js` / `grading.js` / `progress.js` / `review.js`. `App.js` holds
-state and an `actions` table and dispatches to views — nothing else.
+state and an `actions` table and dispatches to views, nothing else.
 
 ## Configuration
 
@@ -101,7 +101,7 @@ absent, the app runs on the built-in defaults.
 
 ## Adding passages
 
-`data/passages.js` is authored offline and shipped as a static module — **the
+`data/passages.js` is authored offline and shipped as a static module, **the
 app never calls a Bible API at run time**, and there is no key in the build.
 To add passages, list them in `tools/new-passages.json` (reference, book,
 testament, category, and a `group` if the entry is one section of a longer
@@ -116,14 +116,14 @@ Get a key at [api.esv.org/account](https://api.esv.org/account/). It is read
 from the environment and never written to the repo. A reference already in the
 set is refreshed in place, so the script is safe to re-run.
 
-A long chapter is listed as several sections sharing one `group` — each is an
+A long chapter is listed as several sections sharing one `group`, each is an
 ordinary passage that commits on its own, and the group is only what holds them
 together on the list. Sections also keep each record inside the ESV licence and
 inside what a member can actually give back in one sitting.
 
 `test/passages.test.mjs` asserts the two limits Crossway's terms put on what may
-be stored — no more than half of any book, and no run of 500 consecutive verses
-— so an over-eager addition fails the build rather than the licence.
+be stored, no more than half of any book, and no run of 500 consecutive verses,
+so an over-eager addition fails the build rather than the licence.
 
 ## Regenerating keywords
 
@@ -134,7 +134,7 @@ pip install spacy && python3 -m spacy download en_core_web_sm
 npm run keywords   # == python3 tools/gen_keywords.py
 ```
 
-Do not edit `data/keywords.js` by hand — re-run the generator.
+Do not edit `data/keywords.js` by hand, re-run the generator.
 
 ## Authentication & cloud sync (Firebase)
 
@@ -143,8 +143,8 @@ Access is restricted to Google accounts in the Acts 2 Network Workspace domains,
 progress then syncs across devices via Firebase (project `verse-memory`):
 
 - **Google sign-in**, gated to `@gpmail.org` / `@acts2.network`. The client
-  rejects and signs out any account outside those domains, and —
-  authoritatively — **Firestore rules only allow verified identities in those
+  rejects and signs out any account outside those domains, and,
+  authoritatively, **Firestore rules only allow verified identities in those
   domains** (`deploy/firestore.rules`). Never trust the client alone; the rules
   are the real enforcement. The allowed set is `ALLOWED_DOMAINS` in
   `src/firebase.js`.
@@ -185,7 +185,7 @@ read/write) and `src/storage.js` (`registerRemoteSync`, `mergeProgress`,
 
 Two independent deploy paths exist.
 
-**Container → Amazon ECS via Drone CI** — the [A2N dev standard](docs/a2n-dev-best-practices.md):
+**Container → Amazon ECS via Drone CI**, the [A2N dev standard](docs/a2n-dev-best-practices.md):
 
 ```bash
 docker build -t verse-mastery .
@@ -196,7 +196,7 @@ docker run --rm -p 8080:80 verse-mastery   # http://localhost:8080
 to Amazon ECR (us-east-1). Set the `aws_access_key_id` / `aws_secret_access_key`
 secrets and the ECR registry in the Drone repo settings.
 
-**Cloudflare Workers static assets** — an alternative host with no container:
+**Cloudflare Workers static assets**, an alternative host with no container:
 
 ```bash
 npm run build    # scripts/build.mjs assembles ./dist: index.html, src/, data/, config.js
@@ -205,14 +205,14 @@ npm run cf:dev     # build + `wrangler dev`, for a local preview of the Worker
 ```
 
 `wrangler.jsonc` points the Worker's static-assets binding at `./dist`.
-`scripts/build.mjs` copies only the files the app actually serves — never point
+`scripts/build.mjs` copies only the files the app actually serves, never point
 a host at the repo root, since that would also serve `node_modules/`, `design/`,
 `test/`, and everything else not meant to ship.
 
 ## Development
 
 ```bash
-npm test               # node:test — pure modules + view render smoke tests
+npm test               # node:test, pure modules + view render smoke tests
 npm run lint           # ESLint
 npm run format         # Prettier (write)
 npm run format:check   # Prettier (check, as CI runs it)
@@ -226,6 +226,6 @@ noncommercial and subject to Crossway's
 [copyright and permissions](https://www.crossway.org/permissions/) and the
 [API v3 guidelines](https://api.esv.org/docs/). The required notice is shown in
 the app itself, in the footer under every signed-in screen (`copy.footer.esv`),
-because the terms ask for it wherever the text appears — not only here.
+because the terms ask for it wherever the text appears, not only here.
 
 The MIT license below covers the application code, not the scripture text.

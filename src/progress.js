@@ -2,13 +2,13 @@
  *
  * A progress map is `{ [passageId]: record }` where a record is the shape
  * srs.js defines: `{ hits, status, last, step, stability }`. This module is the read
- * side — the pure questions the UI asks of that map ("how fresh is verse 12?",
+ * side, the pure questions the UI asks of that map ("how fresh is verse 12?",
  * "what should we review next?", "how long is the streak?"). The write side
  * (recording a review, toggling committed) stays with the component that owns
  * the state; persistence stays in storage.js.
  *
- * Records are normalised through srs.migrate() on every read so legacy records
- * — saved before stability existed, or before the interval ladder replaced it —
+ * Records are normalised through srs.migrate() on every read so legacy records,
+ * saved before stability existed, or before the interval ladder replaced it,
  * answer these questions correctly too.
  *
  * Everything here is a pure function of (map, now) and unit-tested in Node. */
@@ -23,7 +23,7 @@ import { dayKey } from "./text.js";
 export const STATUS_LABEL = copy.status;
 
 /* A passage is committed by writing it out in full from memory, and by nothing
- * else — see srs.commitsVerse(), which is the only thing that sets this status.
+ * else, see srs.commitsVerse(), which is the only thing that sets this status.
  * `hits` still counts clean reviews, but it no longer promotes anything. */
 export const isCommitted = (rec) => migrate(rec).status === "memorized";
 
@@ -36,7 +36,7 @@ export function progressReader(progress, now = Date.now()) {
   return {
     record,
     statusOf: (id) => record(id).status,
-    /* Whether the passage has ever been reviewed — untouched ones show "—"
+    /* Whether the passage has ever been reviewed, untouched ones show "–"
      * rather than a misleading 0%. */
     isReviewed: (id) => !!record(id).last,
     retrievability: (id) => retrievability(record(id), now),
@@ -50,13 +50,13 @@ export function countByStatus(passages, progress, status) {
   return passages.filter((p) => read.statusOf(p.id) === status).length;
 }
 
-/* Committed passages in any progress map — including a peer's, which is why it
+/* Committed passages in any progress map, including a peer's, which is why it
  * takes the raw map rather than a passage list. */
 export function committedCount(progress) {
   return Object.values(progress || {}).filter(isCommitted).length;
 }
 
-/* Sum of retrievability across committed verses — how much committed scripture
+/* Sum of retrievability across committed verses, how much committed scripture
  * is actually fresh right now. Ranges from 0 to committedCount(progress). */
 export function freshnessSum(progress, now = Date.now()) {
   return Object.values(progress || {})
@@ -79,7 +79,7 @@ export function dueOrder(passages, progress, now = Date.now()) {
  * pools are defined here, once, so the board's two sections and the two setup
  * screens can never disagree about what is on offer.
  *
- * Both return a new array — neither disturbs the passage list it was given. */
+ * Both return a new array, neither disturbs the passage list it was given. */
 
 /* Review: committed verses that have faded to `maxFreshness` or below, stalest
  * first. A verse still above the threshold is holding fine and is left alone. */
@@ -91,7 +91,7 @@ export function reviewPool(passages, progress, maxFreshness, now = Date.now()) {
 }
 
 /* Learn: everything not yet committed. Verses already in progress come ahead of
- * untouched ones — finish what you started before opening something new — and
+ * untouched ones, finish what you started before opening something new, and
  * within those, the most faded first. Untouched verses have no history to sort
  * on, so they keep canonical order. */
 export function learnPool(passages, progress, now = Date.now()) {
@@ -104,7 +104,7 @@ export function learnPool(passages, progress, now = Date.now()) {
 /* A hand-picked selection, divided by the same rule.
  *
  * The passage list lets a member tick whatever rows they like, and a tick says
- * nothing about which half of the set the verse is in — so the split happens
+ * nothing about which half of the set the verse is in, so the split happens
  * here rather than at the button: committed verses are reviewed, the rest are
  * learned. That keeps the one rule intact (a review session can never reach an
  * uncommitted verse) without making the member sort their own picks.
@@ -124,7 +124,7 @@ export function selectionPools(passages, progress, ids) {
 }
 
 /* Length of the current run of consecutive days with at least one review.
- * Today not being reviewed yet does not break the streak — the count simply
+ * Today not being reviewed yet does not break the streak, the count simply
  * starts at yesterday. */
 export function streakOf(log, today = new Date()) {
   const days = log || {};

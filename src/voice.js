@@ -3,7 +3,7 @@
  * Recognition is the browser's own (see recognizer.js). What is here is the one
  * piece worth testing without a microphone: where the words go. They go into
  * the same `state.typed` a member could have written by hand, so grading.js and
- * srs.js never learn how the passage arrived — which is why a clean recitation
+ * srs.js never learn how the passage arrived, which is why a clean recitation
  * commits a verse exactly as a write-out does, with no rule anywhere needing to
  * agree that it should.
  *
@@ -20,7 +20,7 @@
  * backspace.
  *
  * The one correction the box does make for itself is a word the engine spelled
- * wrong rather than a word the member said wrong — see same() below, which is
+ * wrong rather than a word the member said wrong, see same() below, which is
  * the only loose comparison anywhere in the app and says why. */
 
 import { norm } from "./text.js";
@@ -41,12 +41,12 @@ const wordsOf = (s) =>
 const unpunctuated = (w) => w.replace(/[^\p{L}\p{N}]+$/u, "");
 
 /* How far apart two spellings may be and still be the same word said out loud.
- * One edit, and never on a word short enough for one edit to be most of it —
+ * One edit, and never on a word short enough for one edit to be most of it,
  * "us" and "as" are two words, "Jews" and "Jew" are one word twice. */
 const MAX_EDITS = 1;
 const MIN_FUZZY_LEN = 3;
 
-/* Whether two strings are within MAX_EDITS of each other — one substitution,
+/* Whether two strings are within MAX_EDITS of each other, one substitution,
  * insertion, or deletion. Walked in step rather than scored with a full edit
  * matrix, because the only question ever asked is "one or fewer", and the
  * answer to that is known the second time the walk falls out of step. */
@@ -85,19 +85,19 @@ const stem = (w) => w.replace(/(?:es|s)$/, "");
  * And compared loosely, which is the one place in the app that grades anything
  * loosely. The engine hands back a spelling, not a sound: a member reciting
  * Galatians perfectly gets "sews" for "sow" and "Jews" for "Jew", and then
- * fails the card — or has to stop and repair the box by hand, which is the
+ * fails the card, or has to stop and repair the box by hand, which is the
  * thing reciting was meant to save them. Those are not recall errors, they are
  * transcription errors, and the passage is right there to correct them
  * against.
  *
  * So a heard word within one edit of the word the passage wanted, ignoring a
- * plural ending on either side, is taken as that word — and fitToPassage then
+ * plural ending on either side, is taken as that word, and fitToPassage then
  * writes the passage's spelling into the box, which is the correction. Held
  * tight by the two rules above: one edit, and nothing under MIN_FUZZY_LEN
  * letters, where a single edit is the difference between "he" and "be".
  *
  * It is deliberately only here. grading.js stays exact, so nothing a member
- * *types* is forgiven — this is the microphone being held to what it heard,
+ * *types* is forgiven, this is the microphone being held to what it heard,
  * not the commit bar being lowered. The cost is that a recited word genuinely
  * misremembered as a near neighbour ("hear" for "heart") is now given, which
  * is the trade this makes on purpose: the alternative failed a member who said
@@ -115,13 +115,13 @@ function same(heard, want) {
 /* Fitting what was heard back onto the passage.
  *
  * Two things the engine cannot know and the passage can. It hands back a flat
- * lowercase stream with no punctuation at all — "the lord our god the lord is
- * one you shall love" — so a member reciting perfectly watched their verse come
+ * lowercase stream with no punctuation at all, "the lord our god the lord is
+ * one you shall love", so a member reciting perfectly watched their verse come
  * out looking nothing like the verse.
  *
  * A word that matches is therefore shown as the passage writes it: "LORD" for
  * lord, "God's" for gods. And the punctuation between two words is only earned
- * once both of them are right — a full stop after "one" is a claim about where
+ * once both of them are right, a full stop after "one" is a claim about where
  * the sentence ended, and until the next word is in there is nothing to make
  * that claim about. So the stop arrives with "You", one word late, which is
  * also when a reader would want it.
@@ -142,7 +142,7 @@ function fitToPassage(heard, target, from) {
 /* The transcript once `text` takes the place of whatever was provisional.
  *
  * `settled` is the browser saying it will not revise this phrase again, which
- * moves the tail past it — everything before the tail is the member's, and
+ * moves the tail past it, everything before the tail is the member's, and
  * everything after it is still being heard.
  *
  * `passage` is what is being recited, and is optional: without it the words go
@@ -150,7 +150,7 @@ function fitToPassage(heard, target, from) {
  * given the verse to compare against.
  *
  * `rest` is how many characters at the end of the box sit *after* the point
- * words are going in — nothing at all in the ordinary case, where the member is
+ * words are going in, nothing at all in the ordinary case, where the member is
  * reciting onto the end of what they have said so far. It is what makes the
  * words land where the cursor is: put the caret back into the middle of the
  * transcript and everything from there on is held aside, the phrase goes in at
@@ -175,7 +175,7 @@ export function transcribe(typed, tail, text, settled = false, passage = "", res
 
   // The word on the other side of the join is in the same position: it could
   // not earn its punctuation when it was heard, because the word after it had
-  // not been said yet. Now it has. Only ever adds — a word the member typed
+  // not been said yet. Now it has. Only ever adds, a word the member typed
   // themselves, or one that already carries punctuation, is left alone.
   const last = kept[kept.length - 1];
   const wantLast = target[kept.length - 1];

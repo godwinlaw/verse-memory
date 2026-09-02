@@ -1,7 +1,7 @@
 /* Which way round the page is printed.
  *
  * The palette is one block of token overrides in styles.css and no rules of its
- * own, and the choosing is four lines in src/theme.js — so what is left for a
+ * own, and the choosing is four lines in src/theme.js, so what is left for a
  * browser to assert is everything neither of those can be asked about alone:
  * the computed colour a page is actually painted, that the reader's own system
  * still answers by default, and that a member who says otherwise on this device
@@ -42,7 +42,7 @@ test.describe("a reader who asked their system for dark", () => {
   });
 
   test("the reversed plate lifts off the page instead of sinking into it", async ({ app, page }) => {
-    // The plate is a treatment, not a shade — which is why it has its own two
+    // The plate is a treatment, not a shade, which is why it has its own two
     // tokens rather than reaching for the end of the accent ramp. On paper it
     // is darker than the page; on ink it has to be lighter.
     await app.boot({ progress: PROGRESS, firebase: signedIn });
@@ -135,7 +135,7 @@ test.describe("a member who wants the other ground on this screen", () => {
 
 /* The page must not open on one ground and turn over onto the other. index.html
  * settles it in the line before the first paint, which is a claim about a page
- * the app has not run on yet — so it is asserted on a page the app never runs
+ * the app has not run on yet, so it is asserted on a page the app never runs
  * on at all. */
 test.describe("the ground is settled before anything is drawn", () => {
   test.use({ colorScheme: "light" });

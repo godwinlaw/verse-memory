@@ -7,7 +7,7 @@
  *
  * Firebase web configuration is public by design (access is controlled by
  * Firebase Security Rules), so it is safe to commit a real config.js if you
- * prefer — it is gitignored only to keep environment specifics out of source. */
+ * prefer, it is gitignored only to keep environment specifics out of source. */
 
 window.__APP_CONFIG__ = {
   groupName: "Acts 2 Network - Berkeley",
