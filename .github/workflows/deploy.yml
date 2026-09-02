@@ -21,6 +21,7 @@ jobs:
           node-version: 22
       - run: npm ci
       - run: npm run lint
+      - run: npm run lint:prose
       - run: npm run format:check
       - run: npm test
 
