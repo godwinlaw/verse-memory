@@ -11,7 +11,7 @@
 
 window.__APP_CONFIG__ = {
   groupName: "Acts 2 Network - Berkeley",
-  deadline: "2026-10-31", // YYYY-MM-DD, the memorization goal date
+  deadline: "2027-01-31", // YYYY-MM-DD, the memorization goal date
   splashMinMs: 3000, // least time the opening splash stays up, in milliseconds
 
   // Which pieces of the app this deploy offers. Every one of them is built and

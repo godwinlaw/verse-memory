@@ -46,7 +46,7 @@ const DEFAULT_FEATURES = {
 
 export const appConfig = {
   groupName: "Acts 2 Network - Berkeley",
-  deadline: "2026-10-31",
+  deadline: "2027-01-31",
   /* The shortest time the opening splash stays up, in milliseconds. It sits
    * here rather than in App.js because it is a matter of taste — how long the
    * registration mark is worth watching — and so it can be retuned per deploy
