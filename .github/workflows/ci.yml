@@ -39,6 +39,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # No em-dashes and no filler phrases anywhere in the tree; see the header
+      # of scripts/check-prose.mjs for the rule and the exclusions.
+      - name: Prose
+        run: npm run lint:prose
+
       - name: Format
         run: npm run format:check
 

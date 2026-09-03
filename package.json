@@ -13,6 +13,7 @@
     "test:e2e:report": "playwright show-report",
     "test:all": "npm test && npm run test:e2e",
     "lint": "eslint .",
+    "lint:prose": "node scripts/check-prose.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "icons": "bash tools/gen_icons.sh",
