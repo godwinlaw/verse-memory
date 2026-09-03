@@ -15,14 +15,14 @@ export function deadlineDate(deadline) {
 /* The goal is one category, not the whole set.
  *
  * Psalms and DT Passages are worth learning and count everywhere a member's
- * work is counted — but the deadline was set against the core verses, and
+ * work is counted, but the deadline was set against the core verses, and
  * folding two more shelves into the denominator would have dropped everyone's
  * percentage overnight without anyone forgetting a word. So `goal`, `pct` and
  * `perWeek` are measured over the goal category, and `memorized` / `learning` /
  * `remaining` are measured there too, which is what keeps "n / goal" on the
  * board an honest fraction.
  *
- * What is counted across every category is `committedAll` — the figure the
+ * What is counted across every category is `committedAll`, the figure the
  * leaderboard ranks on, where the question is how much scripture a member holds
  * rather than how far through one list they are. */
 export function deriveTotals({ passages, progress, deadline, now = new Date() }) {

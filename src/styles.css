@@ -1,4 +1,4 @@
-/* Industry — design-system tokens and component classes. This file is the source of truth for the system's look; retune it here and see readme.md. */
+/* Industry, design-system tokens and component classes. This file is the source of truth for the system's look; retune it here and see readme.md. */
 @import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap");
 
 :root {
@@ -10,7 +10,7 @@
   --color-divider: color-mix(in srgb, #1d1f20 16%, transparent);
 
   /* The reversed plate: paper printed on a steel field. It is a treatment, not
-     a shade — the splash, the board's hero, the guide's plate, a status tag and
+     a shade, the splash, the board's hero, the guide's plate, a status tag and
      the app's own mark are all the same object, printed the other way round
      from the page around them.
      It gets its own two tokens rather than reaching for the end of the accent
@@ -27,10 +27,10 @@
   --color-reverse-line: color-mix(in srgb, var(--color-reverse-text) 25%, transparent);
 
   /* The "wrong answer" red, used by the graders and the sign-in error callout.
-     A token so the dark theme can lift it — #a4553f is set for paper. */
+     A token so the dark theme can lift it, #a4553f is set for paper. */
   --color-error: #a4553f;
 
-  /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
+  /* Tonal ramps, generated in OKLCH on one shared lightness scale, so the
      same step of any role matches the others in visual value. */
   --color-neutral-100: #f5f5f8;
   --color-neutral-200: #e7e7ea;
@@ -62,7 +62,7 @@
   --color-accent-2-800: #314457;
   --color-accent-2-900: #1f2d3a;
 
-  /* Freshness meter track — the fill colour is computed inline as a continuous
+  /* Freshness meter track, the fill colour is computed inline as a continuous
      red→green gradient keyed to each verse's retrievability. srs.freshColor
      picks the hue and leaves the lightness here, so the gradient can be mixed
      for the ground it is printed on. */
@@ -84,13 +84,13 @@
   --radius-md: 4px;
   --radius-lg: 7px;
 
-  /* Elevation — derived from the ground: soft ink-tinted shadows on a
+  /* Elevation, derived from the ground: soft ink-tinted shadows on a
      light theme, a hairline edge + ambient darkness on a dark one. */
   --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
   --shadow-md: 0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
   --shadow-lg: 0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
 
-  /* Motion — three durations and one curve, so everything that moves in the app
+  /* Motion, three durations and one curve, so everything that moves in the app
      moves at the same few speeds. --ease-out is the curve the splash and the
      guide were already drawn with; naming it here is what lets the rest of the
      app match them. See the motion block near the bottom of this file. */
@@ -107,25 +107,25 @@
    The system follows the reader by default, and a member who wants otherwise on
    one screen says so under Settings (see src/theme.js). What that leaves here is
    one selector: `data-theme` on the root element, always already settled to
-   "light" or "dark" — never "system". The choosing is done in JS and stamped
+   "light" or "dark", never "system". The choosing is done in JS and stamped
    before the first paint, because a stylesheet cannot say "dark unless the
    member asked for light" without writing this whole block out a second time
    under another selector, and one palette written twice is a palette that drifts.
 
-   It is one block of token overrides and no rules of its own — everything below
+   It is one block of token overrides and no rules of its own, everything below
    this point is written against the tokens, so the whole app turns over
    together. Two ideas carry it:
 
    The two ramps INVERT rather than being replaced. Their steps mean distance
    from the page's ground, not lightness: 100 is nearest the paper, 900 furthest
    into the ink. Read that way, "the strongest state" is the darkest step on a
-   light page and the lightest on a dark one — so a committed cell in the board's
+   light page and the lightest on a dark one, so a committed cell in the board's
    map, its legend swatch and a member's own bar all stay the strongest thing on
    screen without a single view being touched.
 
    The reversed plate does NOT invert, which is exactly why it has its own two
    tokens. It is a plate printed the other way round from the page, so on a dark
-   ground it has to lift *off* the page rather than sink into it — the accent
+   ground it has to lift *off* the page rather than sink into it, the accent
    ramp's far end would do the opposite. It stays a steel field with paper on it,
    just a steel field a few steps lighter than the room. */
 :root[data-theme="dark"] {
@@ -184,8 +184,8 @@
   --shadow-md: 0 0 0 1px color-mix(in srgb, #e9e9ec 9%, transparent), 0 3px 12px rgb(0 0 0 / 45%);
   --shadow-lg: 0 0 0 1px color-mix(in srgb, #e9e9ec 10%, transparent), 0 14px 36px rgb(0 0 0 / 55%);
 
-  /* The one thing a token cannot reach: the browser's own widgets — form
-     controls, scrollbars, the caret — which are painted by the UA and have to
+  /* The one thing a token cannot reach: the browser's own widgets, form
+     controls, scrollbars, the caret, which are painted by the UA and have to
      be told which way round the page is. It is declared on both grounds
      rather than only this one, because a member on a dark system who asks the
      app for paper has to get paper form controls with it. */
@@ -277,7 +277,7 @@ h4 {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   Components — built with the tokens above. Plain CSS
+   Components, built with the tokens above. Plain CSS
    on plain HTML: no JavaScript, no build step. Each class is documented in
    readme.md and demonstrated in foundations/ and components/.
    ══════════════════════════════════════════════════════════════════════ */
@@ -412,7 +412,7 @@ figcaption {
   background: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
-/* — rules — */
+/*, rules, */
 .hr {
   height: 1px;
   border: 0;
@@ -420,7 +420,7 @@ figcaption {
   background: var(--color-divider);
 }
 
-/* — buttons — */
+/*, buttons, */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -432,7 +432,7 @@ figcaption {
   font-weight: var(--font-heading-weight);
   font-size: 14px;
   line-height: 1.2;
-  color: var(--color-text); /* matches the .input's 14px —
+  color: var(--color-text); /* matches the .input's 14px,
      the pair sits side by side in sign-up rows */
   background: transparent;
   border: 1px solid transparent;
@@ -449,7 +449,7 @@ figcaption {
   display: block;
 }
 /* A press is answered by the button itself moving, not only by its fill
-   changing — the one bit of motion in the app that has to land inside the
+   changing, the one bit of motion in the app that has to land inside the
    frame the tap is still in. */
 .btn:active:not(:disabled) {
   transform: translateY(1px);
@@ -508,7 +508,7 @@ figcaption {
   margin-top: var(--space-2);
 }
 
-/* — forms — */
+/*, forms, */
 .field > label {
   display: block;
   font-size: 12px;
@@ -611,7 +611,7 @@ textarea.input {
   outline-offset: -2px;
 }
 
-/* — cards — */
+/*, cards, */
 .card {
   display: flex;
   flex-direction: column;
@@ -655,7 +655,7 @@ textarea.input {
   box-shadow: var(--shadow-lg);
 }
 
-/* — tags — */
+/*, tags, */
 .tag {
   display: inline-flex;
   align-items: center;
@@ -681,7 +681,7 @@ textarea.input {
   color: var(--color-accent);
 }
 
-/* — navigation — */
+/*, navigation, */
 .nav {
   display: flex;
   align-items: center;
@@ -705,7 +705,7 @@ textarea.input {
   color: var(--color-accent);
 }
 
-/* — tables — */
+/*, tables, */
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -731,7 +731,7 @@ textarea.input {
   background: color-mix(in srgb, var(--color-text) 4%, transparent);
 }
 
-/* — dialog — */
+/*, dialog, */
 .dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -766,8 +766,8 @@ textarea.input {
   margin-top: var(--space-2);
 }
 
-/* — blueprint frame: components are wireframe objects (see .blueprint
-     and .corner above) — square, transparent, hairline-bordered — */
+/*, blueprint frame: components are wireframe objects (see .blueprint
+     and .corner above), square, transparent, hairline-bordered, */
 .card,
 .btn,
 .input,
@@ -791,7 +791,7 @@ textarea.input {
   border-color: transparent;
 }
 
-/* — app header responsive — */
+/*, app header responsive, */
 /* The account circle in the header's corner, and the menu under it.
  *
  * `.menu-sheet` is the press-anywhere-else that closes the menu: transparent,
@@ -868,7 +868,7 @@ textarea.input {
   z-index: 20;
 }
 
-/* — board responsive layout — */
+/*, board responsive layout, */
 .board-page {
   max-width: 1280px;
   margin: 0 auto;
@@ -905,7 +905,7 @@ textarea.input {
    set per use: the activity toggles .is-flipped, the guide loops a keyframe.
 
    Both faces sit in the same grid cell rather than being absolutely positioned,
-   so the card is as tall as its taller side — a long passage on the back is
+   so the card is as tall as its taller side, a long passage on the back is
    never clipped, and no height has to be guessed. */
 .flip-card {
   perspective: 1000px;
@@ -940,7 +940,7 @@ textarea.input {
   font-weight: 400;
 }
 /* The turn is the whole affordance, so without it the card still has to end up
-   on the right face — it just gets there instantly. */
+   on the right face, it just gets there instantly. */
 @media (prefers-reduced-motion: reduce) {
   .flip-card-inner {
     transition: none;
@@ -949,14 +949,14 @@ textarea.input {
 
 /* ── the opening splash: the registration mark ──────────────────────────────
    The screen the app opens on while it works out whether the member is already
-   signed in (src/views/splash.js). It is the app printed in reverse — steel
-   field, type to paper — and everything on it is the system's own corner mark
+   signed in (src/views/splash.js). It is the app printed in reverse, steel
+   field, type to paper, and everything on it is the system's own corner mark
    at three sizes: hung in the frame's four corners, drawn large and turning at
    the centre, and laid flat as the ruler under the wordmark.
 
    Nothing here is a measurement. The mark turns at its own pace, the bar
    advances in eight fixed steps, and the three lines cycle on a timer, because
-   a boot has no figure the member could act on — what the screen shows is that
+   a boot has no figure the member could act on, what the screen shows is that
    the press is running, not how far along it is. (That is also why the cycle is
    aria-hidden and the view carries one truthful line beside it.)
 
@@ -970,12 +970,12 @@ textarea.input {
   justify-content: center;
   gap: 40px;
   /* The frame is the viewport, so its edge would only draw a box around the
-     screen — the four corner marks are the whole frame. */
+     screen, the four corner marks are the whole frame. */
   border-color: transparent;
 
   /* One turn of the plate: the bar's eight steps and all three load steps fit
      inside it, so retuning the pace here keeps them in lockstep. It is set to
-     `appConfig.splashMinMs` — the least the splash stays up — because a member
+     `appConfig.splashMinMs`, the least the splash stays up, because a member
      on the fastest possible boot should still see the whole set of steps name
      itself. Lower the floor in config.js and the last line will not get its
      turn; lower this to match if you do. */
@@ -985,7 +985,7 @@ textarea.input {
   color: color-mix(in srgb, var(--color-reverse-text) 75%, transparent);
 }
 
-/* — the mark, drawn large — */
+/*, the mark, drawn large, */
 .splash-mark {
   position: relative;
   width: 132px;
@@ -1051,7 +1051,7 @@ textarea.input {
   }
 }
 
-/* — the plate: wordmark, scale, and the steps naming themselves — */
+/*, the plate: wordmark, scale, and the steps naming themselves, */
 .splash-plate {
   position: relative;
   max-width: 100%;
@@ -1125,7 +1125,7 @@ textarea.input {
     width: 100%;
   }
 }
-/* Three lines over one turn of the bar, each up for its own third — so every
+/* Three lines over one turn of the bar, each up for its own third, so every
    step has named itself by the time the splash is allowed to leave. The base
    opacity is here and not inline so reduced motion can settle on one. */
 .splash-cycle {
@@ -1170,7 +1170,7 @@ textarea.input {
   .splash-cycle > div {
     animation: none;
   }
-  /* Nothing advances, so the bar stands still at reduced weight — a track that
+  /* Nothing advances, so the bar stands still at reduced weight, a track that
      is waiting rather than one that has finished. */
   .splash-fill {
     width: 100%;
@@ -1188,8 +1188,8 @@ textarea.input {
    the header, a passage crossing from the learn half of the set to the review
    half, the forgetting curve under a slider, the interval ladder with a marker
    climbing it, and a looping demonstration of each of the four activities.
-   Everything that moves is a keyframe here — the view (src/views/guide.js) only
-   names the classes — and all of it is dropped under prefers-reduced-motion at
+   Everything that moves is a keyframe here, the view (src/views/guide.js) only
+   names the classes, and all of it is dropped under prefers-reduced-motion at
    the bottom of the block. */
 .guide-page {
   max-width: 1080px;
@@ -1213,7 +1213,7 @@ textarea.input {
 }
 
 /* A passage crossing from Learn to Review. The card is half the track wide, so
-   one column across is exactly its own width plus the gap between them — no
+   one column across is exactly its own width plus the gap between them, no
    pixel figure has to agree with the flex layout above it. */
 .guide-commit-track {
   position: relative;
@@ -1277,7 +1277,7 @@ textarea.input {
 }
 
 /* The guide's flashcard is the real one (.flip-card above), turned by a looping
-   keyframe instead of by the member — so the demonstration cannot come to look
+   keyframe instead of by the member, so the demonstration cannot come to look
    like something the activity does not do. Only the turn and the type size are
    set here; the card itself is shared. */
 .guide-flip .flip-card-inner {
@@ -1422,9 +1422,9 @@ textarea.input {
   }
 }
 
-/* The interval ladder (srs.INTERVALS). Rendered bottom-up — column-reverse, so
+/* The interval ladder (srs.INTERVALS). Rendered bottom-up, column-reverse, so
    the first rung is the one at the foot of the ladder while the DOM keeps the
-   model's own order for the stagger and for a screen reader — with each rung's
+   model's own order for the stagger and for a screen reader, with each rung's
    bar as long as the gap it stands for. A marker climbs it on a loop: one
    keyframe, delayed per rung off --rung-i, exactly as .item-in staggers a list. */
 .guide-ladder {
@@ -1542,18 +1542,18 @@ textarea.input {
 /* ── motion ─────────────────────────────────────────────────────────────────
    The app's ambient movement: how a screen arrives, how a list settles, how a
    figure fills in, how a control answers a press. The splash and the guide above
-   are set pieces — this block is everything else, and it follows the same rule
+   are set pieces, this block is everything else, and it follows the same rule
    they do: the keyframe lives here and the view only names a class.
 
    Two conventions make one rule cover a screen's worth of moving parts:
 
-   - Anything that fills to a figure — a freshness meter, a progress bar, a day
-     on the activity chart — declares only a `from`, so the `to` is whatever the
+   - Anything that fills to a figure, a freshness meter, a progress bar, a day
+     on the activity chart, declares only a `from`, so the `to` is whatever the
      view-model computed. The number stays the model's; only the getting there is
      this file's. These use `backwards` rather than `both` for the same reason,
      and because a lingering `forwards` transform would quietly turn a screen
      into the containing block for the fixed dialogs inside it.
-   - Anything that arrives in a series — rows, cells, stats — is staggered off
+   - Anything that arrives in a series, rows, cells, stats, is staggered off
      `--stagger-i`, set inline as the item's index, so one rule covers a list of
      any length instead of a run of nth-child. The delay is capped, so a hundred
      passages still finish arriving in about half a second.
@@ -1593,7 +1593,7 @@ textarea.input {
   animation: rise-in var(--dur-swap) var(--ease-out) backwards;
 }
 
-/* A stack whose lines arrive one after another — the end-of-session screens and
+/* A stack whose lines arrive one after another, the end-of-session screens and
    the two full-screen shells. The splash draws itself the same way; this is that
    idea made reusable, since those screens are the splash's own siblings. */
 .stack-in > * {
@@ -1622,8 +1622,8 @@ textarea.input {
 }
 
 /* ── counting up ────────────────────────────────────────────────────────────
-   The board's five figures — passages committed, days left, the weekly pace,
-   today's reviews, the streak — count up to themselves rather than arriving
+   The board's five figures, passages committed, days left, the weekly pace,
+   today's reviews, the streak, count up to themselves rather than arriving
    already true. They are what the member came to the board to see, and watching
    one climb is what makes it read as something earned rather than a field on a
    form.
@@ -1633,7 +1633,7 @@ textarea.input {
    registered as an <integer>, so it is a value the browser can interpolate; the
    element sets its target inline from the view-model and the keyframe walks it
    up from zero, while a counter turns the number into text. The figure is
-   therefore the model's, exactly as with the meters above — only the climb
+   therefore the model's, exactly as with the meters above, only the climb
    belongs to this file.
 
    Two things follow from that and are worth knowing before editing either end.
@@ -1641,7 +1641,7 @@ textarea.input {
    assert on --count but not on the number (see test/views.test.mjs). And an
    unregistered custom property interpolates discretely rather than not at all,
    so on a browser without @property the figure reads 0 for half the duration and
-   then snaps to its value — degraded, not broken, but the reason to keep the
+   then snaps to its value, degraded, not broken, but the reason to keep the
    duration short. That is Firefox before 128; the app already asks for :has()
    and color-mix(), so the floor barely moves. */
 @property --count {
@@ -1656,7 +1656,7 @@ textarea.input {
    to be a flourish rather than something waited on.
 
    The delay is roughly what the card above it takes to arrive, so the figure is
-   sitting at zero when the member's eye reaches it and climbs from there —
+   sitting at zero when the member's eye reaches it and climbs from there,
    starting the climb under a screen that is still moving wastes it. */
 .count-up {
   counter-reset: figure var(--count, 0);
@@ -1730,7 +1730,7 @@ textarea.input {
 }
 
 /* The map is a cell per passage, so the wave is spread over the whole set rather
-   than per row — the same 12ms step reads as a sweep at 28 across and as a
+   than per row, the same 12ms step reads as a sweep at 28 across and as a
    ripple at 14. Its own opacity is the verse's freshness (set inline), which is
    why the keyframe only names the value it starts from. */
 .board-map-grid > button {
@@ -1748,7 +1748,7 @@ textarea.input {
 }
 
 /* A queue row. The fill and the rule are both drawn here rather than inline,
-   because the row's resting state has to be something a hover can outrank —
+   because the row's resting state has to be something a hover can outrank,
    an inline background could not be. */
 .queue-row {
   background: transparent;
@@ -1780,7 +1780,7 @@ textarea.input {
 .reveal-in {
   animation: fade-in 200ms ease-out backwards;
 }
-/* The segmented switches — review mode, blank and scramble level, the on/off
+/* The segmented switches, review mode, blank and scramble level, the on/off
    toggles. Their fill is set inline from the view-model, so the class adds only
    the transition between the two states it is given. */
 .seg-btn {
@@ -1835,7 +1835,7 @@ textarea.input {
 /* ── reciting aloud ─────────────────────────────────────────────────────────
    The whole of the voice interface that moves, and the only part that has to:
    a microphone is the one control here whose state cannot be seen by looking at
-   it, and the switch being on is not the same as the engine listening — there
+   it, and the switch being on is not the same as the engine listening, there
    is a permission prompt in between. So the dot is rendered only once it is
    really listening, and it beats. The words themselves arrive in the box as
    ordinary text, which needs nothing from this file. */
@@ -1856,7 +1856,7 @@ textarea.input {
 /* ── the passage list ───────────────────────────────────────────────────────
    The table's head stays put while the rows scroll under it. It is one sticky
    box holding both the column labels and, once rows are ticked, the selection
-   bar above them — the whole reason for ticking a run of verses is the Review
+   bar above them, the whole reason for ticking a run of verses is the Review
    button in that bar, and on a list this long it used to scroll out of sight
    long before the member had finished choosing.
 
@@ -1900,7 +1900,7 @@ textarea.input {
 
 /* ── the full-screen shells ─────────────────────────────────────────────────
    The sign-in gate and the profile form are what the splash resolves into, and
-   they are a different screen from it in every way (see views/splash.js) — so
+   they are a different screen from it in every way (see views/splash.js), so
    they cross-fade rather than arrive, and the steel field is allowed to settle
    into paper instead of being cut away from under the member. */
 .shell-settle {
@@ -1924,7 +1924,7 @@ textarea.input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* .count-up keeps its counter — only the climb stops, so the figure is
+  /* .count-up keeps its counter, only the climb stops, so the figure is
      simply true from the first frame. */
   .count-up,
   .screen,

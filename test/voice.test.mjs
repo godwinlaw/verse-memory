@@ -63,7 +63,7 @@ test("the very first word is capitalised, since the engine hands back lowercase"
   assert.equal(transcribe("", 0, "and these words", false).typed, "And these words");
 });
 
-test("only the first word — later phrases are left as they were heard", () => {
+test("only the first word, later phrases are left as they were heard", () => {
   const { typed } = recite(["trust in the Lord", true], ["with all your heart", true]);
   assert.equal(typed, "Trust in the Lord with all your heart");
 });
@@ -167,7 +167,7 @@ test("a corrected word still earns its punctuation, and the ones after it line u
 });
 
 test("but a different word is still a different word", () => {
-  // Two edits apart, and left alone — the leniency is for a misspelling of the
+  // Two edits apart, and left alone, the leniency is for a misspelling of the
   // right word, not for a near neighbour of it.
   const { typed } = reciteInto(SHEMA, ["hear o israel", true], ["the lord our dog", true]);
   assert.match(typed, /our dog/);

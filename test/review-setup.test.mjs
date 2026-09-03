@@ -1,11 +1,11 @@
 /* The review-setup view-model: what a review session targets before it starts.
  *
  * Review is the upkeep half of the app. It draws only on verses already
- * committed, and only those faded past the member's threshold — everything else
+ * committed, and only those faded past the member's threshold, everything else
  * is a learn session's job (see test/learn-setup.test.mjs), and several of these
  * tests are really about that boundary.
  *
- * Pure function of (state, actions), so — like the other view-model tests —
+ * Pure function of (state, actions), so, like the other view-model tests,
  * nothing is mounted. A fixed `now` keeps freshness stable without touching the
  * global clock.
  */
@@ -18,7 +18,7 @@ import { reviewSetupVals } from "../src/viewmodel/review.js";
 import { committed, learning, stateOf, NOW } from "./helpers/setup-fixtures.mjs";
 
 /* Build the view-model for a state, capturing what its callbacks would do.
- * Pinned to the fixture's NOW — reviewSetupVals defaults to Date.now(), which
+ * Pinned to the fixture's NOW, reviewSetupVals defaults to Date.now(), which
  * would let these freshness figures drift, and quietly wrong, with the wall
  * clock (see reviewPool()'s ceiling being read against the real time this
  * once caught). */
@@ -106,7 +106,7 @@ test("caps the due queue at the profile's Top X", () => {
 });
 
 test("surfaces the manual controls only once the due queue is empty", () => {
-  // Two committed verses holding above the threshold — the caught-up case,
+  // Two committed verses holding above the threshold, the caught-up case,
   // which is the only time extra review is offered.
   const passages = [{ id: 1 }, { id: 2 }];
   const progress = { 1: committed(2), 2: committed(1) }; // ~90%, ~95%
@@ -165,7 +165,7 @@ test("a manual size of 0 means all matching verses, not none", () => {
 /* ── categories ───────────────────────────────────────────────────────────── */
 
 /* Committed verses on two different shelves, all faded well past the due
- * threshold so the due queue — not the manual controls — is what is on offer. */
+ * threshold so the due queue, not the manual controls, is what is on offer. */
 const SHELVED = [
   { id: 1, category: "core" },
   { id: 2, category: "core" },
@@ -192,7 +192,7 @@ test("with All chosen the screen sees the whole set, exactly as before", () => {
 
 test("a category narrows the due queue, not just the manual controls", () => {
   // The picker has to mean the same thing on both paths of this screen. These
-  // verses are all due, so this is the due path — and it still comes back as
+  // verses are all due, so this is the due path, and it still comes back as
   // psalms only. Narrowing only the manual controls would have made the picker
   // silently do nothing for the member who is behind, which is most of them.
   const { v } = build(shelfState("psalms"));
@@ -210,7 +210,7 @@ test("a shelf with nothing committed on it has nothing to review", () => {
   );
   const { v } = build(state);
   assert.equal(v.reviewSetupCanStart, false);
-  // And it says so as "nothing committed here" — the true reason — rather than
+  // And it says so as "nothing committed here", the true reason, rather than
   // "you are caught up", which is a different situation with a different fix.
   assert.equal(v.reviewNothingCommitted, true);
 });

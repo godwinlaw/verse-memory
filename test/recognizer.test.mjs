@@ -3,7 +3,7 @@
  * Everything createRecognizer() does is wiring: it reports settled phrases apart
  * from ones the browser is still revising, and it keeps the session alive across
  * the pauses Chrome ends it on. Both are worth pinning, and neither needs a
- * microphone — a stub with the same four events is enough. */
+ * microphone, a stub with the same four events is enough. */
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -90,7 +90,7 @@ test("settled phrases are marked as such; ones still being revised are not", () 
   });
 });
 
-test("a pause does not end the session — the member does", () => {
+test("a pause does not end the session, the member does", () => {
   withSpeech(() => {
     const { rec, engine } = wired();
     rec.start();

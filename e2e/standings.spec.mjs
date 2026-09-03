@@ -3,7 +3,7 @@
  * How a group's figure is worked out is pure and covered in
  * test/standings.test.mjs. What needs a browser is the roster arriving over the
  * wire and the board changing the question it is answering when the member asks
- * it to — including that the filters above still apply, since ranking and
+ * it to, including that the filters above still apply, since ranking and
  * filtering are meant to compose rather than replace one another.
  */
 
@@ -33,20 +33,20 @@ const ROSTER = [
 const summary = (uid, name, group, gender, gradClass, verses) => ({
   uid,
   name,
-  // A summary that carries a name is one whose member turned the switch on —
+  // A summary that carries a name is one whose member turned the switch on,
   // src/standings.js withholds the name otherwise, so the two travel together.
   shareRanking: true,
   ministryGroup: group,
   gender,
   gradClass,
-  // last, stability, last, stability — see src/standings.js, summarize.
+  // last, stability, last, stability, see src/standings.js, summarize.
   fresh: Array.from({ length: verses }, () => [Date.now(), 30]).flat(),
   streak: 2,
   streakDay: new Date().toISOString().slice(0, 10),
 });
 
 /* Stats ships on, and these boots say so explicitly rather than leaning on the
- * default — the suite is about the board, so what it needs should not move when
+ * default, the suite is about the board, so what it needs should not move when
  * a flag in src/config.js does. */
 const STATS = { leaderboard: true };
 
@@ -93,7 +93,7 @@ test("the groups can be ranked against each other, per member", async ({ app, pa
   await expect(page.getByText("a small group is not out-run by a large one")).toBeVisible();
 
   // USF holds 3 + 1 across two members; Kairos holds 2 across one. Per member
-  // that is 2.0 against 2.0 on committed — but Kairos is one person, so USF's
+  // that is 2.0 against 2.0 on committed, but Kairos is one person, so USF's
   // two members break the tie in its favour.
   const usf = page.getByRole("row", { name: /USF/ });
   await expect(usf).toContainText("2 members");
@@ -137,7 +137,7 @@ test("going back to people gives back the board it has always been", async ({ ap
   await app.boot({ features: STATS, progress: { 1: committed(0.8) }, firebase: { session: MEMBER, roster: ROSTER } });
   await stats(app);
 
-  // The column heading, not the podium caption beside it — both say the same
+  // The column heading, not the podium caption beside it, both say the same
   // thing, which is the point, so this has to name which one it means.
   const perMemberColumn = page.getByRole("columnheader", { name: "Committed each" });
   await page.getByRole("button", { name: "Ministry", exact: true }).click();

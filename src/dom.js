@@ -37,7 +37,7 @@ const corners = () => [
   html`<i key="br" className="corner br"></i>`,
 ];
 
-/* The app's mark: the "marked passage" — the ribbon marker cut from paper on a
+/* The app's mark: the "marked passage", the ribbon marker cut from paper on a
  * steel field, rules standing in for the passage it holds. Square-cornered and
  * edge to edge like every other object in the blueprint system.
  *
@@ -45,17 +45,17 @@ const corners = () => [
  * point of it being here: an app with one identity, whether it is being looked
  * at in a browser tab, on the way in, or at the top of every screen. The
  * geometry is copied from that file rather than imported, because a favicon has
- * to be a standalone file a browser can fetch — but the two must not drift, so
+ * to be a standalone file a browser can fetch, but the two must not drift, so
  * test/views.test.mjs reads icon.svg and checks this against it.
  *
  * The one thing it does that the file cannot is read the palette: a standalone
  * SVG has no :root, so icon.svg writes #1d2d3d and #f2f2f3 out longhand where
- * this names the reversed-plate tokens — which is also what keeps the mark
+ * this names the reversed-plate tokens, which is also what keeps the mark
  * visible on a dark page, where a steel square would sink into the ground.
  *
  * `rules` is the design's own concession to size. The drawing carries three
  * rules when it is shown large and two when it is small, because the third
- * closes up into grey below about 40px — icon.svg ships the 48px cut for the
+ * closes up into grey below about 40px, icon.svg ships the 48px cut for the
  * same reason.
  *
  * `aria-hidden`: the wordmark is beside it in both places it is used, so a

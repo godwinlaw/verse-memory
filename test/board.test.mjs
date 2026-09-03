@@ -1,7 +1,7 @@
 /* The board view-model: the two queues the home page offers.
  *
  * The board is where the split between the two sittings is most visible, so
- * these tests are mostly about which passages land in which queue — and about
+ * these tests are mostly about which passages land in which queue, and about
  * the freshness readout, which belongs to review alone. */
 
 import test from "node:test";
@@ -32,8 +32,8 @@ const boardState = (passages, progress, over = {}) => ({ ...stateOf(passages, pr
 test("the board splits the set into a review queue and a learn queue", () => {
   const passages = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
   const progress = {
-    1: committed(30), // ~22% — committed and faded, so due for review
-    2: committed(0), // ~100% — committed and holding
+    1: committed(30), // ~22%, committed and faded, so due for review
+    2: committed(0), // ~100%, committed and holding
     3: learning(1), // in progress, never written out
     // 4 untouched
   };
@@ -66,7 +66,7 @@ test("a queue row starts the sitting that suits its half of the set", () => {
 
 test("only the review queue carries a freshness readout", () => {
   // The learn queue's verses are not committed, so how far they have decayed is
-  // nothing a member can act on — they need writing out either way.
+  // nothing a member can act on, they need writing out either way.
   const passages = [{ id: 1 }, { id: 2 }, { id: 3 }];
   const progress = { 1: committed(30), 2: learning(1) };
   const { v } = build(boardState(passages, progress));

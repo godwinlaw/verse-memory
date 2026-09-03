@@ -57,13 +57,13 @@ const KEY_NOUNS = new Set(
 );
 
 /* How the blanks are chosen. The first three are densities over the same ranked
- * keyword pool — it is ordered most-important first, so a lower level keeps the
+ * keyword pool, it is ordered most-important first, so a lower level keeps the
  * highest-value words (names, key verbs) and drops the more incidental ones.
  *
  * "Alternating" is a different rule rather than a fourth density, and that is
  * the point of it: it ignores which words matter and blanks every other one,
  * function words included. Keyword blanks let a member lean on the shape of the
- * sentence — the little words are all still there to run along — where every
+ * sentence, the little words are all still there to run along, where every
  * other word gone means the passage has to be produced rather than recognised.
  * It carries `alternate` instead of `frac` because there is no pool to take a
  * fraction of.
@@ -94,7 +94,7 @@ export const BLANK_PARITIES = [
 // cut into shufflable chunks. minWords sets the smallest phrase before adjacent
 // parts get merged; maxChunks caps the count; fallback is the word-group size
 // used when punctuation alone leaves too few pieces. wordGroup, when set, cuts
-// strictly into fixed-size word groups — ignoring punctuation so phrases get
+// strictly into fixed-size word groups, ignoring punctuation so phrases get
 // broken apart mid-clause.
 //
 // verseGroup is the same idea one unit up, and it only applies to a passage
@@ -142,7 +142,7 @@ export function keyBlankSet(text, id, level = 1, parity = 0) {
   const words = (text || "").split(" ");
   const cfg = BLANK_LEVELS[level] || BLANK_LEVELS[1];
   // Alternating: nothing to rank and nothing to look up, just every other word.
-  // A passage of one word still blanks it at parity 0 and nothing at parity 1 —
+  // A passage of one word still blanks it at parity 0 and nothing at parity 1,
   // there is no half to fall back on, and inventing one would be worse.
   if (cfg.alternate) {
     const want = parity ? 1 : 0;
@@ -175,7 +175,7 @@ export function keyBlankSet(text, id, level = 1, parity = 0) {
     if (KEY_STOP.has(n)) return; // skip function words
     // The opening word is eligible only when it is a genuine content verb /
     // imperative (e.g. "Trust", "Come", "Seek", "Rejoice", "Submit", "Humble",
-    // "Delight", "Create") — never a trivial or function opener.
+    // "Delight", "Create"), never a trivial or function opener.
     if (i === 0 && !KEY_VERBS.has(n)) return;
     let score = 1 + Math.min(n.length, 9) * 0.1;
     if (KEY_VERBS.has(n)) score += 2.5; // action / imperative
@@ -204,7 +204,7 @@ const MIN_VERSES_TO_CUT = 3;
  *
  * `verses` is optional and only the long passages carry it (see
  * tools/fetch_passages.mjs). When it is there, the cut is made on verse
- * boundaries instead of on punctuation — a verse is the unit a member learns a
+ * boundaries instead of on punctuation, a verse is the unit a member learns a
  * chapter in, and it is the one the issue asked for. Everything else is
  * unchanged: the 171 one- and two-verse passages have no `verses` and take the
  * punctuation path exactly as they always did. */
@@ -214,7 +214,7 @@ export function chunksFor(t, level = 1, verses = null) {
   if (verses && verses.length >= MIN_VERSES_TO_CUT && cfg.verseGroup) {
     // Verses, taken verseGroup at a time. The maxChunks fold below still
     // applies, so a forty-verse chapter cannot deal forty tiles at the fine
-    // level — it groups them up until it fits.
+    // level, it groups them up until it fits.
     out = [];
     for (let i = 0; i < verses.length; i += cfg.verseGroup) out.push(verses.slice(i, i + cfg.verseGroup).join(" "));
   } else if (cfg.wordGroup) {

@@ -211,7 +211,7 @@ Deployments create / update an ECS task for each service / app with a desired re
 
 ### EC2
 
-The ECS cluster runs on a single [Amazon EC2](https://aws.amazon.com/ec2) instance (no [autoscaling group](https://docs.aws.amazon.com/autoscaling/ec2/userguide/AutoScalingGroup.html)—again, cost). The [r5a.large](https://aws.amazon.com/ec2/instance-types/r5) size was selected for cost / performance.
+The ECS cluster runs on a single [Amazon EC2](https://aws.amazon.com/ec2) instance (no [autoscaling group](https://docs.aws.amazon.com/autoscaling/ec2/userguide/AutoScalingGroup.html), again for cost). The [r5a.large](https://aws.amazon.com/ec2/instance-types/r5) size was selected for cost / performance.
 
 The instance runs a custom [ECS-optimized](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html) [Amazon Linux 2](https://aws.amazon.com/amazon-linux-2) [AMI](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) built with [Packer](https://www.packer.io) (see below).
 

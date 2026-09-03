@@ -1,4 +1,4 @@
-/* Assembles the view-model — the single plain object every view reads.
+/* Assembles the view-model, the single plain object every view reads.
  *
  * Views never touch component state: App hands this builder its state plus a
  * table of actions, and gets back one flat object of strings, numbers, and

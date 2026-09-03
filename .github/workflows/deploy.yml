@@ -53,7 +53,7 @@ jobs:
       # The Firestore rules are the authoritative half of the access gate, and
       # the client half (ALLOWED_DOMAINS in src/firebase.js) ships on every
       # push. Deploying only the client is how the two drift apart, and a rules
-      # file that is behind it refuses every read and write — which the app
+      # file that is behind it refuses every read and write, which the app
       # cannot tell from a member having no record, so members get asked to set
       # up a profile on each device and nothing syncs. Ship both together.
       - name: Deploy Firestore rules

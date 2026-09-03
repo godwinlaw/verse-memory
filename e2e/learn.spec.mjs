@@ -1,8 +1,8 @@
 /* A learn sitting: the one place a verse can be committed.
  *
  * The rule is srs.commitsVerse() and it is unit-tested there. What only a
- * browser can show is the rule being met — a member typing a passage into the
- * box, with or without the first-letter scaffold, and the verse moving across —
+ * browser can show is the rule being met, a member typing a passage into the
+ * box, with or without the first-letter scaffold, and the verse moving across,
  * and, just as importantly, the ways it is not met: a peek, and any activity
  * but recall. */
 
@@ -58,7 +58,7 @@ test("giving the passage back in full commits the verse", async ({ app, page }) 
   expect(await app.figure(app.committedFigure)).toBe(1);
   await expect(app.queue("Learn today")).not.toContainText(FIRST.ref);
 
-  // And it is still committed on the next visit — the record is the member's,
+  // And it is still committed on the next visit, the record is the member's,
   // not the session's.
   await app.revisit();
   expect(await app.figure(app.committedFigure)).toBe(1);
@@ -71,7 +71,7 @@ test("a peek means this attempt cannot commit the verse", async ({ app, page }) 
 
   await expect(page.getByText("A peek means this attempt cannot commit the verse.")).toBeVisible();
   await page.getByRole("button", { name: "Peek" }).click();
-  await expect(page.getByText("Peeked — this attempt can no longer commit the verse.")).toBeVisible();
+  await expect(page.getByText("Peeked, this attempt can no longer commit the verse.")).toBeVisible();
 
   await box.fill(fullText(FIRST.id));
   await page.getByRole("button", { name: "Submit" }).click();
@@ -87,7 +87,7 @@ test("a peek means this attempt cannot commit the verse", async ({ app, page }) 
   await expect(app.board).toContainText("1 in progress");
 });
 
-test("the first-letter scaffold still commits — that is what Learn is for", async ({ app, page }) => {
+test("the first-letter scaffold still commits, that is what Learn is for", async ({ app, page }) => {
   await app.boot({ progress: {} });
   await startLearning(app);
   await recallCard(page);
@@ -108,7 +108,7 @@ test("the first-letter scaffold still commits — that is what Learn is for", as
 
 /* The drill is forward-only, and it has to be: the reveal is live, so a member
  * who can backspace is being shown the answer to the question they are being
- * asked. The rule is pure (grading.lockedInput) and wired in App.setTyped —
+ * asked. The rule is pure (grading.lockedInput) and wired in App.setTyped,
  * what only a browser can show is the Backspace key itself not taking. */
 test("a wrong first letter gives up the word, and cannot be taken back", async ({ app, page }) => {
   await app.boot({ progress: {} });
@@ -125,7 +125,7 @@ test("a wrong first letter gives up the word, and cannot be taken back", async (
   await drill.pressSequentially(initial(words[0]) + wrong);
   await expect(drill).toHaveValue(initial(words[0]) + wrong);
 
-  // The word the member missed is now on screen — that is the teaching — with
+  // The word the member missed is now on screen, that is the teaching, with
   // what they typed struck through beneath it.
   await expect(page.getByText(words[1], { exact: true })).toBeVisible();
   await expect(page.getByText(wrong, { exact: true })).toBeVisible();
@@ -154,7 +154,7 @@ test("any other activity is practice, and the card says so", async ({ app, page 
 
   await page.getByRole("button", { name: "Blanks", exact: true }).click();
   await expect(page.getByText("Head over to the Recall tab to commit it into your memory bank.")).toBeVisible();
-  // Reciting is offered on the recall card and nowhere else — it is a second way
+  // Reciting is offered on the recall card and nowhere else, it is a second way
   // to fill that one box, not an activity of its own.
   await expect(page.getByText("Voice", { exact: true })).toHaveCount(0);
 
@@ -183,8 +183,8 @@ test("the first-letter and voice switches hand focus straight back to the box", 
   const box = await recallCard(page);
   await box.focus();
 
-  // The scaffold swaps in a different box entirely — a live drill, not the
-  // plain recall textarea — so focus has to follow it there.
+  // The scaffold swaps in a different box entirely, a live drill, not the
+  // plain recall textarea, so focus has to follow it there.
   await page.getByRole("button", { name: "Off", exact: true }).first().click();
   await expect(page.getByPlaceholder(/Type just the first letter of each word/)).toBeFocused();
 
@@ -225,7 +225,7 @@ test("another exercise after handing a card in is a live exercise", async ({ app
   const misses = page.getByText(/wrong tr/);
   // The tray is shuffled per passage, so which phrase is next is not known
   // here: click from the end of it until one is refused. Every click before
-  // that placed a phrase, so either way the board is answering — a dead card
+  // that placed a phrase, so either way the board is answering, a dead card
   // does neither.
   const dealt = await chunks.count();
   for (let i = 0; i < dealt && (await misses.count()) === 0; i++) await chunks.last().click();
@@ -273,7 +273,7 @@ test("a sitting run to the end counts what it committed", async ({ app, page }) 
 /* Reciting the passage instead of typing it.
  *
  * Recognition is the browser's own, so the engine is stubbed (voice: "stub" in
- * e2e/helpers/app.mjs) exactly as the Firebase SDK is — what is under test is
+ * e2e/helpers/app.mjs) exactly as the Firebase SDK is, what is under test is
  * everything downstream of it. Where the words go is pure and covered in
  * test/voice.test.mjs; what needs a real textarea is the caret.
  */
@@ -330,7 +330,7 @@ test("the words go in where the cursor is left", async ({ app, page }) => {
   await expect(box).toHaveValue("You yourselves");
 
   // Park the caret in the middle of what is already there, with the arrow key a
-  // member would actually use — the browser's own selection event is what
+  // member would actually use, the browser's own selection event is what
   // carries the position across, and that is the half no unit test reaches.
   await box.click();
   for (let i = 0; i < "yourselves".length; i++) await box.press("ArrowLeft");

@@ -1,8 +1,8 @@
 /* Test mode: a paper set, sat, and marked.
  *
  * Two things are worth driving here that no render test reaches. The paper is a
- * walk — every question has to be answerable and the last one has to end the
- * test — and the marking is a write: freshness moves, backdated to what the
+ * walk, every question has to be answerable and the last one has to end the
+ * test, and the marking is a write: freshness moves, backdated to what the
  * member actually demonstrated, while the status is left alone. Test mode never
  * commits a verse, and that is asserted on the board rather than in the model. */
 
@@ -69,7 +69,7 @@ test("a paper answered right is marked right", async ({ app, page }) => {
   await page.getByRole("button", { name: "10", exact: true }).click();
   await page.getByRole("button", { name: "Off", exact: true }).click(); // committed verses only
   await onlyActivity(page, "Name the passage");
-  await expect(page.getByText("2 verses under test, out of 2 that match — 2 questions.")).toBeVisible();
+  await expect(page.getByText("2 verses under test, out of 2 that match, 2 questions.")).toBeVisible();
   await page.getByRole("button", { name: "Start the test" }).click();
 
   for (const step of [1, 2]) {

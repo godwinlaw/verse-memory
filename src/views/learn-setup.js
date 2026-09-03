@@ -1,7 +1,7 @@
 /* Learn mode, before the session begins: how much new ground to take on.
  *
  * The counterpart to review-setup. Where that screen asks which committed
- * verses to keep fresh, this one asks how many uncommitted verses to work at —
+ * verses to keep fresh, this one asks how many uncommitted verses to work at,
  * and says plainly what it takes to commit one. */
 
 import { copy } from "../copy.js";

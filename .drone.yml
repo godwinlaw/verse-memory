@@ -1,4 +1,4 @@
-# Drone CI pipeline — A2N standard CI/CD (self-hosted at build.gracepointonline.org).
+# Drone CI pipeline, A2N standard CI/CD (self-hosted at build.gracepointonline.org).
 # GitHub Actions is unavailable on the org's legacy plan, so we use Drone.
 #
 # Build/test/publish is automated: lint on every push/PR, and on main we build

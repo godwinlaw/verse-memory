@@ -1,8 +1,8 @@
-/* The guide — how to get around the app, and why it is shaped the way it is.
+/* The guide, how to get around the app, and why it is shaped the way it is.
  *
  * The two setup screens carry a short explanation each (see explainer.js); this
  * is the long form, and the one screen a member can be pointed at when they ask
- * "what am I looking at". It says the same things in the same words — the
+ * "what am I looking at". It says the same things in the same words, the
  * ceilings, the commit bar, and the peek cost are read off srs.js here too, the
  * freshness demonstration runs the real curve rather than a drawn one, and the
  * schedule is srs.INTERVALS itself rather than a list typed out again, so a
@@ -27,7 +27,7 @@ const DAY_MS = 86400000;
 const CURVE = { left: 46, right: 502, top: 18, bottom: 132, span: 30, steps: 60 };
 
 /* Two verses at the same moment: one just learned, one practised a few times.
- * The point of the picture is the gap between them — reviewing does not top a
+ * The point of the picture is the gap between them, reviewing does not top a
  * verse up, it flattens the curve the verse falls along.
  *
  * Both are rungs of the real ladder rather than chosen stabilities: the first
@@ -65,7 +65,7 @@ export function guideVals({ state, actions }) {
 
   const held = Math.round(rAt(STABILITY.held, days) * 100);
   const fresh = Math.round(rAt(STABILITY.fresh, days) * 100);
-  // Where the held curve crosses the member's mark — how long that verse is left
+  // Where the held curve crosses the member's mark, how long that verse is left
   // alone before the app asks for it again.
   const holdsFor = Math.round(STABILITY.held * Math.log(100 / dueFreshness));
   const dayLabel = copy.guide.dayLabel(days);
@@ -130,11 +130,11 @@ export function guideVals({ state, actions }) {
     guideLadderTitle: copy.guide.ladderTitle,
     guideLadderNote: copy.guide.ladderNote,
     guideLadderBody: copy.guide.ladderBody(INTERVALS[0], INTERVALS[1]),
-    // The ladder itself, not a list typed out beside it — retune INTERVALS and
+    // The ladder itself, not a list typed out beside it, retune INTERVALS and
     // this drawing retunes with it.
     // `weight` is the gap drawn to scale, compressed by a power so a year and a
     // day fit the same strip and no two rungs read as the same length. The point
-    // is that the steps widen, not their exact ratio — a plain log flattens the
+    // is that the steps widen, not their exact ratio, a plain log flattens the
     // top half into seven bars of one size, which reads as a fault.
     guideRungs: INTERVALS.map((days, i) => ({
       key: i,

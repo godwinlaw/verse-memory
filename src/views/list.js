@@ -1,4 +1,4 @@
-/* All passages — searchable, filterable table of the whole set, and the one
+/* All passages, searchable, filterable table of the whole set, and the one
  * screen where a sitting can be hand-picked: tick the rows you want and take
  * them as a review or a learn session. */
 
@@ -7,7 +7,7 @@ import { html, sx, corners, React } from "../dom.js";
 import { muted } from "../ui/tokens.js";
 
 /* Shift-clicking ticks a run of rows (see viewmodel/list.js), and the browser's
- * own meaning for a shift-click — extend the text selection — would drag a blue
+ * own meaning for a shift-click, extend the text selection, would drag a blue
  * smear across the table on the way. Suppressed on mousedown, where that
  * selection is made; the click itself still fires. */
 const noTextSelect = (e) => e.shiftKey && e.preventDefault();
@@ -15,7 +15,7 @@ const noTextSelect = (e) => e.shiftKey && e.preventDefault();
 /* One column track shared by the header and every row, so they stay aligned. */
 const COLUMNS = "grid-template-columns:34px 56px 190px 1fr 110px 130px 110px;gap:0";
 
-/* What the ticked rows can be taken as. Only shown once something is ticked —
+/* What the ticked rows can be taken as. Only shown once something is ticked,
  * an empty selection has nothing to say, and the row buttons already cover the
  * one-verse case. */
 function selectionBar(v) {
@@ -49,8 +49,8 @@ function selectionBar(v) {
   </div>`;
 }
 
-/* The table's head — the column labels, and above them the selection bar once
- * rows are ticked — is one sticky element rather than two stacked ones (see
+/* The table's head, the column labels, and above them the selection bar once
+ * rows are ticked, is one sticky element rather than two stacked ones (see
  * styles.css, .list-head). Both halves are wanted on screen while a member
  * scrolls a long list, and the bar is the half that matters more: it holds what
  * ticking the rows was for, and it used to scroll away leaving a selection with

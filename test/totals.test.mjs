@@ -1,9 +1,9 @@
 /* The set-wide arithmetic behind the board's hero figures and the leaderboard.
  *
  * The one thing worth pinning down here is the split between two counts that
- * used to be one. The goal is a single category — the deadline was set against
+ * used to be one. The goal is a single category, the deadline was set against
  * the core verses, and folding the other shelves into the denominator would
- * drop every member's percentage without anyone forgetting a word — while the
+ * drop every member's percentage without anyone forgetting a word, while the
  * leaderboard ranks on everything a member holds. Getting those the wrong way
  * round is silent: both are plausible numbers. */
 
@@ -43,7 +43,7 @@ test("committing outside the goal moves the leaderboard figure but not the board
   const t = totals({ 4: committed(0), 5: committed(0) });
   // Two psalms committed: real work, and it counts where members are compared.
   assert.equal(t.committedAll, 2);
-  // But the board still reads 0 of 3 — the deadline is about the core verses,
+  // But the board still reads 0 of 3, the deadline is about the core verses,
   // and claiming progress against it would be a lie about a different set.
   assert.equal(t.memorized, 0);
   assert.equal(t.pctLabel, "0%");

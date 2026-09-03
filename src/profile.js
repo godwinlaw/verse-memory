@@ -1,7 +1,7 @@
 /* Member profile.
  *
- * Each signed-in member fills in a small profile — ministry group, gender, and
- * graduating class — that is stored alongside their progress (see storage.js /
+ * Each signed-in member fills in a small profile, ministry group, gender, and
+ * graduating class, that is stored alongside their progress (see storage.js /
  * firebase.js) and used to slice the leaderboard stats. This module holds the
  * option lists and the pure helpers; all functions are pure so they can be unit
  * tested in Node without a browser. */
@@ -45,14 +45,14 @@ export const GENDERS = ["Male", "Female"];
 /* The review settings a member can tune on their profile: how many verses a
  * review session takes, and how far a committed verse may fade before it comes
  * back round. The threshold sits well above the point where a verse is properly
- * at risk — a passage is easiest to hold when it is topped up before it slips,
+ * at risk, a passage is easiest to hold when it is topped up before it slips,
  * and reviewing at 75% costs a fraction of what relearning at 20% does. */
 export const DEFAULT_DUE_TOP_X = 10;
 export const DEFAULT_DUE_FRESHNESS = 75;
 
 /* How many of the words a write-out has to get right to commit a verse (see
  * srs.commitsVerse). 95% by default, matching srs.COMMIT_SCORE, so one dropped
- * article does not deny a passage the member plainly knows — a member who
+ * article does not deny a passage the member plainly knows, a member who
  * wants a stricter or more forgiving bar can move it, down to MIN_COMMIT_THRESHOLD
  * so the bar still means recalling the passage rather than approximating it. */
 export const DEFAULT_COMMIT_THRESHOLD = 95;
@@ -64,7 +64,7 @@ const clampCommitThreshold = (n) => Math.max(MIN_COMMIT_THRESHOLD, Math.min(MAX_
  * anyone who has never been asked.
  *
  * **The default is shown.** The board is the group looking at itself, and a
- * board most of its members are missing from is not one — so the absence of an
+ * board most of its members are missing from is not one, so the absence of an
  * answer reads as "yes", and only an explicit `false` takes a member off it.
  * The leaderboard says as much in a line above itself, so a member who would
  * rather not be there learns it from the board rather than from a form.
@@ -73,7 +73,7 @@ const clampCommitThreshold = (n) => Math.max(MIN_COMMIT_THRESHOLD, Math.min(MAX_
  * toward their ministry's average (see standings.standingsBy), because a group
  * figure is about the group and nobody should be able to drag theirs down, or
  * prop it up, by changing a switch about themselves. What leaves is the named
- * row — and the name itself, which standings.summarize stops publishing, so
+ * row, and the name itself, which standings.summarize stops publishing, so
  * hiding is a fact about the wire and not just about the screen. */
 export const DEFAULT_SHARE_RANKING = true;
 export const sharesRanking = (p) => (p || {}).shareRanking !== false;
@@ -138,14 +138,14 @@ export function isProfileComplete(p) {
 }
 
 /* Is there anything here at all? `{}` is what an unsigned device and a document
- * with no profile field both look like, and it is truthy — which is exactly how
+ * with no profile field both look like, and it is truthy, which is exactly how
  * an empty object used to win a merge against a real profile. */
 const hasProfile = (p) => !!p && Object.keys(p).length > 0;
 
 /* Reconcile a local and a remote profile, in three steps, each of which exists
  * to stop a real profile being lost to a lesser one:
  *
- *   1. If only one side has anything, that side — an empty object is not a
+ *   1. If only one side has anything, that side, an empty object is not a
  *      profile that beat the other, it is the absence of one. (`{}` vs a real
  *      profile carrying no `updatedAt` used to tie at 0 and hand back the
  *      empty side, which reads to the member as "set up your profile" on a

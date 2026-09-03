@@ -28,24 +28,24 @@ running.
 | `profile.spec.mjs` | the setup form, and the threshold the rest of the app reads           |
 | `board.spec.mjs`   | the hero figures, the two queues, the map, and where its buttons go   |
 | `list.spec.mjs`    | search, filters, ticking rows, shift-click runs, hand-picked sittings |
-| `learn.spec.mjs`   | committing a verse — and the three ways an attempt does not           |
+| `learn.spec.mjs`   | committing a verse, and the three ways an attempt does not            |
 | `review.spec.mjs`  | a card turned, blanks filled, a peek held, a paper handed in          |
-| `exam.spec.mjs`    | a test dealt, sat, and marked — and that it never commits             |
+| `exam.spec.mjs`    | a test dealt, sat, and marked, and that it never commits              |
 | `guide.spec.mjs`   | the figures it quotes, and the forgetting curve under its slider      |
 | `motion.spec.mjs`  | the motion block, and the same screens under prefers-reduced-motion   |
 | `mobile.spec.mjs`  | the refusal a phone gets instead of the app (its own project)         |
 
 ## How a spec is written
 
-Every spec starts by booting the app with a past — `app.boot({ progress, log,
-profile, firebase })` — and then presses buttons the way a member would. Two
+Every spec starts by booting the app with a past, `app.boot({ progress, log,
+profile, firebase })`, and then presses buttons the way a member would. Two
 conventions matter:
 
 - **Find things by their words, not by their markup.** `src/copy.js` is the one
   place the app's wording lives, so a spec quoting a sentence is quoting the
   same definition the view is. Structural locators (`.board-page`,
   `.result-strip`, `.flip-card`) are on the harness where the class _is_ the
-  contract — usually because CSS is what draws the thing.
+  contract, usually because CSS is what draws the thing.
 - **Seed records, do not earn them.** `helpers/seed.mjs` builds progress records
   through `src/srs.js` itself, so `committed(0.4)` means "a verse the app will
   read as 40% fresh" and stays true if the model is retuned.
@@ -62,8 +62,8 @@ Both are the app's own doors, not test hooks bolted on:
   `helpers/firebase-stub.mjs` answers that import with three small modules, so a
   session, a refused account, a cloud document and a failed network are all
   scenarios rather than fixtures. The app's own code path runs unchanged.
-  Everything else boots with `window.__FIREBASE_CONFIG__ = null` — cloud sync
-  off, local-only — which is the app's documented way of running without it.
+  Everything else boots with `window.__FIREBASE_CONFIG__ = null`, cloud sync
+  off, local-only, which is the app's documented way of running without it.
 
 Configuration goes in through `config.js`, the deploy-time override
 `index.html` already loads (see `config.example.js`), and state goes in through
@@ -82,9 +82,9 @@ which is why it is emulated in `boot()` rather than declared in the config.)
 **The board's figures are not text.** The five hero numbers are drawn by CSS
 from a registered `--count` (`styles.css`, `.count-up`), so the element carries
 no text node. Read them with `app.figure(app.committedFigure)`, as
-`test/views.test.mjs` does — never by matching digits.
+`test/views.test.mjs` does, never by matching digits.
 
 A page that logs a console error fails the test it logged in (see
-`fixtures.mjs`) — the browser's version of the zero-React-warnings rule the
+`fixtures.mjs`), the browser's version of the zero-React-warnings rule the
 render suite enforces. A spec that means to provoke one says so with
 `app.allowConsoleErrors(/…/)`.

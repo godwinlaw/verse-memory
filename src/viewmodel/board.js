@@ -30,7 +30,7 @@ function activityDays(log, today) {
   return out;
 }
 
-/* One row of either queue: number, reference, opening words, status — the same
+/* One row of either queue: number, reference, opening words, status, the same
  * passages seen at two stages of the same journey.
  *
  * The freshness readout is the exception, and it is review's alone. A verse in
@@ -85,7 +85,7 @@ export function boardVals({ state, totals, prog, actions, today = new Date() }) 
   return {
     /* The verse across the top of the hero. Read here rather than in the view
      * because whether it is printed is a question about what is shown, and the
-     * answer is a flag (config.js) — the sign-in gate keeps its own copy of the
+     * answer is a flag (config.js), the sign-in gate keeps its own copy of the
      * same epigraph, which is deliberately not covered by this. */
     epigraph: features.boardEpigraph ? copy.app.epigraph : "",
     deadlineLabel: deadline.toLocaleDateString("en-GB", { day: "numeric", month: "long" }),

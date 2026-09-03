@@ -2,14 +2,14 @@
  *
  * Written like firebase.js: an optional overlay the app runs happily without.
  * `voiceSupported()` coming back false just means the recall activity is a box
- * you type in, which is what it has always been — Firefox has no
+ * you type in, which is what it has always been, Firefox has no
  * SpeechRecognition, and nothing about that is worth working around here.
  *
  * A recognizer is `{ start, stop }`, driven through three callbacks:
  *
  *   onStatus(status)   "off" | "starting" | "listening"
  *   onText(text, settled)  a phrase, and whether the browser will still revise
- *                          it (see voice.js — an unsettled phrase replaces the
+ *                          it (see voice.js, an unsettled phrase replaces the
  *                          last version rather than being appended)
  *   onError(code)      a key from ERRORS
  *
@@ -58,7 +58,7 @@ export function createRecognizer(handlers) {
     handlers.onText(pending, false);
   };
   rec.onerror = (event) => {
-    // Silence is not a failure — it is a member thinking about the next line.
+    // Silence is not a failure, it is a member thinking about the next line.
     if (event.error === "no-speech" || event.error === "aborted") return;
     wanted = false;
     handlers.onError(errorFor(event.error));
@@ -68,7 +68,7 @@ export function createRecognizer(handlers) {
     try {
       rec.start();
     } catch {
-      /* already restarting — the next onend will try again */
+      /* already restarting, the next onend will try again */
     }
   };
 

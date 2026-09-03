@@ -1,4 +1,4 @@
-/* Shown once, right after a member finishes the sign-up profile form — a nudge
+/* Shown once, right after a member finishes the sign-up profile form, a nudge
  * toward the guide before they are turned loose on the board, with a way to
  * skip straight to learning for anyone who would rather start memorizing. */
 

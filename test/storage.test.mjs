@@ -63,7 +63,7 @@ test("every storage.* call in the source exists on the store", () => {
       }
     }
   }
-  assert.ok(called.size > 0, "found no storage.* calls — the scan is broken, not the store");
+  assert.ok(called.size > 0, "found no storage.* calls, the scan is broken, not the store");
   for (const [name, path] of called) {
     assert.equal(typeof storage[name], "function", `${path} calls storage.${name}(), which the store does not define`);
   }
@@ -137,7 +137,7 @@ test("an unset preference falls back, and a corrupt level does too", () => {
  * Nothing in the app demotes a verse: App.record() short-circuits on
  * `prev.status === "memorized"` and Test mode never touches status. The merge
  * has to hold the same line, because a newer "learning" record is not a
- * demotion that happened — it is a device that had not heard about the commit
+ * demotion that happened, it is a device that had not heard about the commit
  * yet. Taking it wholesale drops the board's committed count with nothing on
  * screen to explain it. */
 

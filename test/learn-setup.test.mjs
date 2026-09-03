@@ -1,6 +1,6 @@
 /* The learn-setup view-model: what a learn session takes on.
  *
- * Learning is the other half of the app from review — it works the verses that
+ * Learning is the other half of the app from review, it works the verses that
  * are not committed yet, and a session is what commits them. The boundary
  * between the two is asserted from the review side as well
  * (see test/review-setup.test.mjs). */
@@ -26,7 +26,7 @@ function build(state) {
 test("learn takes the uncommitted verses, and only those", () => {
   const passages = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
   const progress = {
-    1: committed(20), // committed, and well faded — still not learn material
+    1: committed(20), // committed, and well faded, still not learn material
     2: learning(20, 5),
     3: committed(0),
     // 4 never touched
@@ -41,8 +41,8 @@ test("learn takes the uncommitted verses, and only those", () => {
 test("verses already started come before ones never opened", () => {
   const passages = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
   const progress = {
-    2: learning(1, 5), // ~82% — started, freshest
-    4: learning(10, 5), // ~13% — started, most faded
+    2: learning(1, 5), // ~82%, started, freshest
+    4: learning(10, 5), // ~13%, started, most faded
     // 1 and 3 never touched, and keep canonical order between them
   };
   const { v, capture } = build(stateOf(passages, progress));

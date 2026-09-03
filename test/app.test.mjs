@@ -2,7 +2,7 @@
  * reach: a review session card by card, and a test from setup to summary.
  *
  * Every other screen is a function of state that test/views.test.mjs renders
- * directly, but a sitting is a sequence — answer, advance, finish, and the
+ * directly, but a sitting is a sequence, answer, advance, finish, and the
  * progress map written at the end. Nothing is mounted here either: the instance
  * is given a synchronous stand-in for React's update queue, so an action's
  * setState lands on `state` immediately and the next action can read it. */
@@ -35,7 +35,7 @@ Object.defineProperty(globalThis, "localStorage", {
 /* A few actions reach for the DOM on purpose: App.focusBlank, following the
  * transcript down as a recitation lands, and returning focus to the recall box
  * after the voice or first-letter toggle steals it. Nothing is mounted here, so
- * there are no elements to find — a document that finds none is exactly right. */
+ * there are no elements to find, a document that finds none is exactly right. */
 Object.defineProperty(globalThis, "document", {
   configurable: true,
   value: { getElementById: () => null },
@@ -319,7 +319,7 @@ test("another exercise on a handed-in card is a live exercise", () => {
   a.actions.submitCard(1);
   const marked = a.state.progress[1];
 
-  // A review card is a committed verse, so its mark stands — but the exercise
+  // A review card is a committed verse, so its mark stands, but the exercise
   // switched to has no paper of its own and has to take answers.
   a.actions.setMode("type");
   a.actions.setTyped("late words");
@@ -340,7 +340,7 @@ test("switching exercise reopens a learn card that fell short", () => {
   assert.equal(a.state.progress[4].status, "learning", "the first attempt fell short");
 
   // What the sitting is for is still open, so the exercise switched to can be
-  // handed in — the same relaxation "Try again" makes.
+  // handed in, the same relaxation "Try again" makes.
   a.actions.setMode("scramble");
   assert.equal(a.state.results[4], undefined, "the mark is cleared so Submit is live again");
   a.actions.placeChunk(0);
@@ -431,7 +431,7 @@ test("a passage that was peeked at was not written from memory", () => {
   assert.equal(peeked.state.progress[4].status, "learning", "a passage read is not a passage recalled");
 });
 
-test("the first-letter scaffold still commits a verse in Learn — that is what Learn is for", () => {
+test("the first-letter scaffold still commits a verse in Learn, that is what Learn is for", () => {
   const scaffolded = learnSession("type", { typeFirstLetter: true });
   scaffolded.actions.submitCard(1);
   assert.equal(scaffolded.state.progress[4].status, "memorized");
@@ -471,7 +471,7 @@ test("a session remembers which kind it is", () => {
 
 test("what commits a verse is the attempt, not the kind of session it happened in", () => {
   // A review session cannot reach an uncommitted verse, so this is unreachable
-  // rather than special-cased — but the rule is about what the member
+  // rather than special-cased, but the rule is about what the member
   // demonstrated, and pinning that here keeps it from quietly acquiring a
   // dependency on which menu they came from.
   const a = app(baseState());
@@ -777,7 +777,7 @@ test("the verse is handed over, so what is recited comes out as the verse reads"
     .join(" ");
 
   say(a, spoken);
-  // Every word was right, so the box holds the verse itself — bar the closing
+  // Every word was right, so the box holds the verse itself, bar the closing
   // punctuation, which has no following word to earn it.
   assert.equal(a.state.typed, verse.text.replace(/[^\p{L}\p{N}]+$/u, ""));
 });
@@ -864,8 +864,8 @@ test("a late phrase from another activity, or from the scaffold, is dropped", ()
 test("the transcript and the microphone belong to the card, not the session", () => {
   const a = reciting();
   say(a, "hear O Israel");
-  // An unsubmitted card is confirmed before it is walked off, recited or typed
-  // — the attempt is thrown away either way.
+  // An unsubmitted card is confirmed before it is walked off, recited or typed,
+  // the attempt is thrown away either way.
   a.actions.nextCard();
   assert.equal(a.state.reviewMoveAsk, "next");
   assert.equal(a.state.typed, "Hear O Israel", "and it is still there until they say so");
@@ -880,7 +880,7 @@ test("the transcript and the microphone belong to the card, not the session", ()
 /* ── sign-up welcome prompt ───────────────────────────────────────────────── */
 
 test("finishing the profile form for the first time is met with the welcome prompt", () => {
-  // Both halves of this are behind their flags now (src/config.js) — there is
+  // Both halves of this are behind their flags now (src/config.js), there is
   // no sign-up form to finish, so there is no prompt on the way out of it. The
   // rule is still here and still tested; it is just not on offer.
   withFeatures({ profileSetup: true, welcome: true }, () => {
@@ -893,7 +893,7 @@ test("finishing the profile form for the first time is met with the welcome prom
 /* ── being on the leaderboard, or not ─────────────────────────────────────── */
 
 test("a member who signs up without touching the switch is on the board", () => {
-  // The board is the group looking at itself, so the default is to be on it —
+  // The board is the group looking at itself, so the default is to be on it,
   // and the board itself carries the line saying how to leave.
   const a = app(baseState({ profile: {}, profileDraft: { ...PROFILE } }));
   a.actions.submitProfile();
@@ -915,7 +915,7 @@ test("turning it off is what hides the ranking, and it survives the save", () =>
 
 test("nothing but an explicit no takes a member off the board", () => {
   // A profile from before the switch existed, and a falsy-looking value that is
-  // not `false` — none of them is a member who asked to be taken off.
+  // not `false`, none of them is a member who asked to be taken off.
   for (const value of [undefined, null, "", 0]) {
     const a = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE, shareRanking: value } }));
     a.actions.submitProfile();
@@ -945,7 +945,7 @@ test("the learn button dismisses the prompt and heads straight into learn setup"
 
 /* ── resetting the record ─────────────────────────────────────────────────── */
 
-test("resetting clears the record — in state and in storage — and only the record", () => {
+test("resetting clears the record, in state and in storage, and only the record", () => {
   const a = app(baseState({ editingProfile: true, profileDraft: { ...PROFILE }, selection: [1, 2] }));
   saved.set("mv.progress", JSON.stringify(a.state.progress));
   saved.set("mv.log", JSON.stringify(a.state.log));

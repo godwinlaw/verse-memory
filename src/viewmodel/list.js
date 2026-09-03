@@ -2,7 +2,7 @@
  * passage, and the rows the member has ticked.
  *
  * Ticking is the one place in the app where a sitting is hand-picked rather
- * than drawn from a pool — the board and the two setup screens all deal from
+ * than drawn from a pool, the board and the two setup screens all deal from
  * progress.reviewPool()/learnPool(), which decide for the member. A selection
  * is still divided by the same rule (progress.selectionPools), so it can offer
  * a review sitting and a learn sitting but never mix them. */
@@ -36,7 +36,7 @@ const FADING_TAG =
   `border:1px solid ${freshColor(50)}`;
 
 /* The rows a shift-click covers: everything between the anchor and the row
- * clicked, in the order the rows are on screen — so a search or a filter bounds
+ * clicked, in the order the rows are on screen, so a search or a filter bounds
  * the run to what the member can actually see. Empty when there is no anchor to
  * measure from, or when either end has been filtered away. */
 function rangeBetween(shown, anchor, id) {
@@ -86,12 +86,12 @@ export function listVals({ state, prog, actions }) {
   const { review, learn } = selectionPools(state.passages, state.progress, selection);
   const count = review.length + learn.length;
 
-  // The header tick box acts on the rows in front of the member — which is what
+  // The header tick box acts on the rows in front of the member, which is what
   // makes searching or filtering the way a large selection is made. Clearing it
   // releases only those rows; a verse ticked under some other filter is left
   // where it is, and counted below as one the member cannot currently see.
   // The end a shift-click measures from: the last row ticked on its own. A run
-  // takes whatever the anchor is — ticked, and the run is ticked; just cleared,
+  // takes whatever the anchor is, ticked, and the run is ticked; just cleared,
   // and the run is cleared with it.
   const anchor = state.selectAnchor;
 
@@ -169,8 +169,8 @@ export function listVals({ state, prog, actions }) {
         selectStyle: checkBox(selected),
         selectTitle: copy.list.selectRow(selected, p.ref),
         // Shift held, and the click takes the whole run from the anchor rather
-        // than the one row. Anything else — no anchor, an anchor filtered off
-        // the screen, the anchor itself — is an ordinary tick, which is also
+        // than the one row. Anything else, no anchor, an anchor filtered off
+        // the screen, the anchor itself, is an ordinary tick, which is also
         // what sets the next anchor.
         onSelect: (e) => {
           const range = e && e.shiftKey && anchor != null && anchor !== p.id ? rangeBetween(shown, anchor, p.id) : [];
@@ -183,13 +183,13 @@ export function listVals({ state, prog, actions }) {
         statusLabel: STATUS_LABEL[p.status],
         tagStyle: statusTag(p.status),
         // Committed passages that have decayed past the fading threshold get an
-        // extra nudge — they are the ones most at risk of being lost.
+        // extra nudge, they are the ones most at risk of being lost.
         fading: p.status === "memorized" && reviewed && fresh < FADING_R * 100,
         fadingStyle: FADING_TAG,
         freshLabel: reviewed ? fresh + "%" : copy.list.freshNone,
         freshColor: reviewed ? freshColor(fresh) : muted(45),
         freshBarStyle: reviewed ? freshBar(fresh) : EMPTY_METER,
-        // There is no button that commits a passage — only writing it out does
+        // There is no button that commits a passage, only writing it out does
         // that (srs.commitsVerse). So the row offers the sitting that suits its
         // half of the set: review what is committed, learn what is not.
         actionLabel: p.status === "memorized" ? copy.list.actionReview : copy.list.actionLearn,

@@ -1,7 +1,7 @@
-/* The opening splash — "Registration mark".
+/* The opening splash, "Registration mark".
  *
  * Stands in front of the whole app while local data loads and Firebase says
- * whether there is a session to restore — after which the member lands on their
+ * whether there is a session to restore, after which the member lands on their
  * board, or on the sign-in gate (see App.render).
  *
  * It is the one screen in the app printed the other way round: a steel field
@@ -13,8 +13,8 @@
  *
  * Everything that moves is a keyframe in the splash block of styles.css; this
  * view only names the classes. The cycle is on a CSS timer rather than on the
- * boot's real state, so it is `aria-hidden` and the one truthful line — `note`
- * — is carried beside it, read aloud but not drawn. */
+ * boot's real state, so it is `aria-hidden` and the one truthful line, `note`,
+ * is carried beside it, read aloud but not drawn. */
 
 import { copy } from "../copy.js";
 import { html, sx, corners } from "../dom.js";

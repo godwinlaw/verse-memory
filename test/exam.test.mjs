@@ -24,7 +24,7 @@ const NOW = new Date("2026-08-15T12:00:00.000Z").getTime();
 const daysAgo = (n) => NOW - n * 86400000;
 
 /* Three committed verses at descending freshness, two in progress, the rest
- * untouched — enough to exercise every setup filter. */
+ * untouched, enough to exercise every setup filter. */
 const progress = {
   1: { hits: 5, status: "memorized", last: daysAgo(0.2), step: 2, stability: 12 }, // ~98%
   2: { hits: 4, status: "memorized", last: daysAgo(9), step: 1, stability: 8 }, // ~32%
@@ -277,7 +277,7 @@ test("one bad test never demotes a committed verse", () => {
 
 test("a test never commits a verse, however well it goes", () => {
   // Only writing the passage out in full does that (srs.commitsVerse), and a
-  // paper of multiple choice and matching is not that — however many perfect
+  // paper of multiple choice and matching is not that, however many perfect
   // papers are sat.
   let uncommitted = { 9: { hits: 2, status: "learning", last: daysAgo(5), step: 0, stability: 3 } };
   for (let i = 0; i < 5; i++) {
@@ -314,7 +314,7 @@ test("an untested verse is untouched, and an unseen one starts from scratch", ()
 
 test("normalizeSetup keeps a real category and forgets one that has gone", () => {
   assert.equal(normalizeSetup({ category: "psalms" }).category, "psalms");
-  // A shelf removed from a later build must read as "All" — a setup pointing at
+  // A shelf removed from a later build must read as "All", a setup pointing at
   // nothing would otherwise build an empty paper the member cannot explain.
   assert.equal(normalizeSetup({ category: "apocrypha" }).category, null);
   assert.equal(normalizeSetup({}).category, null);
@@ -334,7 +334,7 @@ test("a category narrows the verses a paper can cover", () => {
 
 test("the decoy references still come from the whole set", () => {
   // The paper is one shelf, but a wrong reference is only worth reasoning about
-  // if it could have come from anywhere — so buildExam is handed every passage
+  // if it could have come from anywhere, so buildExam is handed every passage
   // for its distractors even when eligiblePassages has narrowed the verses.
   const exam = buildExam({
     passages,

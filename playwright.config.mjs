@@ -9,7 +9,7 @@
  * the two-sided card, the reduced-motion block), and the Firebase seam answering
  * over the wire.
  *
- * The app is served exactly as `npm run dev` serves it — no bundler, no build —
+ * The app is served exactly as `npm run dev` serves it, no bundler, no build,
  * so what runs under test is the shipped tree. The three CDN scripts index.html
  * loads are the one substitution, fulfilled from the dev-only npm copies (see
  * e2e/helpers/app.mjs) so the suite neither needs the network nor pins itself to
@@ -18,7 +18,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /* Seeds are built in node (e2e/helpers/seed.mjs) and read in the browser, and
- * both halves date by the local day — text.dayKey(). They have to agree on which
+ * both halves date by the local day, text.dayKey(). They have to agree on which
  * day that is, so the runner takes the same zone `use.timezoneId` gives the
  * page. Node re-reads TZ per call, so setting it here is enough. */
 process.env.TZ = process.env.TZ || "America/Los_Angeles";
@@ -46,7 +46,7 @@ export default defineConfig({
     video: "off",
     // Note: prefers-reduced-motion is not set here. Every screen in this app
     // arrives with an animation and the app drops all of them under that query
-    // (styles.css), so the suite wants the reduced branch by default — but the
+    // (styles.css), so the suite wants the reduced branch by default, but the
     // context-level `reducedMotion` option is a no-op in this Chromium build,
     // so the harness emulates it per page instead (e2e/helpers/app.mjs, boot's
     // `reducedMotion` option). motion.spec.mjs is what opts back in.

@@ -7,7 +7,7 @@
  * quotes the figure it is relying on.
  *
  * Each record carries its rung of the interval ladder as well, so srs.migrate()
- * reads it as a current record and leaves the stability chosen here alone —
+ * reads it as a current record and leaves the stability chosen here alone,
  * a record without a `step` is a legacy one, and migrating it would replace
  * these stabilities with the ladder's own. */
 
@@ -19,7 +19,7 @@ export const daysAgo = (n) => NOW - n * 86400000;
 /* A committed verse, last written out `days` ago. */
 export const committed = (days) => ({ hits: 4, status: "memorized", last: daysAgo(days), step: 5, stability: 20 });
 
-/* A verse in progress — reviewed, never yet written out in full, so not
+/* A verse in progress, reviewed, never yet written out in full, so not
  * committed however fresh it happens to be. */
 export const learning = (days, stability = 5) => ({
   hits: 2,
@@ -31,7 +31,7 @@ export const learning = (days, stability = 5) => ({
 
 /* The slice of App state the two setup view-models read.
  *
- * Passages are given as `{ id }` — what these tests actually care about — and
+ * Passages are given as `{ id }`, what these tests actually care about, and
  * filled out here with the reference and text a real passage carries, so the
  * learn screen's preview has something to render. Anything passed explicitly
  * wins. */

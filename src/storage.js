@@ -4,7 +4,7 @@
  * and write here means the component never touches a storage API, and gives one
  * place to hang cloud sync (see the seam at the bottom, filled in by
  * firebase.js). Storage can be disabled, full, or blocked by privacy settings,
- * so every access is guarded — a failure degrades to in-memory state rather than
+ * so every access is guarded, a failure degrades to in-memory state rather than
  * breaking the UI. */
 
 const KEYS = {
@@ -37,7 +37,7 @@ function write(key, value) {
   try {
     localStorage.setItem(key, value);
   } catch {
-    /* disabled or full — keep running from in-memory state */
+    /* disabled or full, keep running from in-memory state */
   }
 }
 
@@ -79,12 +79,12 @@ export const storage = {
   loadTypeFirstLetter: (fallback) => readBool(KEYS.typeFirstLetter, fallback),
   // Hidden by default on a setup screen; left however a member last leaves it.
   loadExplainerOpen: (fallback) => readBool(KEYS.explainerOpen, fallback),
-  /* The Test mode setup, as last left. Returned raw — exam.normalizeSetup() is
+  /* The Test mode setup, as last left. Returned raw, exam.normalizeSetup() is
    * what decides whether a stored value is still a legal one. */
   loadExamSetup: () => readJSON(KEYS.examSetup, null),
   loadReviewSetup: (fallback) => readJSON(KEYS.reviewSetup, fallback),
   loadLearnSetup: (fallback) => readJSON(KEYS.learnSetup, fallback),
-  /* Which way round the page is printed. Returned raw — theme.normalizeTheme()
+  /* Which way round the page is printed. Returned raw, theme.normalizeTheme()
    * is what decides whether a stored value is still one of the choices, the
    * same division loadExamSetup makes. index.html reads this key directly, one
    * line before the first paint; see the note there. */
@@ -103,7 +103,7 @@ export const storage = {
   },
 
   /* Start the set over: the record of what has been memorized, emptied. Only
-   * progress and the daily log go — the profile and the device-local exercise
+   * progress and the daily log go, the profile and the device-local exercise
    * preferences are not that record.
    *
    * `replace` is the whole reason this is not just saveProgressAndLog({}, {}):
@@ -166,16 +166,16 @@ function remoteSync({ replace = false } = {}) {
 /* When a record was written.
  *
  * For a review that is simply `last`: the verse was reviewed at the moment the
- * record was saved. A test result is the exception — it backdates `last` to the
+ * record was saved. A test result is the exception, it backdates `last` to the
  * freshness the member actually demonstrated (srs.testedLast), so it carries an
  * `updatedAt` saying when it was really written. Records saved before that field
- * existed have only `last`, which for them is the same thing — and a verse
+ * existed have only `last`, which for them is the same thing, and a verse
  * reviewed after a test carries both, so take whichever is later. */
 const stampOf = (rec) => Math.max((rec && rec.updatedAt) || 0, (rec && rec.last) || 0);
 
-/* One passage, as two devices last left it. The newer record wins — that is
+/* One passage, as two devices last left it. The newer record wins, that is
  * what carries freshness, and the rung of the interval ladder the verse is on,
- * across devices — with one exception.
+ * across devices, with one exception.
  *
  * **Committing is one-way.** Nothing in the app demotes a verse: App.record()
  * short-circuits on `prev.status === "memorized"`, and Test mode moves
@@ -183,7 +183,7 @@ const stampOf = (rec) => Math.max((rec && rec.updatedAt) || 0, (rec && rec.last)
  * never a demotion that happened; it is a device that had not yet heard about
  * the commit, writing from what it knew. Taking that record wholesale is how a
  * verse the member committed on one device quietly goes back to uncommitted
- * when another device syncs — the count on the board dropping with nothing to
+ * when another device syncs, the count on the board dropping with nothing to
  * explain it. The newer record still wins on every other field; only the
  * status is carried forward. */
 function reconcile(a, b) {

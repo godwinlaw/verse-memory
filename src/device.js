@@ -3,14 +3,14 @@
  * Verse Mastery is not offered on a phone or a tablet: working a passage is
  * meant to be a sitting at a desk rather than another reason to pick the phone
  * up, so the app stands a gate in front of itself there (views/mobile-gate.js,
- * dispatched first in App.render — before even the splash, since a member who
+ * dispatched first in App.render, before even the splash, since a member who
  * is not getting in should not be made to watch the boot).
  *
  * The question this module answers is deliberately about the *device*, not the
  * window: a narrow browser window on a laptop is still a laptop, and the app's
  * own breakpoints (styles.css) are what serve it. So nothing here reads a
- * width. What it reads is what the browser says it is — a string and a touch
- * count, both handed in — which keeps the rule a pure function with the seam
+ * width. What it reads is what the browser says it is, a string and a touch
+ * count, both handed in, which keeps the rule a pure function with the seam
  * (`detectMobile`) a single line beside it, as recognizer.js and firebase.js
  * are to voice.js and storage.js. */
 
@@ -24,7 +24,7 @@ const MOBILE_UA = /Android|iPhone|iPad|iPod|Mobi|Windows Phone|IEMobile|BlackBer
  * device you hold, which is the thing being ruled out, not a screen size. */
 export function isMobileDevice({ userAgent = "", platform = "", maxTouchPoints = 0 } = {}) {
   if (MOBILE_UA.test(userAgent)) return true;
-  // iPadOS 13 and later report themselves as a desktop Mac — same user agent,
+  // iPadOS 13 and later report themselves as a desktop Mac, same user agent,
   // same platform string. The touchscreen is the only thing that gives them
   // away, and `> 1` rather than `> 0` so a Mac with a drawing tablet plugged in
   // is not mistaken for one.
@@ -32,7 +32,7 @@ export function isMobileDevice({ userAgent = "", platform = "", maxTouchPoints =
 }
 
 /* The browser seam: ask the window the question above. Answers false where
- * there is no window at all (the node render suite), which is correct — nothing
+ * there is no window at all (the node render suite), which is correct, nothing
  * is being held. */
 export function detectMobile(win = typeof window === "undefined" ? undefined : window) {
   const nav = win && win.navigator;

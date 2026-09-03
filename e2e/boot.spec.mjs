@@ -1,7 +1,7 @@
 /* Landing: the splash, and what it decides.
  *
- * The splash is the one screen with a clock in it — a floor it stays up for and
- * a ceiling it waits on Firebase under — so it is the one screen a render test
+ * The splash is the one screen with a clock in it, a floor it stays up for and
+ * a ceiling it waits on Firebase under, so it is the one screen a render test
  * cannot say much about. These are the two ends of that wait, plus the seam the
  * whole thing is configured through. */
 
@@ -15,7 +15,7 @@ test("the splash names the set, then hands the member to their board", async ({ 
   await expect(app.splash).toBeVisible();
   await expect(page.locator(".splash-wordmark")).toHaveText("VERSE MASTERY");
   // The one thing on it drawn from data, and it comes from the passage module
-  // rather than from state — which is still loading behind it.
+  // rather than from state, which is still loading behind it.
   await expect(page.locator(".splash-cycle")).toContainText(`Indexing ${TOTAL} passages`);
   // The cycle is drawn but not announced; the truthful line is read instead.
   await expect(page.getByRole("status")).toHaveText("Checking your session…");

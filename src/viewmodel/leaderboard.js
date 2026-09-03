@@ -24,7 +24,7 @@ const FILTERS = [
 ];
 
 /* The stored value for a filter/group, as it should read on screen. Only
- * gender and graduating class need a translation — ministry group is already
+ * gender and graduating class need a translation, ministry group is already
  * shown verbatim. */
 const displayValue = (key, value) =>
   key === "gender" ? copy.gender[value] || value : key === "gradClass" ? copy.leaderboard.filterClassOf(value) : value;
@@ -50,7 +50,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   const roster = (state.peers || []).concat([
     {
       name: copy.leaderboard.you,
-      // Every category, matching the peer rows above — a peer's count is the
+      // Every category, matching the peer rows above, a peer's count is the
       // committed verses in their summary (standings.summarize), which knows
       // nothing about the goal category. totals.memorized is the goal's own
       // count and would have quietly under-reported you against everybody else.
@@ -71,7 +71,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   const passes = (row) =>
     FILTERS.every((f) => selected[f.key] === ANY || String(row[f.field]) === String(selected[f.key]));
 
-  // A member with nothing committed yet has no row on the board at all — there
+  // A member with nothing committed yet has no row on the board at all, there
   // is nothing meaningful to rank or display for them.
   const counted = roster
     .filter(passes)
@@ -81,25 +81,25 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
   /* Who is actually named on the people table.
    *
    * Hiding is about the member, not their work, so it applies **here and not
-   * to `counted`** — a hidden member goes on feeding their ministry's average
+   * to `counted`**, a hidden member goes on feeding their ministry's average
    * below, and a group figure stays a fact about the group rather than a tally
    * of who happened to leave the switch on. Your own row is always yours to
    * see: `me` survives the filter, so a hidden member can still read where
    * they stand while nobody else can. `hiddenNote` is what says so.
    *
    * Only an explicit `false` takes a row off, exactly as profile.sharesRanking
-   * has it — a row carrying nothing is a member who never chose, and the board
+   * has it, a row carrying nothing is a member who never chose, and the board
    * is the group looking at itself. */
   const ranked = counted.filter((p) => p.me || p.shareRanking !== false);
   const top = Math.max(1, ranked[0] ? ranked[0].freshnessScore : 1);
 
   // Ranking groups is the same board asked a different question, so it runs off
   // the same filtered rows: rank the ministries within the class of 2027 and
-  // both are answered at once. The measure is per member throughout — see
+  // both are answered at once. The measure is per member throughout, see
   // standings.js for why a total would only rank attendance.
   const rankBy = state.leaderRankBy || "people";
   // A group's name is its raw field value (e.g. standingsBy names a ministry
-  // grouping "Kairos" straight off the profile) — gender is the one grouping
+  // grouping "Kairos" straight off the profile), gender is the one grouping
   // whose stored value is not what a member should read on screen.
   const grouped = standingsBy(counted, rankFieldFor(rankBy)).map((g) =>
     rankBy === "gender" ? { ...g, name: copy.gender[g.name] || g.name } : g,
@@ -116,7 +116,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
 
     /* One line, said to the member it is about. Shown either way, because the
      * default is to be on the board and a member who would rather not be needs
-     * to be told they can leave — which is the whole reason this line exists. */
+     * to be told they can leave, which is the whole reason this line exists. */
     shareNote: sharesRanking(me) ? copy.leaderboard.shownNote : copy.leaderboard.hiddenNote,
 
     rankByLabel: copy.leaderboard.rankByLabel,
@@ -128,7 +128,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
     })),
     isGrouped,
     // The blurb explains the measure, and which measure it is depends on what
-    // is being ranked — so the two sit together rather than the view choosing.
+    // is being ranked, so the two sit together rather than the view choosing.
     blurb: isGrouped ? copy.leaderboard.groupBlurb : copy.leaderboard.blurb,
 
     leaderFilters: FILTERS.map((f) => ({
@@ -154,7 +154,7 @@ export function leaderboardVals({ state, totals, myStreak, actions, now = Date.n
       count: isGrouped ? p.avgCount.toFixed(1) : p.count,
       // "of 187" is a claim about one person's set, so a group says what the
       // figure is instead of what it is out of. Out of the whole set rather
-      // than the goal category, because `count` above spans every category —
+      // than the goal category, because `count` above spans every category,
       // against the goal's 171 a member could read "174 of 171".
       caption: isGrouped ? copy.leaderboard.podiumEach : copy.leaderboard.podiumOf(totals.totalCount),
       avgFresh: avgFreshPct(p.freshnessScore, p.count) + "%",

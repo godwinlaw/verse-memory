@@ -1,4 +1,4 @@
-/* What counts as a mobile device — the rule the app's first gate reads.
+/* What counts as a mobile device, the rule the app's first gate reads.
  *
  * Only the pure half is asserted here; `detectMobile` is the one-line seam that
  * asks the window the same question, and e2e/mobile.spec.mjs is what drives it
@@ -43,7 +43,7 @@ test("an iPad claiming to be a Mac is caught by its touchscreen", () => {
   const iPad = { userAgent: UA.iPadOS, platform: "MacIntel", maxTouchPoints: 5 };
   assert.equal(isMobileDevice(iPad), true);
   // The same machine without the touchscreen is the Mac it says it is. A
-  // trackpad reports 0, and a single stylus 1 — hence the threshold.
+  // trackpad reports 0, and a single stylus 1, hence the threshold.
   assert.equal(isMobileDevice({ ...iPad, maxTouchPoints: 0 }), false);
   assert.equal(isMobileDevice({ ...iPad, maxTouchPoints: 1 }), false);
 });

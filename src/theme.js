@@ -2,7 +2,7 @@
  *
  * The reader's operating system is still the default and still answers for most
  * members (see the theme block in styles.css). This module is only what it takes
- * for a member to say otherwise on one device — a screen read under office
+ * for a member to say otherwise on one device, a screen read under office
  * lights and the same screen read at night are two different questions, which is
  * why the answer is **device-local and never synced**, like the exercise
  * preferences it sits beside in storage.js. A member signing in on a second
@@ -16,7 +16,7 @@
  * **The resolving happens here rather than in the stylesheet**, and that is what
  * keeps the dark palette written once. CSS cannot say "dark unless the member
  * asked for light" without repeating the whole block of token overrides under a
- * second selector, so `prefers-color-scheme` is read in one place — here — and
+ * second selector, so `prefers-color-scheme` is read in one place, here, and
  * what lands on the root element is always the settled answer: `data-theme` of
  * "light" or "dark", never "system". The stylesheet reads that attribute and
  * nothing else. index.html stamps it before the first paint, so the page never

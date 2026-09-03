@@ -3,7 +3,7 @@ rules_version = '2';
 // Firestore security rules for Verse Mastery.
 // Access is restricted to verified Google accounts in the Acts 2 Network
 // Workspace domains (gpmail.org, acts2.network). This is the authoritative
-// enforcement — the client-side domain check is a convenience, not security.
+// enforcement, the client-side domain check is a convenience, not security.
 // Deploy with: firebase deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -24,8 +24,8 @@ service cloud.firestore {
 
     // Per-user leaderboard summaries: standings/{uid} = the few figures the
     // board ranks, written from the record above by its owner (see
-    // src/standings.js, summarize). Same access as users/{uid} — everyone
-    // reads, each member writes only their own — but this is the collection
+    // src/standings.js, summarize). Same access as users/{uid}, everyone
+    // reads, each member writes only their own, but this is the collection
     // the board actually scans, so the read is a fraction of the size.
     match /standings/{uid} {
       allow read: if isActsUser();

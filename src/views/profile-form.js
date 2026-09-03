@@ -1,8 +1,8 @@
 /* Member profile form.
  *
  * Shown full-screen after sign-in until the member has given a name, ministry
- * group, gender, and graduating class (v.isSetup — no way out), and reopened
- * from the header for later edits (v.isSetup false — cancellable). */
+ * group, gender, and graduating class (v.isSetup, no way out), and reopened
+ * from the header for later edits (v.isSetup false, cancellable). */
 
 import { copy } from "../copy.js";
 import { html, sx, corners, React } from "../dom.js";
@@ -49,7 +49,7 @@ function resetSection(v) {
 /* The warning, in the order it matters: what is erased, that it reaches the
  * member's other devices, and what survives. Same dialog the sessions use for
  * losing an unsubmitted card (views/review.js), since the loss is the same
- * kind — only bigger. */
+ * kind, only bigger. */
 function resetDialog(v) {
   return html`<div className="dialog-backdrop" onClick=${v.onResetCancel} style=${sx("z-index:30")}>
     <div className="dialog blueprint" onClick=${(e) => e.stopPropagation()} style=${sx("background:var(--color-bg)")}>

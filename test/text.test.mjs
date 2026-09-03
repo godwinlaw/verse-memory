@@ -11,7 +11,7 @@ test("norm lowercases and strips punctuation", () => {
 
 test("an apostrophe is punctuation like any other", () => {
   // Nobody pronounces one, and a member typing from the sound of the verse
-  // cannot tell where it belongs — so these are one word.
+  // cannot tell where it belongs, so these are one word.
   assert.equal(norm("eagles"), norm("eagles'"));
   assert.equal(norm("eagles"), norm("eagle's"));
   assert.equal(norm("dont"), norm("don't"));
@@ -48,7 +48,7 @@ test("dayKey formats an ISO-ish local key", () => {
 
 test("dayKey returns the local day, not UTC", () => {
   // A date constructed late in the evening, local time. Regardless of the
-  // machine's TZ, dayKey must agree with getFullYear/getMonth/getDate — not
+  // machine's TZ, dayKey must agree with getFullYear/getMonth/getDate, not
   // roll over the way toISOString() would for timezones behind UTC.
   const d = new Date();
   d.setHours(23, 30, 0, 0);

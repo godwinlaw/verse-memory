@@ -1,12 +1,12 @@
 /* The gate between signing in and the app, for the moment the member's cloud
- * record is being read — and for when it cannot be read at all.
+ * record is being read, and for when it cannot be read at all.
  *
  * It exists because the screen behind it is the sign-up profile form. A member
  * whose record could not be fetched looks exactly like a member who has none,
  * and sending them through sign-up does not merely inconvenience them: the
  * profile they fill in is stamped with a fresh `updatedAt`, so it wins the
  * next merge (profile.mergeProfile) and replaces the real one. So the app
- * waits here instead, with the only two moves that are safe — try again, or
+ * waits here instead, with the only two moves that are safe, try again, or
  * sign out. */
 
 import { copy } from "../copy.js";
@@ -47,7 +47,7 @@ export function syncGateView(v) {
 }
 
 /* The same trouble, once the member is past the gate: they have a usable
- * profile on this device, so the app is theirs to use — but nothing they do is
+ * profile on this device, so the app is theirs to use, but nothing they do is
  * leaving it, and a sitting spent believing otherwise is the thing to prevent.
  * A strip under the header rather than a dialog: it must not stop the work. */
 export function syncBannerView(v) {

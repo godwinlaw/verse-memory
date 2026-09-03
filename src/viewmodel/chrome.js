@@ -6,11 +6,11 @@ import { features } from "../config.js";
 import { initialsOf, isProfileComplete } from "../profile.js";
 import { muted } from "../ui/tokens.js";
 
-/* `also` lists the views that belong to a nav item without being it — the
+/* `also` lists the views that belong to a nav item without being it, the
  * screens either side of a session, which should keep their entry underlined.
  * `feature` names the flag a stop is offered under (config.js); a stop without
  * one is always there. Filtering the bar is all it takes to put a screen away,
- * because every destination in the app is on it — which is the same fact the
+ * because every destination in the app is on it, which is the same fact the
  * guide's map is drawn from. */
 const NAV = [
   { key: "board", label: copy.nav.board, also: ["done"] },
@@ -35,7 +35,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     user,
     userName: profile.name || (user && user.name) || (user && user.email) || "",
     /* The account circle in the corner, and what opens under it. The initials
-     * stand in for the name that used to be printed beside it — one mark rather
+     * stand in for the name that used to be printed beside it, one mark rather
      * than a name, a gear and a sign-out laid out across the bar. */
     userInitials: initialsOf(profile.name || (user && user.name) || "", (user && user.email) || ""),
     accountOpen: !!state.accountOpen,
@@ -50,8 +50,8 @@ export function chromeVals({ state, groupName, motto, actions }) {
     profileSummary: isProfileComplete(profile) ? profile.name : copy.header.setUpProfile,
 
     /* Sync trouble, shown as a strip under the header. Only for a member who
-     * got past the sync gate — that is, one whose profile is complete on this
-     * device — so it says "your work is staying here", not "we don't know who
+     * got past the sync gate, that is, one whose profile is complete on this
+     * device, so it says "your work is staying here", not "we don't know who
      * you are". A member who is signed out or running an unconfigured build has
      * nothing to sync and is told nothing. */
     syncWarning:

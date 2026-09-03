@@ -1,6 +1,6 @@
 /* Assemble the deployable static site into ./dist.
  *
- * The app has no bundler — this just copies the web-served files (index.html,
+ * The app has no bundler, this just copies the web-served files (index.html,
  * src/, data/, and a runtime config.js) into a clean directory so hosts like
  * Cloudflare Workers static assets serve only those, not the whole repo
  * (node_modules/, design/, docs/, tools/, tests, etc.). */
@@ -20,7 +20,7 @@ cpSync("data", `${OUT}/data`, { recursive: true });
 // Runtime config: prefer a real local config.js if present, else the template.
 const configSource = existsSync("config.js") ? "config.js" : "config.example.js";
 
-/* A local config.js is normally a convenience — a shorter splash, or a staging
+/* A local config.js is normally a convenience, a shorter splash, or a staging
  * Firebase project. But one of the things it can say is
  * `window.__FIREBASE_CONFIG__ = null`, which turns cloud sync off entirely, and
  * that is a perfectly reasonable thing to want while poking at the app in a
@@ -34,7 +34,7 @@ const configured = (() => {
   try {
     runInNewContext(readFileSync(configSource, "utf8"), { window });
   } catch {
-    return undefined; // not our business to validate — the browser will complain
+    return undefined; // not our business to validate, the browser will complain
   }
   return window.__FIREBASE_CONFIG__;
 })();

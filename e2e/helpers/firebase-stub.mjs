@@ -2,14 +2,14 @@
  *
  * src/firebase.js loads the modular SDK from the gstatic CDN by dynamic import,
  * which is exactly the seam a browser test can take over: the three modules are
- * fulfilled from the strings below instead, so the whole gate — sign in, a
- * refused domain, remote progress merged into local, signing out — runs against
+ * fulfilled from the strings below instead, so the whole gate, sign in, a
+ * refused domain, remote progress merged into local, signing out, runs against
  * the app's real code path with no Google account and no network.
  *
  * The stub is only ever as wide as src/firebase.js asks for. Its surface is
  * exactly the imports named there (initializeApp; getAuth, onAuthStateChanged,
  * signOut, GoogleAuthProvider, signInWithPopup; getFirestore, doc, getDoc,
- * getDocFromServer, setDoc, runTransaction, collection, getDocs) — if that file starts using something else, the
+ * getDocFromServer, setDoc, runTransaction, collection, getDocs), if that file starts using something else, the
  * stub fails loudly rather than pretending.
  *
  * The scenario is not baked into the modules: they read window.__E2E_FIREBASE__,
@@ -32,7 +32,7 @@ export const OUTSIDER = {
   photoURL: null,
 };
 
-/* A Firebase web config shaped like the real one. Only its presence matters —
+/* A Firebase web config shaped like the real one. Only its presence matters,
  * isFirebaseConfigured() is what decides whether the app tries to sign in. */
 export const STUB_CONFIG = {
   apiKey: "e2e-key",
@@ -124,7 +124,7 @@ const DOC_KEY = "e2e:doc";
 /* Keyed by path, because a push now writes two documents: the member's record
  * and the small summary the leaderboard reads (see src/standings.js). A single
  * slot would have the second land on top of the first. Only the record is
- * seeded from the scenario — a summary is derived, never authored. */
+ * seeded from the scenario, a summary is derived, never authored. */
 const RECORD = "users";
 
 function docs() {
@@ -183,7 +183,7 @@ const snapshot = (ref) => {
 };
 
 /* A read-modify-write, as the push makes it. The updateFunction runs against
- * what is stored now, and its writes land only if it resolves — which is what
+ * what is stored now, and its writes land only if it resolves, which is what
  * lets a spec change the document underneath and assert the push folded into
  * the change rather than over it. */
 export function runTransaction(db, updateFunction) {
@@ -208,7 +208,7 @@ export function runTransaction(db, updateFunction) {
 /* The initial pull uses getDocFromServer, never getDoc.
  *
  * Firestore's getDoc can answer from the local view, which includes this
- * client's own pending writes — so on a cold client it can return a document
+ * client's own pending writes, so on a cold client it can return a document
  * holding only the identity write, with no progress and no profile. The
  * scenario's localView is that situation: what getDoc would hand back, as
  * distinct from what is really stored. A scenario that sets it is asserting
@@ -239,7 +239,7 @@ export function getDoc(ref) {
   return Promise.resolve(snapshot(ref));
 }
 
-/* A collection read, of which the app makes exactly two — the leaderboard's
+/* A collection read, of which the app makes exactly two, the leaderboard's
  * scan of \`standings\`, and the fallback scan of \`users\` it makes only while
  * that collection is empty (see src/firebase.js, fetchRoster). Answered by
  * name, so a scenario chooses which of the two the board is reading by which
@@ -262,9 +262,9 @@ const MODULES = {
 /* Serve the stub in place of the CDN.
  *
  * `mode` is what the network does rather than what the SDK says:
- *   "stub"        — the modules above (the default);
- *   "unreachable" — the import fails, which is the app's local-only fallback;
- *   "hang"        — the import never answers, which is what SPLASH_MAX_MS is for. */
+ *   "stub"       , the modules above (the default);
+ *   "unreachable", the import fails, which is the app's local-only fallback;
+ *   "hang"       , the import never answers, which is what SPLASH_MAX_MS is for. */
 export async function installFirebaseStub(page, { mode = "stub" } = {}) {
   await page.route("https://www.gstatic.com/firebasejs/**", async (route) => {
     if (mode === "unreachable") return route.abort("failed");

@@ -28,7 +28,7 @@ test("a skipped word does not desynchronise the rest, within LOOKAHEAD", () => {
 
 test("a transposition outside LOOKAHEAD does not match", () => {
   const words = ["one", "two", "three", "four", "five", "six", "seven"];
-  // "seven" typed 6 tokens early — well past LOOKAHEAD (3) — must not match
+  // "seven" typed 6 tokens early, well past LOOKAHEAD (3), must not match
   // seven's slot, and must not desync everything after it either.
   const { diff } = gradeWritten(words, "seven one two three four five six");
   assert.equal(diff.find((d) => d.word === "seven").hit, false);
@@ -36,16 +36,16 @@ test("a transposition outside LOOKAHEAD does not match", () => {
 
 test("a miss carries what was typed in its place", () => {
   const words = ["Trust", "in", "the", "Lord"];
-  // "the" is written as "teh" — a real mistake, not an omission — so the slot
+  // "the" is written as "teh", a real mistake, not an omission, so the slot
   // it landed in is worth showing.
   const { diff } = gradeWritten(words, "Trust in teh Lord");
   assert.equal(diff.find((d) => d.word === "the").typed, "teh");
-  assert.equal(diff.find((d) => d.word === "Trust").typed, "", "a hit carries nothing — there is no mistake to show");
+  assert.equal(diff.find((d) => d.word === "Trust").typed, "", "a hit carries nothing, there is no mistake to show");
 });
 
 test("a word never reached carries nothing typed, not the next word's", () => {
   const words = ["Trust", "in", "the", "Lord"];
-  // Typing runs out after "Trust in" — "the" and "Lord" are both missed with
+  // Typing runs out after "Trust in", "the" and "Lord" are both missed with
   // nothing left to blame them on.
   const { diff } = gradeWritten(words, "Trust in");
   assert.equal(diff.find((d) => d.word === "the").typed, "");

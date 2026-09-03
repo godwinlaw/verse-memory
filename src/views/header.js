@@ -7,7 +7,7 @@ import { html, sx, appMark } from "../dom.js";
 /* The member, as one mark in the corner: their initials in a filled circle,
  * with Settings and Sign out under it.
  *
- * It replaced a name, a gear and a sign-out button laid out across the bar —
+ * It replaced a name, a gear and a sign-out button laid out across the bar,
  * three things competing with the nav for the same row, none of them something
  * a member presses often. A menu costs one press to open and gives the bar back
  * to what the app is for.

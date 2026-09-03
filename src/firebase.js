@@ -4,13 +4,13 @@
  * domains (see ALLOWED_DOMAINS below). Enforcement is twofold: (1) the client
  * rejects and signs out any account outside those domains, and (2) Firestore
  * security rules (deploy/firestore.rules) allow access only to verified
- * identities in them. Only the second is security — never rely on the client.
+ * identities in them. Only the second is security, never rely on the client.
  *
  * Once a member is signed in, their progress syncs across devices:
  *   • Firestore stores one document per user at
  *     users/{uid} = { name, email, progress, log, profile }.
  *   • On sign-in we pull the remote doc and hand it back for merging.
- *   • Every local save is debounced and folded into the user's doc — the push
+ *   • Every local save is debounced and folded into the user's doc, the push
  *     reads before it writes, using the same merges as the pull, so a device
  *     holding an older copy of a verse cannot write it over a newer one.
  *   • The same push also writes standings/{uid}, a small summary of that record
@@ -41,7 +41,7 @@ const SDK_VERSION = "11.6.1";
 const SDK = `https://www.gstatic.com/firebasejs/${SDK_VERSION}`;
 const PUSH_DEBOUNCE_MS = 800;
 
-/* A push needs the network — see mergeIntoRemote, which reads before it writes.
+/* A push needs the network, see mergeIntoRemote, which reads before it writes.
  * Offline that read simply fails, so a save made on a dropped connection is
  * tried again a few times before the member is told sync is not working. */
 const PUSH_RETRIES = 3;
@@ -50,7 +50,7 @@ const PUSH_RETRY_MS = 4000;
 /* Google Workspace domains permitted to sign in (Acts 2 Network).
  *
  * This list is only half the gate. The authoritative check is in
- * deploy/firestore.rules — adding or removing a domain means editing BOTH and
+ * deploy/firestore.rules, adding or removing a domain means editing BOTH and
  * redeploying the rules; changing this file alone is insecure and ineffective. */
 export const ALLOWED_DOMAINS = ["gpmail.org", "acts2.network"];
 
@@ -74,7 +74,7 @@ async function loadServices() {
 
 /* Google Analytics, wired as the same kind of optional overlay as sync above:
  * a build with no measurementId (or one where the CDN or the browser itself
- * refuses the SDK — private browsing, an ad/tracker blocker) simply sends no
+ * refuses the SDK, private browsing, an ad/tracker blocker) simply sends no
  * events, and nothing else in the app is allowed to depend on it. Memoized on
  * its own rather than folded into loadServices() so a member who never gets a
  * signed-in session (and so never needs auth/Firestore) still doesn't pay for
@@ -108,7 +108,7 @@ export function initAnalytics() {
 }
 
 /* Log a custom Analytics event. Never throws and resolves silently wherever
- * Analytics did not start (see loadAnalytics) — callers do not need to know
+ * Analytics did not start (see loadAnalytics), callers do not need to know
  * whether Analytics is configured, reachable, or supported in this browser. */
 export async function logAnalyticsEvent(name, params) {
   const analytics = await loadAnalytics();
@@ -136,7 +136,7 @@ export function emailAllowed(email) {
  * a failed pull used to be indistinguishable from an empty one. Status is
  * "pulling" while the member's document is being read, "synced" once it has
  * been, and "error" if the read was refused or unreachable. The app must not
- * treat a member whose record it could not read as a member with no record —
+ * treat a member whose record it could not read as a member with no record,
  * that is what asks a returning member to sign up again, and what lets the
  * empty profile they then fill in overwrite the real one (see App.render). */
 export async function initAuth({ onChange = () => {}, onRemoteData, onSyncChange = () => {} } = {}) {
@@ -144,10 +144,10 @@ export async function initAuth({ onChange = () => {}, onRemoteData, onSyncChange
    * app then treated both as "run local-only, and hand this member the sign-up
    * form". Only one of them is a decision:
    *
-   *   "unconfigured" — this build has no Firebase (window.__FIREBASE_CONFIG__ =
+   *   "unconfigured", this build has no Firebase (window.__FIREBASE_CONFIG__ =
    *     null, or a local dev copy). There is no account to sign in to, so a
    *     private record on this device is exactly right and nothing is said.
-   *   "unreachable"  — there IS a Firebase, but the SDK could not be fetched
+   *   "unreachable" , there IS a Firebase, but the SDK could not be fetched
    *     from the gstatic CDN: a blocked network, an extension, a dropped
    *     connection. The member has an account and a record; the app simply
    *     could not get to it. Handing them the sign-up form here is how a
@@ -163,7 +163,7 @@ export async function initAuth({ onChange = () => {}, onRemoteData, onSyncChange
   }
 
   /* initAuth is retryable (see App.retryConnection), and loadServices only
-   * memoizes on success — so a retry that gets through must not leave a second
+   * memoizes on success, so a retry that gets through must not leave a second
    * observer behind the first. */
   if (observing) return;
   observing = true;
@@ -200,7 +200,7 @@ export async function initAuth({ onChange = () => {}, onRemoteData, onSyncChange
     /* Deliberately after the read. It is a pending write until the server
      * acknowledges it, and a pending write is part of the local view that
      * pullRemote must not be shown (see there). Nothing depends on it landing
-     * first — it exists so the leaderboard has a name for a member who has not
+     * first, it exists so the leaderboard has a name for a member who has not
      * filled in a profile. */
     writeIdentity(s, user);
   });
@@ -216,7 +216,7 @@ let observing = false;
 
 /* Read the record once, reporting what happened rather than throwing. A refused
  * read ("permission-denied") almost always means the Firestore rules in
- * deploy/firestore.rules are behind ALLOWED_DOMAINS and need redeploying — the
+ * deploy/firestore.rules are behind ALLOWED_DOMAINS and need redeploying, the
  * code is passed through so the app can say so. */
 async function runPull(fn) {
   try {
@@ -262,7 +262,7 @@ export async function signOutUser() {
 }
 
 /* The push half of sync: a debounced write of the whole record, wired into the
- * storage seam. Never throws — a failed write is reported through onPushError so
+ * storage seam. Never throws, a failed write is reported through onPushError so
  * the app can say sync is not working, and the local save stands regardless. */
 function registerPush(s, user) {
   const { doc, setDoc } = s.dbMod;
@@ -273,12 +273,12 @@ function registerPush(s, user) {
   /* An ordinary save folds into the stored record (see mergeIntoRemote). A wipe
    * (storage.clearProgressAndLog) cannot: folding an emptied map into a stored
    * one deletes nothing, and the next sign-in would pull every wiped verse
-   * back. So it writes the document whole — identity included, since nothing
+   * back. So it writes the document whole, identity included, since nothing
    * outside this payload survives.
    *
    * `pendingReplace` is what survives the debounce. Pushes are coalesced, and a
    * wipe followed by any ordinary save within the window would otherwise go up
-   * as that save — a merge, deleting nothing. Once a wipe is waiting, whatever
+   * as that save, a merge, deleting nothing. Once a wipe is waiting, whatever
    * finally fires is a replacement; the payload is read fresh from storage each
    * time, so it is still the current record that gets written. */
   let pendingReplace = false;
@@ -320,7 +320,7 @@ function registerPush(s, user) {
  * That merge is per field, not per record: it leaves alone the keys the payload
  * does not mention, but every key it does mention it overwrites, however old
  * this device's copy of it is. So a device that still had a verse as `learning`
- * pushed that over the commit another device had just made — and because
+ * pushed that over the commit another device had just made, and because
  * nothing demotes a verse, the two devices then disagreed for good: the one
  * that committed it kept saying committed (reconcile carries `memorized`
  * forward on the way in), while every other device pulled the rollback and
@@ -344,7 +344,7 @@ function mergeIntoRemote(s, userDoc, boardDoc, record, name) {
     };
     tx.set(userDoc, mergeable(merged), { merge: true });
     /* The summary is written from the *merged* record, not from this device's
-     * payload — otherwise a device that had not caught up yet would publish a
+     * payload, otherwise a device that had not caught up yet would publish a
      * board row missing the verses another device committed. It is written
      * whole rather than merged, because it is a derived statement about the
      * record as a whole: folding an old `fresh` into a new one would leave
@@ -365,7 +365,7 @@ function writeIdentity(s, user) {
 
 /* The merged record with the empty slices left out.
  *
- * `merge: true` is not "leave everything else alone" — it means "write the
+ * `merge: true` is not "leave everything else alone", it means "write the
  * fields in this payload". For a map with contents that comes to the same
  * thing, because the mask reaches the leaves and the keys not mentioned
  * survive. An **empty** map has no leaves, so the mask names the field itself
@@ -397,23 +397,23 @@ export function onPushError(fn) {
 }
 
 /* The pull half: read the member's document and hand it over for merging.
- * Throws on a refused or unreachable read — runPull turns that into a status. */
+ * Throws on a refused or unreachable read, runPull turns that into a status. */
 async function pullRemote(s, user, onRemoteData) {
   if (!onRemoteData) return;
   const { doc, getDocFromServer } = s.dbMod;
-  /* From the server, deliberately — not getDoc.
+  /* From the server, deliberately, not getDoc.
    *
    * getDoc answers from Firestore's local view when it can, and that view
    * includes this client's own pending writes. The identity write below is one,
    * so on a cold client the read could come back as a document holding nothing
    * but { name, email }: no progress, no profile. Indistinguishable, to
-   * everything downstream, from a member who has never used the app — which is
+   * everything downstream, from a member who has never used the app, which is
    * how a new browser asked for a profile that was sitting on the server, and
    * then saved that emptiness over the local copy.
    *
    * There is no cache fallback on purpose. If the server cannot be reached, the
    * honest answer is that the record is unknown, which is what the sync gate is
-   * for (see views/sync-gate.js) — an answer read off a half-built local view
+   * for (see views/sync-gate.js), an answer read off a half-built local view
    * is worse than no answer. */
   const snap = await getDocFromServer(doc(s.db, "users", user.uid));
   const data = snap.exists() ? snap.data() || {} : {};
@@ -424,8 +424,8 @@ async function pullRemote(s, user, onRemoteData) {
  * viewmodel/leaderboard.js ranks: { uid, name, count, freshnessScore, streak }
  * plus the three profile fields it filters and groups by.
  *
- * It reads the `standings` collection — the small per-member summaries the push
- * above keeps — rather than the members' records themselves. That is the whole
+ * It reads the `standings` collection, the small per-member summaries the push
+ * above keeps, rather than the members' records themselves. That is the whole
  * point of those summaries: this is the one read in the app whose cost grows
  * with the size of the group, and it used to pull every verse of every member's
  * progress and every day of their log to arrive at three numbers each. See
@@ -434,8 +434,8 @@ async function pullRemote(s, user, onRemoteData) {
  *
  * Falling back to the full scan when `standings` is empty is for exactly one
  * day: the one this ships on, before any member has pushed. A member's summary
- * is written by their first save — and a sign-in that pulls saves what it
- * merged — so the collection fills as members open the app, and the board is
+ * is written by their first save, and a sign-in that pulls saves what it
+ * merged, so the collection fills as members open the app, and the board is
  * whole again once each of them has. Note that a member who has not been back
  * since then would have been on the board with stale figures anyway.
  *

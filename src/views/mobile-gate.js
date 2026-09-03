@@ -1,6 +1,6 @@
 /* The gate a member on a phone or a tablet meets instead of the app.
  *
- * It stands in front of everything — before the splash, before sign-in — and
+ * It stands in front of everything, before the splash, before sign-in, and
  * there is nothing on it to press, so it is the one screen in the app that is
  * only a statement. What it says is a single sentence (copy.mobileGate), and
  * the drawing beside it says the same thing twice over so the answer reads
@@ -8,7 +8,7 @@
  * machine to open it on instead.
  *
  * The two marks are drawn here rather than named as classes because they are
- * geometry, not motion — nothing on this screen moves except its arrival. They
+ * geometry, not motion, nothing on this screen moves except its arrival. They
  * are `aria-hidden`: the sentence under them already says it, and a reader
  * announcing "phone, monitor" would only say it a third time. */
 

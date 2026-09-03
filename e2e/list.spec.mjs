@@ -1,7 +1,7 @@
 /* The passage list, and the one thing only it can do: hand-pick a sitting.
  *
- * Ticking rows is the app's most interactive surface — a run of them is ticked
- * by shift-click, measured from the last row ticked on its own — and none of
+ * Ticking rows is the app's most interactive surface, a run of them is ticked
+ * by shift-click, measured from the last row ticked on its own, and none of
  * that exists until there is a pointer holding shift. */
 
 import { test, expect } from "./fixtures.mjs";
@@ -35,8 +35,8 @@ test("search narrows the table, and the summary counts what is shown", async ({ 
   await expect(page.locator(".item-in")).toHaveCount(0);
 });
 
-/* Two tab rows sit side by side above the table — the shelves, then the
- * statuses — and each has an "All". Reached by row so a spec cannot silently
+/* Two tab rows sit side by side above the table, the shelves, then the
+ * statuses, and each has an "All". Reached by row so a spec cannot silently
  * press the wrong one. */
 const categoryTabs = (page) => page.locator(".seg").first();
 const statusTabs = (page) => page.locator(".seg").nth(1);
