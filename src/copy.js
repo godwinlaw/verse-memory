@@ -89,6 +89,7 @@ export const copy = {
   /* ── chrome ─────────────────────────────────────────────────────────────── */
 
   nav: {
+    today: "Today",
     board: "Home",
     list: "Passages",
     leaderboard: "Stats",
@@ -235,6 +236,35 @@ export const copy = {
     theme: "Theme",
     themeLabels: { light: "Light", dark: "Dark", system: "System" },
 
+    /* The member's record as a file: a copy to keep, and a copy brought back.
+     * Importing merges rather than replaces (backup.js), and the note says so,
+     * because the one fear worth answering before the press is losing what is
+     * already here. */
+    backup: {
+      section: "YOUR DATA",
+      note:
+        "Save everything you have memorized as one file, and bring it back on any device or account. " +
+        "Importing adds to what is here and never removes anything.",
+      exportButton: "Export progress",
+      importButton: "Import a backup",
+      exported: "Saved. Keep the file somewhere safe.",
+      imported: (added, updated, days) =>
+        "Imported " +
+        plural(added, "new passage", "new passages") +
+        ", updated " +
+        plural(updated, "passage", "passages") +
+        " and filled in " +
+        plural(days, "day", "days") +
+        " of history. Nothing you had was removed.",
+      importedNothing: "Nothing new in that file. Everything in it was already here.",
+      errors: {
+        "not-json": "That file could not be read. A backup is the .json file this app exported.",
+        "not-a-backup": "That file is not a Verse Mastery backup.",
+        "newer-format": "That backup was made by a newer version of the app than this one.",
+        "read-failed": "The file could not be opened. Try choosing it again.",
+      },
+    },
+
     /* Wiping the record. The button is the smaller half of this: what stands
      * beside it has to say plainly what goes, what stays, and that it reaches
      * the member's other devices, nothing here is recoverable afterwards. */
@@ -273,6 +303,35 @@ export const copy = {
       "and the three ways through the set all work.",
     guideCta: "Check out the guide",
     learnCta: "Start learning right away",
+  },
+
+  /* ── today ──────────────────────────────────────────────────────────────── */
+
+  /* The daily visit: what is due and one press to review it. Short on purpose,
+   * it is read on a phone, often in a spare minute. */
+  today: {
+    headlineDue: (n) => plural(n, "passage is due", "passages are due"),
+    headlineClear: "Nothing is due. Well held.",
+    headlineNothingCommitted: "Nothing to review yet",
+    bodyDue: (dueFreshness) =>
+      "These have faded to " + dueFreshness + "% or below. One sitting puts them back to full.",
+    bodyDueCapped: (n, dueFreshness) =>
+      "They have faded to " +
+      dueFreshness +
+      "% or below. The " +
+      n +
+      " most faded are taken first; the rest come round next time.",
+    bodyClear: "Every passage you have committed is still fresh. A good day to learn a new one.",
+    bodyNothingCommitted: "A passage arrives here once you have given it back in full from memory. Start with one.",
+    review: (n) => "Review " + plural(n, "passage", "passages"),
+    learnNext: (ref) => "Learn " + ref,
+    allDone: "Every passage is committed. Back to the board.",
+    dueTitle: "Due today, most faded first",
+    reviewed: "Reviewed today",
+    streak: "Streak",
+    streakDays: (n) => plural(n, "day", "days"),
+    committed: "Committed",
+    note: "Reviewing works without a signal. What you do here is saved on this device and synced when you are back online.",
   },
 
   /* ── the board ──────────────────────────────────────────────────────────── */
@@ -495,6 +554,10 @@ export const copy = {
       "and there is no backspace: type each letter once.",
     typeRevealed: "words revealed",
     typeMatched: "words matched",
+    /* The attempt itself, printed under the marked paper (issue #79): the
+     * paper marks each word, but reading back what you actually wrote is how
+     * you find the slip. */
+    typeWrote: "What you wrote",
 
     /* reciting aloud, one toggle beside the scaffold's, and the only two
      * things worth saying: that this browser cannot listen, and why it stopped

@@ -12,11 +12,20 @@ with an optional Firebase seam for cloud sync.
 
 ## Features
 
-- **Four review modes**, Flashcard, Fill the blanks, Write it out, Order the phrases.
-- **Spaced repetition**, each verse's stability grows with successful reviews;
-  free recall builds more durable memory than cued recall than recognition.
+- **Four review modes**, Flashcard, Fill the blanks, From memory (typed or
+  recited aloud), Order the phrases.
+- **Spaced repetition**, each verse climbs a fixed ladder of intervals with
+  successful reviews; free recall builds more durable memory than cued recall
+  than recognition.
 - **Intelligent blanks**, key words are chosen by an offline spaCy pass
   (`tools/gen_keywords.py`), not by naive position.
+- **Today**, one screen with what is due and one button to review it. An
+  installed copy and a phone open on it.
+- **Installable and offline**, a web app manifest and a service worker keep
+  the app's files, so it opens and runs a sitting with no signal; the result is
+  synced when the signal is back (see _Installing it_).
+- **Export and import**, the whole record as one JSON file, from Settings (see
+  _Your data_).
 - **Progress board, passage list, and leaderboard** views.
 
 ## Quick start
@@ -36,14 +45,20 @@ HTTP; opening `index.html` from the filesystem will not work.
 ```
 .
 ├── index.html            # entry document: loads CDN libs, config.js, src/main.js
+├── manifest.webmanifest  # the installable app: name, icons, opens on Today
+├── sw.js                 # service worker: keeps the app's files for offline use
 ├── config.example.js     # deploy-time config template (copy to config.js)
 ├── src/                   # application source (ES modules)
-│   ├── main.js            #   entry point, mounts <App/>
+│   ├── main.js            #   entry point, mounts <App/>, registers sw.js
 │   ├── App.js             #   stateful shell: state, actions, view dispatch
 │   ├── dom.js             #   React/htm globals, sx() style parser, corners()
 │   ├── config.js          #   app config + defaults (reads deploy overrides)
 │   ├── storage.js         #   localStorage persistence + cloud-sync seam
 │   ├── firebase.js        #   optional Firebase auth + cloud sync
+│   ├── backup.js          #   the record as one JSON file: build, parse, merge in (pure)
+│   ├── files.js           #   browser seam for backup.js: download, read a picked file
+│   ├── offline.js         #   browser seam for sw.js: register the worker
+│   ├── landing.js         #   which screen a URL opens on (pure)
 │   ├── profile.js         #   member profile domain (options, validation, merge)
 │   ├── srs.js             #   spaced-repetition / forgetting-curve math (pure)
 │   ├── blanks.js          #   blank selection + phrase chunking (pure)
@@ -52,13 +67,14 @@ HTTP; opening `index.html` from the filesystem will not work.
 │   ├── review.js          #   review modes, session shape, seeded shuffle (pure)
 │   ├── text.js            #   small text/date helpers (pure)
 │   ├── styles.css         #   design system + component styles
+│   ├── icon-192.png, icon-512.png  # the mark, cut for home screens (npm run icons)
 │   ├── ui/
 │   │   └── tokens.js      #   shared style strings (only ones used more than once)
 │   ├── viewmodel/         #   state + actions -> one flat object, per view
-│   │   ├── index.js, totals.js, chrome.js, board.js, list.js,
+│   │   ├── index.js, totals.js, chrome.js, today.js, board.js, list.js,
 │   │   └── review.js, leaderboard.js, gate.js
 │   └── views/             #   view-model -> markup; pure functions of `v`
-│       ├── header.js, board.js, list.js, review.js, done.js,
+│       ├── header.js, today.js, board.js, list.js, review.js, done.js,
 │       └── leaderboard.js, auth-gate.js, profile-form.js
 ├── data/                  # generated/authored content
 │   ├── passages.js        #   the passage set (ESV)
@@ -98,6 +114,53 @@ cp config.example.js config.js
 
 `config.js` is gitignored and loaded by `index.html` before the app. If it is
 absent, the app runs on the built-in defaults.
+
+## Installing it, and using it with no signal
+
+The app is a [progressive web app](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps):
+`manifest.webmanifest` makes it installable from the browser's menu ("Add to
+Home Screen" on a phone, "Install" in a desktop Chrome), and `sw.js`, a
+service worker registered from `src/main.js`, keeps a copy of the app's own
+files and the three CDN scripts so an installed copy opens with no network.
+An installed copy opens on **Today**, the screen with what is due and one
+button to review it (`start_url` in the manifest is `./?screen=today`, read by
+`src/landing.js`); a phone opens there too.
+
+Two choices keep it simple. The worker is **network first**: online, every
+request goes to the server and the answer is copied into the cache on the way
+past, so a member who is online always runs the build being served and there
+is no version to bump; the cache only answers when the network fails. And the
+worker handles **only the app's own files and the CDN scripts**; Firestore,
+Google sign-in and Analytics are left to the browser, so the worker cannot be
+what breaks sync. A sitting done offline is saved on the device as every
+sitting is, and the ordinary debounced push carries it up once the signal is
+back (`src/firebase.js` already retries a push that could not reach the
+network).
+
+There is no build step, so the worker's file list is written by hand in
+`sw.js`; `test/offline.test.mjs` holds it to the tree, and a module added to
+`src/` without a line there fails the suite rather than failing offline.
+`features.offline` in `src/config.js` turns the worker off for a deploy that
+does not want one. The PNG icons the manifest names are cut from
+`src/icon.svg` by `npm run icons`.
+
+A phone used to be turned away by a gate (`views/mobile-gate.js`). That gate
+is still there behind `features.mobileGate`, off by default now that the app
+is something to install on a phone; a deploy that would rather keep the
+sitting at a desk turns it back on in `config.js`.
+
+## Your data
+
+**Settings → Your data** has two buttons. **Export progress** hands you a
+JSON file, `verse-mastery-backup-YYYY-MM-DD.json`, holding your progress, your
+daily log and your profile. **Import a backup** reads one back in. Importing
+is a **merge, never a replacement**: it runs the same reconciliation the cloud
+pull does (`src/backup.js` over `storage.mergeProgress`, `mergeLog` and
+`profile.mergeProfile`), so an older file cannot take a verse backwards and a
+committed verse cannot come back uncommitted. The result is saved through the
+ordinary path, so it reaches the cloud like any other save. Records for
+passages this build does not have are left out. Wiping the record is a
+different thing and keeps its own button, "Reset all progress".
 
 ## Adding passages
 
@@ -213,10 +276,18 @@ a host at the repo root, since that would also serve `node_modules/`, `design/`,
 
 ```bash
 npm test               # node:test, pure modules + view render smoke tests
+npm run test:e2e       # Playwright, the app driven in a browser (see e2e/README.md)
 npm run lint           # ESLint
+npm run lint:prose     # no em-dashes and no filler phrases anywhere in the tree
 npm run format         # Prettier (write)
 npm run format:check   # Prettier (check, as CI runs it)
 ```
+
+The browser suite has three projects: `chromium` (the app on a computer),
+`mobile` (a browser claiming to be a phone) and `offline` (the service worker
+installed, then the app opened with the network off). The last one reaches the
+real CDN, since a request the worker answers cannot be stubbed, and skips
+itself where the browser cannot reach it.
 
 ## Scripture text
 

@@ -37,6 +37,9 @@ import {
 import { rankable } from "./standings.js";
 import { appConfig, features } from "./config.js";
 import { detectMobile } from "./device.js";
+import { landingView } from "./landing.js";
+import { backupFilename, buildBackup, importBackup, parseBackup } from "./backup.js";
+import { downloadText, readFileText } from "./files.js";
 import { DEFAULT_THEME, applyTheme, normalizeTheme, watchSystemTheme } from "./theme.js";
 import {
   initAuth,
@@ -63,6 +66,7 @@ import { mobileGateView } from "./views/mobile-gate.js";
 import { splashView } from "./views/splash.js";
 import { headerView } from "./views/header.js";
 import { boardView } from "./views/board.js";
+import { todayView } from "./views/today.js";
 import { listView } from "./views/list.js";
 import { reviewView } from "./views/review.js";
 import { reviewSetupView } from "./views/review-setup.js";
@@ -191,12 +195,13 @@ function focusRecall() {
 const quietVoice = () => ({ status: "off", error: null, tail: 0, rest: 0 });
 
 function initialState() {
+  // Settled once, at startup: what the app is being read on. The answer cannot
+  // change under a member mid-session, so nothing ever asks again. It decides
+  // where the app opens (a phone opens on Today, see landing.js) and, with
+  // `features.mobileGate` on, whether it opens at all (see device.js).
+  const isMobile = detectMobile();
   return {
-    // Settled once, at startup: what the app is being read on. A phone or a
-    // tablet is turned away before anything else happens (see device.js), and
-    // the answer cannot change under a member mid-session, so nothing ever
-    // asks again.
-    isMobile: detectMobile(),
+    isMobile,
     loaded: false,
     // The splash stands in front of everything until local data has loaded and
     // Firebase has said whether there is a session to restore, only then does
@@ -205,9 +210,11 @@ function initialState() {
     // as a screen rather than a flash.
     splashHold: true,
     passages: [],
-    // board | list | review-setup | learn-setup | review | done | leaderboard
-    // | test-setup | test | test-done | guide
-    view: "board",
+    // today | board | list | review-setup | learn-setup | review | done
+    // | leaderboard | test-setup | test | test-done | guide
+    // The board on a computer, Today on a phone or wherever the URL asks for
+    // it, which is how an installed copy opens (manifest.webmanifest).
+    view: landingView(typeof location === "undefined" ? "" : location.search, isMobile ? "today" : "board"),
     progress: {}, // { [passageId]: { hits, status, last, step, stability } }
     log: {}, // { [YYYY-MM-DD]: reviews that day }
 
@@ -283,6 +290,10 @@ function initialState() {
     profileDraft: null, // in-progress edits for the profile form
     editingProfile: false, // reopen the form for an already-complete profile
     resetAsk: false, // "reset all progress?" confirmation is open on that form
+    // What the last export or import on that form came to: null, or
+    // { kind: "exported" | "imported" | "error", added, updated, days, code }.
+    // Device-local and not persisted, a notice is about the press that made it.
+    backupNotice: null,
     welcomePrompt: false, // shown once, right after the sign-up profile form completes
     ministryOpen: false, // ministry-group combobox dropdown visibility
     peers: null, // leaderboard roster, minus self
@@ -599,6 +610,48 @@ export class App extends React.Component {
   resetProgress() {
     storage.clearProgressAndLog();
     this.setState({ progress: {}, log: {}, selection: [], selectAnchor: null, resetAsk: false });
+  }
+
+  /* ── the record as a file ───────────────────────────────────────────────── */
+
+  /* Hand the member their record: progress, the daily log and the profile, as
+   * one JSON file (backup.js). Read from storage rather than state for the
+   * same reason hydrateRemote is: storage is the source of truth. */
+  exportBackup() {
+    const data = buildBackup({
+      progress: storage.loadProgress(),
+      log: storage.loadLog(),
+      profile: storage.loadProfile(),
+    });
+    downloadText(backupFilename(), JSON.stringify(data, null, 2));
+    this.setState({ backupNotice: { kind: "exported" } });
+  }
+
+  /* Fold a backup file into this device's record. A merge, never a wipe: the
+   * same reconciliation the cloud pull runs (backup.importBackup), so nothing
+   * already here can be lost to an older file, and the result is saved through
+   * the ordinary path, which pushes it to the cloud like any other save. */
+  async importBackup(file) {
+    let text;
+    try {
+      text = await readFileText(file);
+    } catch {
+      return this.setState({ backupNotice: { kind: "error", code: "read-failed" } });
+    }
+    let backup;
+    try {
+      backup = parseBackup(text, { knownIds: this.state.passages.map((p) => p.id) });
+    } catch (e) {
+      return this.setState({ backupNotice: { kind: "error", code: e.code || "not-a-backup" } });
+    }
+    const local = { progress: storage.loadProgress(), log: storage.loadLog(), profile: storage.loadProfile() };
+    const merged = importBackup(local, backup);
+    this.save(merged.progress, merged.log);
+    if (merged.profile !== local.profile) this.saveProfile(merged.profile);
+    logAnalyticsEvent("backup_import", { added: merged.added, updated: merged.updated });
+    this.setState({
+      backupNotice: { kind: "imported", added: merged.added, updated: merged.updated, days: merged.days },
+    });
   }
 
   /* Pull the leaderboard roster. Self is dropped here and re-added from local
@@ -1063,8 +1116,19 @@ export class App extends React.Component {
       toggleAccount: () => this.setState((s) => ({ accountOpen: !s.accountOpen })),
       closeAccount: () => set({ accountOpen: false }),
       editProfile: () =>
-        set({ accountOpen: false, editingProfile: true, profileDraft: { ...this.state.profile }, resetAsk: false }),
-      cancelEditProfile: () => set({ editingProfile: false, profileDraft: null, resetAsk: false }),
+        set({
+          accountOpen: false,
+          editingProfile: true,
+          profileDraft: { ...this.state.profile },
+          resetAsk: false,
+          backupNotice: null,
+        }),
+      cancelEditProfile: () => set({ editingProfile: false, profileDraft: null, resetAsk: false, backupNotice: null }),
+      // The record as a file, both ways. Neither waits on the form's Save: an
+      // export reads what is stored, and an import is saved the moment it is
+      // merged, so Cancel has nothing to undo.
+      exportBackup: () => this.exportBackup(),
+      importBackup: (file) => this.importBackup(file),
       submitProfile: () => this.submitProfile(),
       dismissWelcome: (view) => {
         set({ welcomePrompt: false });
@@ -1302,10 +1366,12 @@ export class App extends React.Component {
   render() {
     const { isMobile, loaded, splashHold, auth, sync, profile, editingProfile, welcomePrompt } = this.state;
 
-    // Nothing is offered on a phone or a tablet, and the refusal comes before
-    // the splash, since a member who is not getting in should not be made to
-    // watch the boot first. It is a dead end, so no other screen follows it.
-    if (isMobile) return mobileGateView(mobileGateVals({ groupName: this.groupName() }));
+    // A deploy that keeps the sitting at a desk (config.js, features.mobileGate)
+    // turns a phone or a tablet away here, before the splash, since a member
+    // who is not getting in should not be made to watch the boot first. It is
+    // a dead end, so no other screen follows it. As the app ships the gate is
+    // off: a phone is let in and opens on Today (see initialState).
+    if (isMobile && features.mobileGate) return mobileGateView(mobileGateVals({ groupName: this.groupName() }));
 
     // The splash is up until the app knows where the member is going: their
     // board if Firebase restores a session, the sign-in screen if it does not.
@@ -1388,10 +1454,11 @@ export class App extends React.Component {
     return html`<div
       style=${sx("min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)")}
     >
-      ${headerView(v)} ${v.syncWarning && syncBannerView(v)} ${v.isBoard && boardView(v)} ${v.isList && listView(v)}
-      ${v.isReviewSetup && reviewSetupView(v)} ${v.isLearnSetup && learnSetupView(v)} ${v.isReview && reviewView(v)}
-      ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)} ${v.isExamSetup && examSetupView(v)}
-      ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)} ${v.isGuide && guideView(v)} ${footerView(v)}
+      ${headerView(v)} ${v.syncWarning && syncBannerView(v)} ${v.isToday && todayView(v)} ${v.isBoard && boardView(v)}
+      ${v.isList && listView(v)} ${v.isReviewSetup && reviewSetupView(v)} ${v.isLearnSetup && learnSetupView(v)}
+      ${v.isReview && reviewView(v)} ${v.isDone && doneView(v)} ${v.isLeader && leaderboardView(v)}
+      ${v.isExamSetup && examSetupView(v)} ${v.isExam && examView(v)} ${v.isExamDone && examDoneView(v)}
+      ${v.isGuide && guideView(v)} ${footerView(v)}
     </div>`;
   }
 }

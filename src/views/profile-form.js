@@ -27,6 +27,32 @@ const SECTION =
  * the camelCase `inputMode` (it warns on `inputmode`). */
 const NUMERIC_KEYBOARD = { inputMode: "numeric" };
 
+/* The record as a file. Export is a plain button; import is a file input
+ * dressed as one, the label is what the member presses and the input itself is
+ * not drawn, since the browser's own file control cannot be made to look like
+ * anything on this page. Both act at once rather than on Save (see
+ * profileFormVals), and the line under them says what the press came to. */
+function backupSection(v) {
+  return html`<div style=${sx(SECTION + ";gap:12px")}>
+    <div style=${sx(SCREEN_SUBTITLE)}>${copy.profileForm.backup.section}</div>
+    <p style=${sx(SCREEN_BODY)}>${copy.profileForm.backup.note}</p>
+    <div style=${sx("display:flex;gap:10px;flex-wrap:wrap")}>
+      <button className="btn btn-secondary" onClick=${v.onExport}>${copy.profileForm.backup.exportButton}</button>
+      <label className="btn btn-secondary" style=${sx("cursor:pointer")}>
+        ${copy.profileForm.backup.importButton}
+        <input
+          type="file"
+          accept=".json,application/json"
+          onChange=${v.onImportFile}
+          aria-label=${copy.profileForm.backup.importButton}
+          style=${sx("position:absolute;width:1px;height:1px;opacity:0;overflow:hidden")}
+        />
+      </label>
+    </div>
+    ${v.backupNotice && html`<div role="status" style=${sx(v.backupNoticeStyle)}>${v.backupNotice}</div>`}
+  </div>`;
+}
+
 /* Wiping the record. Nothing about it is recoverable, so the button is guarded
  * twice over: the section says what it does before it is pressed, and pressing
  * it only opens the dialog below. */
@@ -214,7 +240,7 @@ export function profileFormView(v) {
         </div>`
       }
       ${v.isSetup && html`<p style=${sx(SCREEN_BODY)}>${copy.profileForm.settingsLater}</p>`}
-      ${v.showReset && resetSection(v)}
+      ${v.showBackup && backupSection(v)} ${v.showReset && resetSection(v)}
 
       <div style=${sx("display:flex;gap:10px;margin-top:4px")}>
         <button

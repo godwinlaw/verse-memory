@@ -87,6 +87,44 @@ test("a verse on the first rung is asked for the next day, and one higher up is 
   assert.equal(freshness(at(6), 8 * DAY), 75, "which comes back a week later instead");
 });
 
+/* The scheduler end to end: a clean review today decides when the verse is
+ * asked for next, and that date is the next rung's interval, exactly. */
+test("a clean review moves the next due date out by exactly one rung", () => {
+  for (const step of [0, 3, 6, 9]) {
+    const before = { hits: 2, status: "memorized", last: DAY, step, stability: stabilityFor(step) };
+    const award = reviewAward({ mode: "type", score: 1 });
+    const next = nextStep(before, award, "type");
+    const after = {
+      ...before,
+      step: next,
+      stability: stabilityFor(next),
+      last: reviewedLast(stabilityFor(next), award, DAY),
+    };
+    const dueAt = DAY + intervalFor(next) * DAY;
+    assert.equal(next, step + 1);
+    assert.ok(retrievability(after, dueAt - 1000) > DUE_R, `rung ${step}: still held the moment before it is due`);
+    assert.ok(retrievability(after, dueAt + 1000) < DUE_R, `rung ${step}: and due the moment after`);
+    assert.ok(retrievability(after, DAY + intervalFor(step) * DAY) > DUE_R, "later than it would have been before");
+  }
+});
+
+test("a lapse brings the next due date in, and a forgotten verse is back tomorrow", () => {
+  const before = { hits: 5, status: "memorized", last: DAY, step: 8, stability: stabilityFor(8) };
+  const slipped = nextStep(before, reviewAward({ mode: "type", score: 0.5 }), "type");
+  assert.equal(intervalFor(slipped), intervalFor(7), "one rung down");
+  const forgot = nextStep(before, reviewAward({ mode: "type", score: 0.1 }), "type");
+  assert.equal(intervalFor(forgot), 1, "and a blank mind starts the ladder over at a day");
+});
+
+test("a verse reviewed late is not punished for being late", () => {
+  // The ladder reads the mark, not the calendar: a verse left a month past its
+  // due date and then written out cleanly still climbs one rung.
+  const before = { hits: 2, status: "memorized", last: DAY, step: 3, stability: stabilityFor(3) };
+  const award = reviewAward({ mode: "type", score: 1 });
+  assert.equal(nextStep(before, award, "type"), 4);
+  assert.ok(freshness(before, DAY + 40 * DAY) < 10, "it really had faded");
+});
+
 test("stepNear finds a loose stability's place on the ladder", () => {
   assert.equal(stepNear(stabilityFor(4)), 4, "a stability already on the ladder stays put");
   assert.equal(stepNear(0), 0);

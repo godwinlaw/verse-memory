@@ -23,7 +23,8 @@ const daysAgo = (n) => NOW - n * 86400000;
  *   sync/, profile/  the sign-up form, and the gate that stands in front of it;
  *   welcome/         the nudge shown on the way out of that form;
  *   leaderboard/     Stats;
- *   guide/           the long-form explainer.
+ *   guide/           the long-form explainer;
+ *   device/          the refusal a phone meets with the mobile gate on.
  *
  * A scenario whose screen is always on offer needs nothing here. */
 const SCENARIO_FEATURES = {
@@ -32,6 +33,7 @@ const SCENARIO_FEATURES = {
   "welcome/": { profileSetup: true, welcome: true },
   "leaderboard/": { leaderboard: true },
   "guide/": { guide: true },
+  "device/": { mobileGate: true },
 };
 
 export function featuresFor(name) {
@@ -184,6 +186,7 @@ export function baseState(overrides = {}) {
     profileDraft: null,
     editingProfile: false,
     resetAsk: false,
+    backupNotice: null,
     welcomePrompt: false,
     ministryOpen: false,
     leaderFilter: { group: "All", gender: "All", gradClass: "All" },
@@ -273,11 +276,22 @@ const testing = (kind, overrides) =>
 
 export const scenarios = [
   // ── the mobile gate ────────────────────────────────────────────────────────
-  // The app on a phone: refused before the splash, whatever else is ready. The
+  // The app on a phone. With features.mobileGate on it is refused before the
+  // splash, whatever else is ready; as the app ships the gate is off and the
+  // phone opens on Today (App.initialState), which is the `view` here. The
   // second one is a member who was mid-boot when it was decided, which is what
   // the ordering in App.render is for.
-  { name: "device/mobile", state: baseState({ isMobile: true }) },
+  { name: "device/mobile", state: baseState({ isMobile: true, view: "today" }) },
   { name: "device/mobile-while-loading", state: baseState({ isMobile: true, loaded: false, splashHold: true }) },
+
+  // ── today ──────────────────────────────────────────────────────────────────
+  // The daily visit, in each of the states it can open on: verses due, caught
+  // up with verses left to learn, nothing committed at all, and the whole set
+  // committed and fresh.
+  { name: "today/due", state: baseState({ view: "today" }) },
+  { name: "today/caught-up", state: baseState({ view: "today", progress: { 1: progressFixture()[1] } }) },
+  { name: "today/fresh-account", state: baseState({ view: "today", progress: {}, log: {} }) },
+  { name: "today/all-done", state: baseState({ view: "today", progress: allCommitted() }) },
 
   // ── the opening splash ─────────────────────────────────────────────────────
   // The two waits it covers, and the floor under both: local data still
@@ -358,6 +372,35 @@ export const scenarios = [
   {
     name: "profile/edit-nothing-to-reset",
     state: baseState({ editingProfile: true, profileDraft: { ...PROFILE }, progress: {}, log: {} }),
+  },
+  // The record as a file: what the form says after each kind of press.
+  {
+    name: "profile/edit-exported",
+    state: baseState({ editingProfile: true, profileDraft: { ...PROFILE }, backupNotice: { kind: "exported" } }),
+  },
+  {
+    name: "profile/edit-imported",
+    state: baseState({
+      editingProfile: true,
+      profileDraft: { ...PROFILE },
+      backupNotice: { kind: "imported", added: 4, updated: 1, days: 2 },
+    }),
+  },
+  {
+    name: "profile/edit-import-nothing",
+    state: baseState({
+      editingProfile: true,
+      profileDraft: { ...PROFILE },
+      backupNotice: { kind: "imported", added: 0, updated: 0, days: 0 },
+    }),
+  },
+  {
+    name: "profile/edit-import-failed",
+    state: baseState({
+      editingProfile: true,
+      profileDraft: { ...PROFILE },
+      backupNotice: { kind: "error", code: "not-a-backup" },
+    }),
   },
 
   // ── welcome prompt ─────────────────────────────────────────────────────────
@@ -443,6 +486,18 @@ export const scenarios = [
   {
     name: "review/type-graded-mistakes",
     state: reviewing({ mode: "type", typed: "hear israel the load our god", typeGraded: true }),
+  },
+  // One slip in the middle of the whole passage ("might" for "soul"), with
+  // every word after it right (issue #78).
+  {
+    name: "review/type-graded-one-slip",
+    state: reviewing({
+      mode: "type",
+      typed:
+        "Hear, O Israel: The LORD our God, the LORD is one. You shall love the LORD your God with all your heart " +
+        "and with all your might and with all your might.",
+      typeGraded: true,
+    }),
   },
   {
     name: "review/type-first-letters",

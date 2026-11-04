@@ -30,7 +30,14 @@ const appOverrides = (typeof window !== "undefined" && window.__APP_CONFIG__) ||
  *   welcome       OFF, the one-time nudge that followed sign-up. It exists to
  *                 point a new member at the guide, so it stays off with it:
  *                 finishing the form lands on the board;
- *   boardEpigraph OFF, the verse printed across the top of the board.
+ *   boardEpigraph OFF, the verse printed across the top of the board;
+ *   offline       ON , the service worker (sw.js) that keeps the app's files
+ *                 so an installed copy opens with no signal;
+ *   mobileGate    OFF, the refusal a phone or tablet used to meet instead of
+ *                 the app (views/mobile-gate.js). Off because the app is now
+ *                 something to install on a phone and open for the day's
+ *                 review; a deploy that would rather keep the sitting at a
+ *                 desk turns it back on here, and the screen is unchanged.
  *
  * `profileSetup` reaches furthest, so it is worth saying what it carries with
  * it: the identity fields on Settings, and the sync gate that stops a member
@@ -42,6 +49,8 @@ const DEFAULT_FEATURES = {
   profileSetup: true,
   welcome: false,
   boardEpigraph: false,
+  offline: true,
+  mobileGate: false,
 };
 
 export const appConfig = {

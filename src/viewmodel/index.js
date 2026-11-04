@@ -11,6 +11,7 @@ import { progressReader, streakOf } from "../progress.js";
 import { deriveTotals } from "./totals.js";
 import { chromeVals } from "./chrome.js";
 import { boardVals } from "./board.js";
+import { todayVals } from "./today.js";
 import { explainerVals } from "./explainer.js";
 import { guideVals } from "./guide.js";
 import { listVals } from "./list.js";
@@ -41,6 +42,8 @@ export function buildViewModel({ state, groupName, motto, deadline, actions, now
 
     ...chromeVals({ state, groupName, motto, actions }),
     ...boardVals({ state, totals, prog, actions, today: now }),
+    // The daily visit: the same pools as the board, with everything else left off.
+    ...todayVals({ state, prog, actions, today: now }),
     ...listVals({ state, prog, actions }),
     // Shared by both setup screens, so it is built once rather than by each.
     ...explainerVals({ state, actions }),

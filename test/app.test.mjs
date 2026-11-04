@@ -1021,3 +1021,78 @@ test("an older cloud profile does not displace a newer local one", () => {
 
   assert.equal(a.state.profile.name, "Newer");
 });
+
+/* ── the record as a file ───────────────────────────────────────────────────
+ *
+ * Export reads storage and hands the member a file; import folds a file into
+ * storage through the same merges the cloud pull uses, then saves, so the
+ * ordinary push carries it. Neither touches the form's Save. */
+
+/* A File as the picker hands one over: only text() is read. */
+const fileOf = (text) => ({ name: "backup.json", text: async () => text });
+
+test("importing a backup adds what the device did not have, and reports it", async () => {
+  saved.clear();
+  const a = app(baseState({ editingProfile: true, progressDraft: null }));
+  // The device holds the fixture; the file holds two verses it does not.
+  saved.set("mv.progress", JSON.stringify(a.state.progress));
+  saved.set("mv.log", JSON.stringify(a.state.log));
+  saved.set("mv.profile", JSON.stringify(a.state.profile));
+  const file = fileOf(
+    JSON.stringify({
+      app: "verse-mastery",
+      format: 1,
+      progress: {
+        9: { hits: 3, status: "memorized", last: NOW - 1000, step: 4, stability: 14, updatedAt: NOW - 1000 },
+        10: { hits: 1, status: "learning", last: NOW - 5000, step: 0, stability: 3.5, updatedAt: NOW - 5000 },
+      },
+      log: { "2026-08-01": 4 },
+      profile: {},
+    }),
+  );
+
+  await a.actions.importBackup(file);
+
+  assert.equal(a.state.progress[9].status, "memorized");
+  assert.equal(a.state.progress[10].status, "learning");
+  assert.equal(a.state.progress[1].status, "memorized", "and what was here is still here");
+  assert.equal(a.state.log["2026-08-01"], 4);
+  assert.deepEqual(a.state.backupNotice, { kind: "imported", added: 2, updated: 0, days: 1 });
+  // Written through, so the push and the next visit both carry it.
+  assert.equal(JSON.parse(saved.get("mv.progress"))[9].status, "memorized");
+  assert.equal(a.state.profile.name, PROFILE.name, "an empty profile in the file replaces nothing");
+});
+
+test("a file that is not a backup changes nothing and says why", async () => {
+  saved.clear();
+  const a = app(baseState({ editingProfile: true }));
+  saved.set("mv.progress", JSON.stringify(a.state.progress));
+  const before = JSON.stringify(a.state.progress);
+
+  await a.actions.importBackup(fileOf("<html>not a backup</html>"));
+  assert.deepEqual(a.state.backupNotice, { kind: "error", code: "not-json" });
+  assert.equal(JSON.stringify(a.state.progress), before);
+
+  await a.actions.importBackup({ name: "x.json", text: async () => Promise.reject(new Error("boom")) });
+  assert.deepEqual(a.state.backupNotice, { kind: "error", code: "read-failed" });
+});
+
+test("a backup for passages this build does not have leaves no orphans", async () => {
+  saved.clear();
+  const a = app(baseState());
+  saved.set("mv.progress", JSON.stringify({}));
+  await a.actions.importBackup(
+    fileOf(JSON.stringify({ progress: { 99999: { status: "memorized", last: NOW, step: 1, stability: 7 } } })),
+  );
+  assert.deepEqual(a.state.progress, {});
+  assert.deepEqual(a.state.backupNotice, { kind: "imported", added: 0, updated: 0, days: 0 });
+});
+
+test("opening or leaving the settings form clears the last notice", () => {
+  const a = app(baseState({ backupNotice: { kind: "exported" } }));
+  a.actions.editProfile();
+  assert.equal(a.state.backupNotice, null);
+  a.state = { ...a.state, backupNotice: { kind: "exported" } };
+  a.actions.cancelEditProfile();
+  assert.equal(a.state.backupNotice, null);
+});

@@ -21,19 +21,22 @@ running.
 
 ## What is here
 
-| File               | What it covers                                                        |
-| ------------------ | --------------------------------------------------------------------- |
-| `boot.spec.mjs`    | the splash's floor and ceiling, and where it hands the member         |
-| `auth.spec.mjs`    | the sign-in gate, a refused domain, remote merge, sync, local-only    |
-| `profile.spec.mjs` | the setup form, and the threshold the rest of the app reads           |
-| `board.spec.mjs`   | the hero figures, the two queues, the map, and where its buttons go   |
-| `list.spec.mjs`    | search, filters, ticking rows, shift-click runs, hand-picked sittings |
-| `learn.spec.mjs`   | committing a verse, and the three ways an attempt does not            |
-| `review.spec.mjs`  | a card turned, blanks filled, a peek held, a paper handed in          |
-| `exam.spec.mjs`    | a test dealt, sat, and marked, and that it never commits              |
-| `guide.spec.mjs`   | the figures it quotes, and the forgetting curve under its slider      |
-| `motion.spec.mjs`  | the motion block, and the same screens under prefers-reduced-motion   |
-| `mobile.spec.mjs`  | the refusal a phone gets instead of the app (its own project)         |
+| File               | What it covers                                                                      |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| `boot.spec.mjs`    | the splash's floor and ceiling, and where it hands the member                       |
+| `auth.spec.mjs`    | the sign-in gate, a refused domain, remote merge, sync, local-only                  |
+| `profile.spec.mjs` | the setup form, and the threshold the rest of the app reads                         |
+| `board.spec.mjs`   | the hero figures, the two queues, the map, and where its buttons go                 |
+| `list.spec.mjs`    | search, filters, ticking rows, shift-click runs, hand-picked sittings               |
+| `learn.spec.mjs`   | committing a verse, and the three ways an attempt does not                          |
+| `review.spec.mjs`  | a card turned, blanks filled, a peek held, a paper handed in                        |
+| `exam.spec.mjs`    | a test dealt, sat, and marked, and that it never commits                            |
+| `guide.spec.mjs`   | the figures it quotes, and the forgetting curve under its slider                    |
+| `motion.spec.mjs`  | the motion block, and the same screens under prefers-reduced-motion                 |
+| `today.spec.mjs`   | what is due, the one press that reviews it, and the address it opens on             |
+| `backup.spec.mjs`  | the record exported as a file, and a file imported through the picker               |
+| `mobile.spec.mjs`  | a phone opening on Today, and the refusal with the gate on (its own project)        |
+| `offline.spec.mjs` | the service worker installed, then the app opened with no network (its own project) |
 
 ## How a spec is written
 
@@ -69,6 +72,17 @@ Configuration goes in through `config.js`, the deploy-time override
 `index.html` already loads (see `config.example.js`), and state goes in through
 `localStorage`, which is what `src/storage.js` reads. Seeding happens once per
 tab, so a reload is a real second visit.
+
+## Service workers are blocked
+
+The app registers `sw.js`, and a request the worker answers never reaches
+`page.route`, so with the worker running the two seams above would be bypassed
+on every second visit. `playwright.config.mjs` therefore blocks service workers
+for every project but `offline`, which is the project about the worker: it
+allows it, boots with `liveCdn: true` so the three scripts come from the real
+CDN (there is nothing to stub), waits for the worker to install, switches the
+network off with `context.setOffline(true)` and opens the app again. Where the
+browser cannot reach the CDN at all, the spec skips itself.
 
 ## Two things to know before adding a spec
 
