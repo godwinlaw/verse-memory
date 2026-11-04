@@ -54,6 +54,12 @@ export default [
     languageOptions: { sourceType: "script", globals: { ...globals.browser } },
   },
   {
+    // The service worker is a classic script too, run by the browser outside
+    // any page, so it sees the worker's globals (self, caches) and no window.
+    files: ["sw.js"],
+    languageOptions: { sourceType: "script", globals: { ...globals.serviceworker } },
+  },
+  {
     rules: {
       // `catch {}` with no binding is preferred; where a binding exists but is
       // unused (older browsers), name it `_` rather than leaving it dangling.

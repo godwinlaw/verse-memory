@@ -1,0 +1,16 @@
+{
+  "name": "Verse Mastery",
+  "short_name": "Verses",
+  "description": "Spaced-repetition Bible verse memorization. Opens on what is due today.",
+  "start_url": "./?screen=today",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1d2d3d",
+  "theme_color": "#1d2d3d",
+  "icons": [
+    { "src": "./src/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./src/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "./src/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

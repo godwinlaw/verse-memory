@@ -18,7 +18,7 @@ import {
 import { SCRAMBLE_LEVELS } from "../blanks.js";
 import { THEMES } from "../theme.js";
 import { committedCount, countByStatus, streakOf } from "../progress.js";
-import { segButton } from "../ui/tokens.js";
+import { muted, segButton } from "../ui/tokens.js";
 import { PRIMARY_DOMAIN } from "../firebase.js";
 
 /* The mobile gate is a dead end: nothing to press, nothing to wait for, and the
@@ -89,6 +89,16 @@ export function syncGateVals({ sync, auth, groupName, busy, actions }) {
     onRetry: actions.retrySync,
     onSignOut: actions.signOut,
   };
+}
+
+/* What the last export or import came to, in a sentence. */
+function backupNoticeText(notice) {
+  if (!notice) return "";
+  const words = copy.profileForm.backup;
+  if (notice.kind === "exported") return words.exported;
+  if (notice.kind === "error") return words.errors[notice.code] || words.errors["not-a-backup"];
+  if (!notice.added && !notice.updated && !notice.days) return words.importedNothing;
+  return words.imported(notice.added || 0, notice.updated || 0, notice.days || 0);
 }
 
 const ministryOptionStyle = (selected) =>
@@ -253,6 +263,21 @@ export function profileFormVals({ state, groupName, isSetup, actions }) {
     onResetAsk: actions.askResetProgress,
     onResetCancel: actions.cancelResetProgress,
     onResetConfirm: actions.resetProgress,
+
+    /* The record as a file, in and out (backup.js). On Settings only, like the
+     * reset above it: the setup form stands in front of a record that does not
+     * exist yet. An import is offered even with nothing recorded, that is the
+     * case it is for. The input is reset after a pick so choosing the same
+     * file twice, say after fixing it, fires again. */
+    showBackup: !isSetup,
+    onExport: actions.exportBackup,
+    onImportFile: (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = "";
+      if (file) actions.importBackup(file);
+    },
+    backupNotice: backupNoticeText(state.backupNotice),
+    backupNoticeStyle: `font-size:13px;color:${(state.backupNotice || {}).kind === "error" ? "var(--color-error)" : muted(60)}`,
 
     onSubmit: actions.submitProfile,
     onCancel: actions.cancelEditProfile,

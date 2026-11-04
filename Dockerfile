@@ -9,6 +9,10 @@ COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 
 WORKDIR /usr/share/nginx/html
 COPY index.html ./index.html
+# The installable half, at the root because a service worker's scope is the
+# directory it is served from (see sw.js).
+COPY manifest.webmanifest ./manifest.webmanifest
+COPY sw.js ./sw.js
 COPY src ./src
 COPY data ./data
 

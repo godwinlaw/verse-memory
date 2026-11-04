@@ -331,6 +331,11 @@ export function reviewVals({ state, prog, totals, actions }) {
     // reveal below hands back the same shape, { text, style, typed }, because
     // the view draws both with one helper.
     typeDiff: written.diff.map((d) => ({ text: d.word, style: d.hit ? WORD_RIGHT : WORD_WRONG, typed: d.typed })),
+    // The attempt as written, under the marked paper (issue #79). The paper
+    // marks each word, but it is the member's own text, read back whole, that
+    // shows them where they slipped.
+    typedAttempt: (state.typed || "").trim(),
+    typeWroteLabel: copy.review.typeWrote,
     // First-letter mode is a live drill: the reveal updates as you type and
     // there is no separate "Grade it" step.
     typeLive: state.mode === "type" && state.typeFirstLetter,

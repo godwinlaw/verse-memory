@@ -15,6 +15,8 @@ node --test test/grading.test.mjs                       # run one test file
 node --test --test-name-pattern="emailAllowed"         # run tests matching a name
 npm run test:e2e       # Playwright, the app driven in a browser (e2e/*.spec.mjs)
 npm run test:e2e -- e2e/learn.spec.mjs                  # one browser spec
+npm run test:e2e -- --project=offline                   # the service worker, with the network switched off
+npm run icons          # cut src/favicon.ico and the two PNG home-screen icons from src/icon.svg (needs ImageMagick)
 npx playwright install chromium                         # once per machine, before the above
 npm run test:all       # both suites
 npm run lint           # ESLint (flat config)
@@ -52,7 +54,8 @@ Real logic, the part worth unit-testing, lives below `viewmodel/`, in pure modul
 
 - `src/srs.js`, the spaced-repetition model, plus `commitsVerse()` (see What commits a verse). A progress record is `{ hits, status, last, step, stability, updatedAt }` (see Learn vs. Review vs. Test mode for why a graded record needs `updatedAt`). Freshness = retrievability `R = e^(−t/S)` (Ebbinghaus), and `reviewAward()` is the one figure a card is worth, the activity's ceiling, its difficulty setting and the mark, less `PEEK_COST` a peek down to `PEEK_FLOOR`, which does both jobs: it is the freshness `backdatedLast()` (exported as both `reviewedLast` and `testedLast`) dates the verse to, and the evidence `nextStep()` moves it on. See The interval ladder for what `step` is; `migrate()` places a legacy record on it.
 - `src/progress.js`, reading a progress map: `progressReader()` binds per-passage questions (status, freshness, due), plus `dueOrder()`, `committedCount()`, `streakOf()`, and the two pools the sittings draw from, `reviewPool()` and `learnPool()`, plus `selectionPools()` for a hand-picked one (see What commits a verse).
-- `src/grading.js`, grading an attempt against a passage (`gradeWritten`), the first-letter live-reveal drill (`revealFirstLetters`), and a typed scripture reference (`parseReference`, `gradeReference`). This is the app's trickiest logic and previously lived inline in a render method with no tests.
+- `src/grading.js`, grading an attempt against a passage (`gradeWritten`), the first-letter live-reveal drill (`revealFirstLetters`), and a typed scripture reference (`parseReference`, `gradeReference`). This is the app's trickiest logic and previously lived inline in a render method with no tests. `gradeWritten` lines the attempt up against the passage by the **longest common subsequence** (`alignTokens`), which is what a diff computes: a word left out, put in, or got wrong costs that one word and the rest still line up (issue #78; it replaced a cursor that looked three tokens ahead and lost its place after a stumble). A missed word's `typed` is read off the alignment, the unmatched tokens in the same gap, so the marked paper shows what was written in its place, and the view prints the whole attempt under the paper as well (issue #79).
+- `src/backup.js`, the record as one JSON file (see The record as a file), and `src/landing.js`, which screen a URL opens on (see On a phone, and installed).
 - `src/voice.js`, where a recited passage goes (see Reciting aloud): `transcribe()`, which folds a phrase from the browser into the transcript, replacing an unsettled guess in place and capitalising the first word.
 - `src/review.js`, the `MODES`, the two session kinds (`REVIEW` / `LEARN`), session sizing constants, `scrambleScore()` (how much of an ordering was rebuilt, less what the wrong tries cost), `seededShuffle` (Fisher–Yates over a mulberry32 PRNG, seeded by passage id), and `mulberry32` itself.
 - `src/exam.js`, Test mode: setup options, which verses a setup admits, seeded question generation for the four activities, marking, and folding a marked paper back into the progress map.
@@ -244,13 +247,23 @@ Light, dark, or the reader's own system, the default, and what the app did befor
 
 Two consequences worth knowing. **`index.html` stamps the ground before the first paint**, four lines repeated from `theme.js` because a module would arrive a paint late and the member would watch the page turn over; `e2e/theme.spec.mjs` asserts it with `src/main.js` blocked, on a page the app never runs on. And the choice is **device-local, never synced** (`storage.saveTheme`, `mv.theme`, stored as a bare word rather than JSON so that pre-paint line stays small): it is about the screen in front of the member, not about them. It is not a profile field either, so the switch on the settings form does not wait for Save and is not undone by Cancel, `actions.setTheme` saves, stamps and re-renders on the press. `src/icon.svg` is the one thing the choice cannot reach, since a browser fetches the favicon outside the page; it keeps its own media query and follows the system.
 
-### Not on a phone
+### On a phone, and installed
 
-The app is **not offered on a mobile device**, and the refusal is the first thing `App.render()` dispatches, before the splash, before sign-in, so a member who is not getting in is not made to watch the boot first. `views/mobile-gate.js` is a dead end: one sentence (`copy.mobileGate.message`), two drawn marks beside it (the handset ruled through, the screen to open it on) which are `aria-hidden` because the sentence already says it, and **no controls at all**, so there is nothing to dismiss.
+The app is **installable** (`manifest.webmanifest`) and **works with no signal** (`sw.js`, registered from `src/main.js` through the seam in `src/offline.js`). The worker is deliberately dumb: **network first**, every request it handles goes to the network and a good answer is copied into the cache on the way past, so a member online always runs the build being served and there is no version string to bump; the cache answers only when the network fails. It handles **only this origin, unpkg and gstatic**, never Firestore, sign-in or Analytics, so it cannot be what breaks sync. There is no build step, so `SHELL` in `sw.js` is written by hand, and `test/offline.test.mjs` holds it to the tree: **a module added to `src/` needs a line in `sw.js`**, or the suite fails. Both deploy manifests (`scripts/build.mjs`, `Dockerfile`) ship `sw.js` and the manifest at the root, since a worker's scope is the directory it is served from. `features.offline` turns the worker off per deploy.
 
-`src/device.js` is the only definition of what counts. `isMobileDevice({ userAgent, platform, maxTouchPoints })` is pure and unit-tested; `detectMobile()` is the one-line seam that asks the window, written like `recognizer.js`. Two things about the rule are deliberate: **it asks about the device, not the window**, a narrow browser window on a laptop is still a laptop, and the breakpoints in `styles.css` are what serve it, so nothing here reads a width, and a **tablet counts**, since an iPad is a device you hold. iPadOS 13+ reports itself as a desktop Mac, so a Mac-shaped platform with `maxTouchPoints > 1` is caught by touch rather than by string.
+An installed copy opens on **Today** (the manifest's `start_url` is `./?screen=today`), and so does a phone. `src/landing.js` is the one reader of the URL: `landingView(search, fallback)` is pure, `App.initialState()` hands it `location.search` and a fallback of `today` on a mobile device, `board` otherwise, and only `today`, `board` and `list` may be named, a session screen with no session behind it would be a blank card.
 
-The answer is settled once, into `state.isMobile` in `initialState()`, because it cannot change under a member mid-session. `test/device.test.mjs` asserts the rule against real user agents and `e2e/mobile.spec.mjs` (the `mobile` Playwright project, a browser really claiming to be a Pixel) asserts that nothing behind the gate is reachable around it.
+**A phone is no longer turned away by default.** The refusal (`views/mobile-gate.js`, one sentence and no controls, dispatched before the splash) is still the first thing `App.render()` checks, but behind `features.mobileGate`, which ships off; a deploy that would rather keep the sitting at a desk turns it on in `config.js`, and nothing about the screen changed. `src/device.js` is still the only definition of what counts: `isMobileDevice({ userAgent, platform, maxTouchPoints })` is pure and unit-tested, `detectMobile()` is the one-line seam, it asks about the **device, not the window**, and a **tablet counts** (iPadOS 13+ reports as a Mac, so a Mac-shaped platform with `maxTouchPoints > 1` is caught by touch). The answer is settled once into `state.isMobile`, because it cannot change mid-session, and now decides the landing screen as well as the gate. `e2e/mobile.spec.mjs` (the `mobile` Playwright project) drives both halves: the phone as the app ships, opening on Today and fitting the review card, and the refusal with the flag on. The session card's paddings moved from inline styles to `.review-page` / `.review-bar` / `.review-card` in `styles.css` for exactly that reason: a narrow-screen rule cannot reach an inline style.
+
+**The browser suite blocks service workers** (`serviceWorkers: "block"` in `playwright.config.mjs`), because a request the worker answers never reaches `page.route`, which is where the CDN and Firebase seams are taken over. The `offline` project is the one exception: it allows the worker, reaches the real CDN (as `E2E_LIVE_CDN=1` does), installs the worker on a first visit, switches the network off and opens the app again, and skips itself where the browser cannot reach the CDN at all.
+
+### Today
+
+The daily visit, first on the header: the date, what is due, one full-width button that starts the sitting, the next verse to learn beside it, three figures, and the due list. `viewmodel/today.js` reads **the same `reviewPool` and `learnPool` the board reads** (progress.js), so the two screens cannot disagree about what is due; Today only shows less. `todayPlan({ passages, progress, dueFreshness, dueTopX, now })` is the pure half: `due` is every committed verse at or below the member's threshold, stalest first; `sitting` is the ids the button takes, capped at `dueTopX` the way the board's queue is; `next` is what a learn sitting would open with, offered when nothing is due so the day is never a dead end. `test/today.test.mjs` asserts it, `test/views.test.mjs` renders its four states, and `e2e/today.spec.mjs` presses the button. `views/today.js` is laid out for a phone held in one hand (`.today-page`, `.today-cta` in `styles.css`), and it says in one line that a sitting works without a signal; the whole-set map, the chart and the pace check stay on the board.
+
+### The record as a file
+
+**Settings → Your data**: Export hands the member `verse-mastery-backup-YYYY-MM-DD.json` holding progress, the daily log and the profile; Import reads one back. `src/backup.js` is pure (`buildBackup`, `parseBackup`, `importBackup`, `cleanRecord`) and `src/files.js` is the browser seam (a download through a hidden anchor, `file.text()`), written like `recognizer.js`. Three rules: **importing is a merge, never a replacement**, through the same `mergeProgress` / `mergeLog` / `mergeProfile` the cloud pull uses, so an older file cannot take a verse backwards and a committed verse cannot come back uncommitted (see Persistence); **a record is kept to the shape `srs.js` defines**, with unknown fields dropped, an unknown status read as `learning`, and passages this build does not have left out (`knownIds`); and **neither button waits on the form's Save**, an export reads storage and an import saves the moment it is merged, through the ordinary path, so the push carries it. `App.exportBackup` / `App.importBackup` are the two actions, `state.backupNotice` is what the form says afterwards (one sentence, `copy.profileForm.backup`), and `test/backup.test.mjs`, the import tests in `test/app.test.mjs` and `e2e/backup.spec.mjs` (a real download, a real file picker) cover it.
 
 ### Landing: the splash decides where the member goes
 
@@ -311,10 +324,12 @@ Several pieces of the app can be **switched off rather than taken out**, and
 (the Stats board and its header entry), `guide` (the long-form explainer, its
 entry, and the board's link to it), `profileSetup` (the sign-up form, plus the
 four identity fields it shares with Settings), `welcome` (the one-time nudge
-that followed that form), and `boardEpigraph` (the verse across the top of the
-board). Today `leaderboard` and `profileSetup` are on and the other three are
-off, `welcome` is off **because** `guide` is, since the nudge exists to point
-a new member at the guide. A deploy overrides them through
+that followed that form), `boardEpigraph` (the verse across the top of the
+board), `offline` (the service worker), and `mobileGate` (the refusal a phone
+used to meet). Today `leaderboard`, `profileSetup` and `offline` are on and
+the other four are off, `welcome` is off **because** `guide` is, since the
+nudge exists to point a new member at the guide, and `mobileGate` is off
+because the app is now something to install on a phone. A deploy overrides them through
 `window.__APP_CONFIG__.features`, which is **merged** over the defaults rather
 than replacing them, so naming one flag does not silently take the others with
 it.
@@ -360,7 +375,7 @@ One override is sharp enough to have its own guard: `window.__FIREBASE_CONFIG__ 
 
 Two independent paths:
 
-- **Cloudflare Workers static assets** (`wrangler.jsonc`): `npm run deploy` builds `dist/` and `wrangler deploy` serves it. `scripts/build.mjs` copies only `index.html`, `src/`, `data/`, and a runtime `config.js` into `dist/`, never point a host at the repo root (it would serve `node_modules/`, `design/`, etc.).
+- **Cloudflare Workers static assets** (`wrangler.jsonc`): `npm run deploy` builds `dist/` and `wrangler deploy` serves it. `scripts/build.mjs` copies only `index.html`, `manifest.webmanifest`, `sw.js`, `src/`, `data/`, and a runtime `config.js` into `dist/`, never point a host at the repo root (it would serve `node_modules/`, `design/`, etc.).
 - **Container → ECS via Drone** (A2N standard): `Dockerfile` (nginx, `deploy/nginx.conf`) and `.drone.yml` (lint/format/test, publish image to ECR on `main`).
 
 ## Conventions

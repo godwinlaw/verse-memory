@@ -17,21 +17,70 @@ test("gradeWritten scores empty input 0", () => {
   assert.equal(gradeWritten(words, undefined).score, 0);
 });
 
-test("a skipped word does not desynchronise the rest, within LOOKAHEAD", () => {
+test("a skipped word does not desynchronise the rest", () => {
   const words = ["Trust", "in", "the", "Lord", "with", "all", "your", "heart"];
-  // "in" dropped; the remaining words are all within LOOKAHEAD (3) of where
-  // the cursor expects them, so they should still match.
   const { diff, hits } = gradeWritten(words, "Trust the Lord with all your heart");
   assert.equal(hits, 7, "every word but the dropped one should match");
   assert.equal(diff.find((d) => d.word === "in").hit, false);
+  assert.equal(diff.find((d) => d.word === "in").typed, "", "left out, so nothing stood in for it");
 });
 
-test("a transposition outside LOOKAHEAD does not match", () => {
+test("a word typed far out of place does not match its slot", () => {
   const words = ["one", "two", "three", "four", "five", "six", "seven"];
-  // "seven" typed 6 tokens early, well past LOOKAHEAD (3), must not match
-  // seven's slot, and must not desync everything after it either.
-  const { diff } = gradeWritten(words, "seven one two three four five six");
+  // "seven" typed six tokens early must not match seven's slot, and must not
+  // desync everything after it either.
+  const { diff, hits } = gradeWritten(words, "seven one two three four five six");
   assert.equal(diff.find((d) => d.word === "seven").hit, false);
+  assert.equal(hits, 6);
+});
+
+/* Issue #78: one stumble in the middle of a long passage used to mark every
+ * word after it wrong, because the grader lost its place three tokens on. The
+ * words after a mistake are given credit for being right. */
+test("the words after a wrong word still count (issue #78)", () => {
+  const words = "The Lord is my shepherd I shall not want He makes me lie down in green pastures".split(" ");
+  const typed = "The Lord is my shepherd I shall not fear He makes me lie down in green pastures";
+  const { diff, hits, total } = gradeWritten(words, typed);
+  assert.equal(total, 17);
+  assert.equal(hits, 16, "one wrong word costs one word");
+  const wrong = diff.filter((d) => !d.hit);
+  assert.deepEqual(
+    wrong.map((d) => d.word),
+    ["want"],
+  );
+  assert.equal(wrong[0].typed, "fear", "and the paper shows what was put in its place");
+});
+
+test("two words put in where one belonged cost only that one", () => {
+  const words = ["Be", "still", "and", "know", "that", "I", "am", "God"];
+  const { diff, hits } = gradeWritten(words, "Be still and know for sure that I am God");
+  assert.equal(hits, 8, "every passage word was given, the extra two are not charged");
+  assert.ok(diff.every((d) => d.hit));
+});
+
+test("a run of several wrong words shows each what stood in for it", () => {
+  const words = ["Come", "to", "me", "all", "who", "labor"];
+  const { diff } = gradeWritten(words, "Come to me you that labor");
+  assert.equal(diff.find((d) => d.word === "all").typed, "you");
+  assert.equal(diff.find((d) => d.word === "who").typed, "that");
+  assert.equal(diff.find((d) => d.word === "labor").hit, true);
+});
+
+test("more words typed than were missed hang together on the last missed word", () => {
+  const words = ["Come", "to", "me", "all", "who", "labor"];
+  const { diff } = gradeWritten(words, "Come to me every single one that labor");
+  assert.equal(diff.find((d) => d.word === "all").typed, "every");
+  assert.equal(diff.find((d) => d.word === "who").typed, "single one that");
+});
+
+test("a short attempt at a long passage scores the words it did give", () => {
+  const words = "For God so loved the world that he gave his only Son".split(" ");
+  const { hits, diff } = gradeWritten(words, "For God so loved the world");
+  assert.equal(hits, 6);
+  assert.ok(
+    diff.slice(6).every((d) => !d.hit && d.typed === ""),
+    "the rest is missed with nothing typed for it",
+  );
 });
 
 test("a miss carries what was typed in its place", () => {

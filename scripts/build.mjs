@@ -14,6 +14,10 @@ rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
 copyFileSync("index.html", `${OUT}/index.html`);
+// The installable half: the manifest and the service worker, both at the root
+// because a worker's scope is the directory it is served from (see sw.js).
+copyFileSync("manifest.webmanifest", `${OUT}/manifest.webmanifest`);
+copyFileSync("sw.js", `${OUT}/sw.js`);
 cpSync("src", `${OUT}/src`, { recursive: true });
 cpSync("data", `${OUT}/data`, { recursive: true });
 
@@ -51,4 +55,4 @@ if (configured === null && process.env.ALLOW_LOCAL_ONLY_BUILD !== "1") {
 
 copyFileSync(configSource, `${OUT}/config.js`);
 
-console.log(`Built ${OUT}/ (index.html, src/, data/, config.js from ${configSource})`);
+console.log(`Built ${OUT}/ (index.html, manifest.webmanifest, sw.js, src/, data/, config.js from ${configSource})`);

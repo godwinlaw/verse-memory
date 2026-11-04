@@ -6,6 +6,66 @@ what moved, and why it moved.
 
 ## Unreleased
 
+- **The app installs, and opens with no signal.** `manifest.webmanifest` makes
+  it installable from the browser's menu, and `sw.js`, a service worker
+  registered from `src/main.js` (the seam is `src/offline.js`), keeps the
+  app's own files and the three CDN scripts so an installed copy opens with
+  the network off. The worker is **network first**: online, every request
+  goes to the server and the answer is copied into the cache on the way past,
+  so there is no version to bump and a member online always runs the build
+  being served; the cache answers only when the network fails. It handles
+  **only the app's own files and the CDN scripts**, never Firestore, sign-in or
+  Analytics, so it cannot be what breaks sync. The file list is written by
+  hand, there being no build step, and `test/offline.test.mjs` holds it to the
+  tree. `features.offline` turns it off per deploy. The PNG icons the manifest
+  names (`src/icon-192.png`, `src/icon-512.png`) are cut by `npm run icons`.
+  The browser suite blocks service workers by default (a request the worker
+  answers never reaches `page.route`) and gains an `offline` project that
+  installs the worker and opens the app with the network off.
+- **A phone is let in, and opens on Today.** `features.mobileGate` is a new
+  flag, off, that holds the refusal a phone used to meet; nothing about the
+  screen or `src/device.js` changed, and a deploy that keeps the sitting at a
+  desk turns it back on. A phone lands on Today rather than the board
+  (`App.initialState` through `src/landing.js`), and the session card gained
+  narrow-screen rules (`.review-page`, `.review-bar`, `.review-card` in
+  `styles.css`) so it fits one. `e2e/mobile.spec.mjs` drives both halves: the
+  phone as the app ships, and the refusal with the flag on.
+- **Today.** A new screen, first on the header, with the date, what is due
+  (every committed verse at or below the member's threshold, stalest first),
+  one full-width button that starts the sitting, the next verse to learn
+  beside it, and three figures. With nothing due it offers the next verse to
+  learn instead; with nothing committed it says where a passage comes from.
+  `viewmodel/today.js` reads the same `reviewPool` and `learnPool` the board
+  does, so the two cannot disagree; `todayPlan` is the pure half
+  (`test/today.test.mjs`). `./?screen=today` opens on it, which is the
+  manifest's `start_url`; `src/landing.js` is the one reader of the URL.
+- **Export and import of progress, as one JSON file.** Two buttons under
+  **Your data** on Settings. `src/backup.js` is pure: `buildBackup`,
+  `parseBackup` (which keeps records to the shape the model defines and drops
+  passages this build does not have) and `importBackup`, which is **a merge,
+  never a replacement**, through the same `mergeProgress`, `mergeLog` and
+  `mergeProfile` the cloud pull uses, so an older file cannot take a verse
+  backwards and a committed verse cannot come back uncommitted. The seam for
+  the file dialog and the download is `src/files.js`. The form says what the
+  press came to, in a sentence.
+- **Fixed: one wrong word no longer marks the rest of the passage wrong
+  (#78), and the paper prints back what you wrote (#79).** `gradeWritten`
+  used a cursor that looked three tokens ahead, so a stumble in the middle of
+  a long passage, or two words put in where one belonged, lost its place and
+  marked everything after it wrong. It now lines the attempt up against the
+  passage by the longest common subsequence, which is what a diff computes: a
+  word left out, put in, or got wrong costs that one word, and what was
+  written in place of a missed word is read off the alignment. The attempt
+  itself is printed under the marked paper, labelled "What you wrote".
+- **The scheduler has tests end to end.** A clean review moves the next due
+  date out by exactly one rung; a lapse brings it in; a verse reviewed late is
+  not punished for being late; and the board's pool asks for a first-rung verse
+  the next day and a week-rung verse on the seventh (`test/srs.test.mjs`,
+  `test/progress.test.mjs`).
+- **A stray `node_modules` symlink is untracked.** It pointed at a sibling
+  worktree and came in with the em-dash sweep; `.gitignore` already covers
+  the directory.
+
 - **Two fewer sentences on the profile form.** The preamble, "Tell us a bit
   about yourself…", is gone: the fields under it are labelled, and a form that
   explains itself before it starts is a form the member reads past. The sharing

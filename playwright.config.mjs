@@ -54,20 +54,36 @@ export default defineConfig({
     // subtraction, so the clock the browser reads is pinned.
     timezoneId: "America/Los_Angeles",
     locale: "en-US",
+    // The app registers a service worker (sw.js) that answers the page's
+    // requests from its own cache, and a request the worker answers never
+    // reaches page.route, so the two seams the harness takes over would be
+    // bypassed on every second visit. Blocked here, and allowed again only in
+    // the "offline" project below, which is the one that is about the worker.
+    serviceWorkers: "block",
   },
 
   projects: [
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: "**/mobile.spec.mjs",
+      testIgnore: ["**/mobile.spec.mjs", "**/offline.spec.mjs"],
     },
     {
-      // A browser that really claims to be a phone, which is the only way to
-      // drive the one screen the app shows one: the refusal (src/device.js).
+      // A browser that really claims to be a phone: the one screen the app
+      // used to show one (the refusal, src/device.js, now behind a flag) and
+      // the one it opens on now (Today, src/landing.js).
       name: "mobile",
       use: { ...devices["Pixel 5"] },
       testMatch: "**/mobile.spec.mjs",
+    },
+    {
+      // The worker itself: installed, then the app opened with the network
+      // off. The CDN cannot be stubbed under a worker (see the note on
+      // serviceWorkers above), so this project reaches the real one, as
+      // E2E_LIVE_CDN=1 does, and the spec skips itself where it cannot.
+      name: "offline",
+      use: { ...devices["Desktop Chrome"], serviceWorkers: "allow" },
+      testMatch: "**/offline.spec.mjs",
     },
   ],
 

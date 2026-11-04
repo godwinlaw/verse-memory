@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { streakOf, dueOrder, committedCount, learnPool, reviewPool, selectionPools } from "../src/progress.js";
-import { stepNear } from "../src/srs.js";
+import { stabilityFor, stepNear } from "../src/srs.js";
 import { dayKey } from "../src/text.js";
 
 const dayBefore = (d, n) => {
@@ -120,6 +120,33 @@ test("learnPool puts started verses ahead of untouched ones", () => {
     learnPool(passages, progress, NOW).map((p) => p.id),
     [4, 2, 1, 3],
     "the most faded of the started, then the untouched in canonical order",
+  );
+});
+
+/* The scheduler as the board reads it: when a verse comes round. */
+test("a verse committed today is due tomorrow, and a week-rung verse a week later", () => {
+  const passages = [{ id: 1 }, { id: 2 }];
+  const progress = {
+    1: { hits: 1, status: "memorized", last: NOW, step: 0, stability: stabilityFor(0) },
+    2: { hits: 7, status: "memorized", last: NOW, step: 6, stability: stabilityFor(6) },
+  };
+  const dueIds = (days) => reviewPool(passages, progress, 75, NOW + days * 86400000).map((p) => p.id);
+  assert.deepEqual(dueIds(0), [], "nothing is due the day it was reviewed");
+  assert.deepEqual(dueIds(1), [1], "the first rung comes back the next day");
+  assert.deepEqual(dueIds(6), [1], "the week rung is still holding");
+  assert.deepEqual(dueIds(7), [1, 2], "and is due on the seventh, after the staler one");
+});
+
+test("the review pool is ordered by how far each verse has faded, not by id", () => {
+  const passages = [{ id: 1 }, { id: 2 }, { id: 3 }];
+  const progress = {
+    1: { hits: 1, status: "memorized", last: daysAgo(2), step: 0, stability: stabilityFor(0) },
+    2: { hits: 1, status: "memorized", last: daysAgo(5), step: 0, stability: stabilityFor(0) },
+    3: { hits: 1, status: "memorized", last: daysAgo(3), step: 0, stability: stabilityFor(0) },
+  };
+  assert.deepEqual(
+    reviewPool(passages, progress, 75, NOW).map((p) => p.id),
+    [2, 3, 1],
   );
 });
 

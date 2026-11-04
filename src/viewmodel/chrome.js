@@ -13,6 +13,7 @@ import { muted } from "../ui/tokens.js";
  * because every destination in the app is on it, which is the same fact the
  * guide's map is drawn from. */
 const NAV = [
+  { key: "today", label: copy.nav.today },
   { key: "board", label: copy.nav.board, also: ["done"] },
   { key: "list", label: copy.nav.list },
   { key: "leaderboard", label: copy.nav.leaderboard, feature: "leaderboard" },
@@ -67,6 +68,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
       style: navStyle(state.view === n.key, state.view === n.key || (n.also || []).includes(state.view)),
     })),
 
+    isToday: state.view === "today",
     isBoard: state.view === "board",
     isList: state.view === "list",
     isReview: state.view === "review",
@@ -79,6 +81,7 @@ export function chromeVals({ state, groupName, motto, actions }) {
     isExam: state.view === "test",
     isExamDone: state.view === "test-done",
 
+    goToday: () => actions.goto("today"),
     goBoard: () => actions.goto("board"),
     goList: () => actions.goto("list"),
     goReviewSetup: () => actions.goto("review-setup"),

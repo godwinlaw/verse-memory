@@ -17,7 +17,8 @@ window.__APP_CONFIG__ = {
   // Which pieces of the app this deploy offers. Every one of them is built and
   // tested; the flag only decides whether it is on screen. Named flags are
   // merged over the defaults in src/config.js, so listing one leaves the rest
-  // alone. Today leaderboard and profileSetup are on; the other three are off.
+  // alone. Today leaderboard, profileSetup and offline are on; the others are
+  // off.
   //
   // features: {
   //   leaderboard: true, // the Stats board and its entry in the header
@@ -25,6 +26,8 @@ window.__APP_CONFIG__ = {
   //   guide: true, // the long-form explainer, and the board's link to it
   //   welcome: true, // the one-time nudge toward the guide after sign-up
   //   boardEpigraph: true, // the verse across the top of the board
+  //   offline: true, // the service worker that keeps the app's files for use with no signal
+  //   mobileGate: false, // true turns a phone or tablet away instead of opening on Today
   // },
 };
 

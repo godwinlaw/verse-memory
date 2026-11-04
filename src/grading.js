@@ -11,11 +11,6 @@
 
 import { norm } from "./text.js";
 
-/* How far ahead of the current position a word may be found and still count as
- * a match. This is what lets a member skip or transpose a word without every
- * later word falling out of alignment. */
-const LOOKAHEAD = 3;
-
 /* Split raw input into comparable tokens. In first-letter mode every letter or
  * digit is its own token, so "f t h w" and "fthw" grade identically. */
 export function attemptTokens(typed, { firstLetters = false } = {}) {
@@ -27,35 +22,88 @@ export function attemptTokens(typed, { firstLetters = false } = {}) {
 /* Whether a typed answer matches an expected word, ignoring case/punctuation. */
 export const matchesWord = (expected, answer) => norm(answer || "") === norm(expected);
 
+/* Line the attempt up against the passage: which typed token, if any, each
+ * passage word was given by. This is the longest common subsequence, which is
+ * what a diff computes, so a word left out, a word put in, or a word got wrong
+ * costs that one word and the words after it still line up with their own.
+ *
+ * It replaced a cursor that looked three tokens ahead (issue #78): a member who
+ * stumbled over one word in the middle of a long passage, or put two words in
+ * where one belonged, watched everything after it marked wrong, and could not
+ * tell from the marked paper what had actually gone wrong.
+ *
+ * Returns, per passage word, the index of the token that matched it, or -1.
+ * Where the alignment is ambiguous the earlier passage word is given up first,
+ * so a mismatch reads as an omission before it reads as an insertion. */
+function alignTokens(keys, tokens) {
+  const n = keys.length;
+  const m = tokens.length;
+  // suffix[i][j]: how many words of keys[i..] can still be matched to tokens[j..]
+  const suffix = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      suffix[i][j] = keys[i] === tokens[j] ? suffix[i + 1][j + 1] + 1 : Math.max(suffix[i + 1][j], suffix[i][j + 1]);
+    }
+  }
+  const matched = new Array(n).fill(-1);
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (keys[i] === tokens[j]) {
+      matched[i] = j;
+      i++;
+      j++;
+    } else if (suffix[i + 1][j] >= suffix[i][j + 1]) {
+      i++; // this passage word was not given
+    } else {
+      j++; // this token belongs to no passage word
+    }
+  }
+  return matched;
+}
+
 /* Grade a free-recall attempt word by word.
  *
- * Walks the passage in order, holding a cursor into the typed tokens. A word
- * counts as recalled if the cursor is on it, or if it turns up within the next
- * LOOKAHEAD tokens; the cursor then advances past the match. Returns one entry
- * per passage word plus the tally.
+ * Every passage word is either given by one of the typed tokens or missed, as
+ * alignTokens decides. Returns one entry per passage word plus the tally.
  *
- * A miss also carries `typed`: whatever token was waiting at the cursor when
- * this word was checked, i.e. what the member wrote in its place, mirroring
+ * A miss also carries `typed`: what the member wrote in its place, mirroring
  * revealFirstLetters, which shows a wrong letter rather than just flagging it.
- * That token may still go on to match a later word within LOOKAHEAD (the
- * member wrote it one word early); it is shown here anyway, since the mistake,
- * this word did not come out where it belonged, is real either way. */
+ * That is read off the alignment too: the tokens that matched nothing between
+ * the last word given and the next one are what stood in for the words missed
+ * between them, handed out one per missed word, with anything left over
+ * joining the last. A word simply left out carries nothing, there is nothing
+ * to show, and the mistake is the gap itself. */
 export function gradeWritten(words, typed, { firstLetters = false } = {}) {
   const tokens = attemptTokens(typed, { firstLetters });
   const keyOf = (w) => (firstLetters ? norm(w).slice(0, 1) : norm(w));
-  let cursor = 0;
-  let hits = 0;
-  const diff = words.map((word) => {
-    const key = keyOf(word);
-    const at = tokens.indexOf(key, cursor);
-    const hit = tokens[cursor] === key || (at > -1 && at < cursor + LOOKAHEAD);
-    const missTyped = tokens[cursor];
-    if (hit) {
-      cursor = Math.max(cursor + 1, at + 1);
-      hits++;
+  const matched = alignTokens(words.map(keyOf), tokens);
+  const taken = new Set(matched.filter((j) => j >= 0));
+
+  const diff = words.map((word, i) => ({ word, hit: matched[i] >= 0, typed: "" }));
+  // Walk the runs of missed words between matched ones, pairing each run with
+  // the unmatched tokens that sit in the same gap of the attempt.
+  let i = 0;
+  while (i < words.length) {
+    if (matched[i] >= 0) {
+      i++;
+      continue;
     }
-    return { word, hit, typed: hit ? "" : missTyped || "" };
-  });
+    let end = i;
+    while (end < words.length && matched[end] < 0) end++;
+    const from = i > 0 ? matched[i - 1] + 1 : 0;
+    const to = end < words.length ? matched[end] : tokens.length;
+    const spare = [];
+    for (let j = from; j < to; j++) if (!taken.has(j)) spare.push(tokens[j]);
+    for (let k = i; k < end; k++) {
+      const last = k === end - 1;
+      const mine = last ? spare.slice(k - i) : spare.slice(k - i, k - i + 1);
+      diff[k].typed = mine.join(" ");
+    }
+    i = end;
+  }
+
+  const hits = matched.filter((j) => j >= 0).length;
   return { diff, hits, total: words.length, score: words.length ? hits / words.length : 0 };
 }
 

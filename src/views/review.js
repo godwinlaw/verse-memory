@@ -231,6 +231,18 @@ function typePanel(v) {
                 >
                   ${v.typeDiff.map((d, i) => attemptWord(i, d))}
                 </div>
+                ${
+                  v.typedAttempt &&
+                  html`<div style=${sx("display:flex;flex-direction:column;gap:6px")}>
+                    <span style=${sx(LABEL_SECTION)}>${v.typeWroteLabel}</span>
+                    <p
+                      className="type-attempt"
+                      style=${sx(`margin:0;font-size:14px;line-height:1.7;max-width:74ch;white-space:pre-wrap;color:${muted(65)}`)}
+                    >
+                      ${v.typedAttempt}
+                    </p>
+                  </div>`
+                }
               </div>`
             }</${React.Fragment}
           >`
@@ -440,12 +452,12 @@ function moveDialog(v) {
   </div>`;
 }
 
+/* The screen's own paddings are classes rather than inline styles (styles.css,
+ * .review-page, .review-bar, .review-card), the one way a narrow-screen rule
+ * can reach them: a phone opens on Today and comes straight here. */
 export function reviewView(v) {
-  return html`<div
-    className="screen"
-    style=${sx("max-width:1000px;margin:0 auto;padding:36px 36px 80px;display:flex;flex-direction:column;gap:22px")}
-  >
-    <div style=${sx("display:flex;align-items:center;gap:16px")}>
+  return html`<div className="screen review-page">
+    <div className="review-bar">
       <button className="btn btn-secondary" onClick=${v.askLeaveReview} style=${sx("font-size:12px;padding:4px 12px")}>
         ${copy.review.leave}
       </button>
@@ -459,10 +471,7 @@ export function reviewView(v) {
       <div className="meter-step" style=${sx(v.sessionBarStyle)}></div>
     </div>
 
-    <div
-      className="blueprint"
-      style=${sx("padding:40px 44px;display:flex;flex-direction:column;gap:26px;min-height:400px")}
-    >
+    <div className="blueprint review-card">
       ${corners()}
 
       <div

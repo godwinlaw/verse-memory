@@ -34,4 +34,9 @@ magick -background none src/icon.svg -resize 32x32 "$tmp/32.png"
 magick -background none "$tmp/cut16.svg" -resize 16x16 "$tmp/16.png"
 magick "$tmp/48.png" "$tmp/32.png" "$tmp/16.png" src/favicon.ico
 
-echo "Cut src/favicon.ico (48, 32 from src/icon.svg; 16 from the hinted 24px cut)"
+# The home-screen cuts manifest.webmanifest names, for the launchers that take
+# no SVG. Both from the same 48px drawing: at these sizes the rules read fine.
+magick -background none -density 384 src/icon.svg -resize 192x192 src/icon-192.png
+magick -background none -density 1024 src/icon.svg -resize 512x512 src/icon-512.png
+
+echo "Cut src/favicon.ico (48, 32 from src/icon.svg; 16 from the hinted 24px cut), src/icon-192.png, src/icon-512.png"

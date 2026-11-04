@@ -10,6 +10,15 @@
        Dockerfile) ship them unchanged. -->
     <link rel="icon" type="image/svg+xml" href="./src/icon.svg" />
     <link rel="icon" sizes="48x48" href="./src/favicon.ico" />
+    <!-- Installable: the manifest names the icons and opens the installed copy
+       on Today; sw.js (registered from src/main.js) keeps the files so it opens
+       with no signal. The PNG cuts are for the home screens that take no SVG. -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./src/icon-192.png" />
+    <meta name="theme-color" content="#1d2d3d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Verses" />
     <link rel="stylesheet" href="./src/styles.css" />
     <!-- Which way round the page is printed, settled before the first paint.
        src/theme.js is where this rule lives and is written out; the four lines

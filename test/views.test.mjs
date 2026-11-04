@@ -59,11 +59,74 @@ function asShipped(name) {
   return renderScenario(s.state, s.props).markup;
 }
 
-test("the header carries Stats, and does not carry the guide", () => {
+test("the header carries Today and Stats, and does not carry the guide", () => {
   const board = asShipped("board/populated");
   assert.match(board, />Stats</);
   assert.doesNotMatch(board, />Guide</);
-  for (const stop of [/>Home</, />Passages</, />LEARN</, />REVIEW</, />TEST</]) assert.match(board, stop);
+  for (const stop of [/>Today</, />Home</, />Passages</, />LEARN</, />REVIEW</, />TEST</]) assert.match(board, stop);
+});
+
+/* ── today ────────────────────────────────────────────────────────────────── */
+
+test("Today shows what is due and one press to review it", () => {
+  // progressFixture() commits 1, 2 and 3; 2 and 3 have faded past the default
+  // threshold, so two are due and the button takes both.
+  const markup = shown("today/due");
+  assert.match(markup, /2 passages are due/);
+  assert.match(markup, />\s*Review 2 passages\s*<\/button>/);
+  assert.match(markup, /Due today, most faded first/);
+  assert.match(markup, /class="today-cta"|today-cta/);
+  // The next verse to learn is offered beside it, since both halves are open.
+  assert.match(markup, />\s*Learn [^<]+<\/button>/);
+  // None of the board's furniture: no map, no chart, no pace check.
+  assert.doesNotMatch(markup, /board-map-grid/);
+  assert.doesNotMatch(markup, /Pace check/);
+});
+
+test("with nothing due, Today offers the next verse to learn instead", () => {
+  const markup = shown("today/caught-up");
+  assert.match(markup, /Nothing is due\. Well held\./);
+  assert.match(markup, />\s*Learn [^<]+<\/button>/);
+  assert.doesNotMatch(markup, /Review \d+ passage/);
+  assert.doesNotMatch(markup, /Due today/);
+});
+
+test("with nothing committed, Today says where a passage comes from", () => {
+  const markup = shown("today/fresh-account");
+  assert.match(markup, /Nothing to review yet/);
+  assert.match(markup, /given it back in full from memory/);
+  assert.match(markup, />\s*Learn [^<]+<\/button>/);
+});
+
+test("with the whole set committed and fresh, Today has nothing left to offer", () => {
+  const markup = shown("today/all-done");
+  assert.match(markup, /Every passage is committed\. Back to the board\./);
+});
+
+test("Today says what an offline sitting comes to", () => {
+  assert.match(shown("today/due"), /works without a signal/);
+});
+
+/* ── the record as a file ─────────────────────────────────────────────────── */
+
+test("the settings form offers an export and an import, and the setup form does not", () => {
+  const editing = shown("profile/edit");
+  assert.match(editing, /YOUR DATA/);
+  assert.match(editing, />Export progress<\/button>/);
+  assert.match(editing, /Import a backup/);
+  assert.match(editing, /type="file"/);
+  assert.match(editing, /accept="\.json,application\/json"/);
+  assert.match(editing, /never removes anything/, "and says that importing is a merge");
+  assert.doesNotMatch(shown("profile/setup-empty"), /YOUR DATA/);
+});
+
+test("the form reports what the last export or import came to", () => {
+  assert.match(shown("profile/edit-exported"), /Keep the file somewhere safe/);
+  assert.match(shown("profile/edit-imported"), /Imported 4 new passages, updated 1 passage and filled in 2 days/);
+  assert.match(shown("profile/edit-imported"), /Nothing you had was removed/);
+  assert.match(shown("profile/edit-import-nothing"), /Nothing new in that file/);
+  assert.match(shown("profile/edit-import-failed"), /not a Verse Mastery backup/);
+  assert.doesNotMatch(shown("profile/edit"), /role="status"/, "nothing to report before a press");
 });
 
 test("the corner is one circle of initials, and the menu is closed until pressed", () => {
@@ -168,7 +231,16 @@ test("turning the passage over asks for the other words", () => {
   assert.notEqual(shown("review/blanks-alternating"), shown("review/blanks-alternating-flipped"));
 });
 
-test("a phone is turned away before the app, and before the splash", () => {
+test("as the app ships, a phone is let in and opens on Today", () => {
+  // The refusal is behind features.mobileGate now (off), because the app is
+  // something to install on a phone and open for the day's review.
+  const phone = asShipped("device/mobile");
+  assert.doesNotMatch(phone, /not available on a mobile device/);
+  assert.match(phone, /class="today-page screen"/);
+  assert.match(phone, /passages are due/);
+});
+
+test("a deploy can still turn a phone away before the app, and before the splash", () => {
   const blocked = shown("device/mobile");
   assert.match(blocked, /not available on a mobile device/);
   // Nothing behind the gate leaks past it: no board, no sign-in, no boot.
@@ -478,12 +550,28 @@ test("review/type-graded shows a percentage", () => {
 test("a missed recall word shows what was written in its place", () => {
   const markup = shown("review/type-graded-mistakes");
   assert.match(markup, />O<\/span>/, "the missed word is still shown in full");
-  assert.match(markup, />israel</, "and what was typed in its place, right there beside it");
   assert.match(markup, />load</, "a wrong word shows what was actually written, not just that it's wrong");
-  // Once the input runs out there is nothing to show having been typed,
-  // "the", "is", "one" and the rest of the passage past "god" are missed with
-  // no annotation, so exactly the two real mistakes get a strike-through line.
-  assert.equal((markup.match(/text-decoration:line-through/g) || []).length, 2);
+  // "O" was left out rather than replaced, so nothing is struck through under
+  // it, and once the input runs out there is nothing to show having been
+  // typed either: "the", "is", "one" and the rest of the passage past "god"
+  // are missed with no annotation. Exactly the one real substitution gets a
+  // strike-through line.
+  assert.equal((markup.match(/text-decoration:line-through/g) || []).length, 1);
+  // And the attempt itself is printed back whole under the marked paper
+  // (issue #79), which is how a member finds the slip.
+  assert.match(markup, /What you wrote/);
+  assert.match(markup, /class="type-attempt"[^>]*>\s*hear israel the load our god/);
+  assert.doesNotMatch(shown("review/type-empty"), /What you wrote/, "nothing to read back before it is handed in");
+});
+
+test("one wrong word in the middle of a passage leaves the words after it right (issue #78)", () => {
+  // The old lookahead grader lost its place after a stumble and marked the
+  // rest of the passage wrong. The fixture passage is Deuteronomy 6:4-5; the
+  // attempt gets one word wrong and the rest of the verse right.
+  const markup = shown("review/type-graded-one-slip");
+  assert.equal((markup.match(/text-decoration:line-through/g) || []).length, 1, "one slip, one strike-through");
+  assert.match(markup, />heart</, "the words after the slip are given");
+  assert.doesNotMatch(markup, /wavy[^>]*>heart</, "and not marked wrong");
 });
 
 test("the flashcard's show and hide are one button in one place", () => {

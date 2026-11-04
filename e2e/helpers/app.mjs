@@ -74,7 +74,14 @@ export class AppHarness {
    *                             rather than deleted, so a spec that means to
    *                             press it turns its flag back on the way a
    *                             deploy would, through config.js, which is the
-   *                             app's own door and not a seam of our own. */
+   *                             app's own door and not a seam of our own;
+   *   liveCdn                   leave the three CDN scripts to the real CDN,
+   *                             as E2E_LIVE_CDN=1 does for the whole suite.
+   *                             offline.spec.mjs needs it: a request the
+   *                             service worker answers never reaches
+   *                             page.route, so there is nothing to stub;
+   *   path                      where to open the app, "/" unless a spec is
+   *                             about the address itself (src/landing.js). */
   async boot({
     progress = {},
     log = {},
@@ -88,6 +95,8 @@ export class AppHarness {
     features,
     reducedMotion = "reduce",
     waitForApp = true,
+    liveCdn = false,
+    path = "/",
   } = {}) {
     // Emulated here rather than declared in the config: the context-level
     // option does not reach the page in this Chromium build.
@@ -96,7 +105,7 @@ export class AppHarness {
     const scenario = firebase === true ? {} : firebase || null;
     if (scenario) await installFirebaseStub(this.page, scenario);
 
-    await this.vendorCdn();
+    if (!liveCdn) await this.vendorCdn();
     await this.serveConfig({ splashMinMs, deadline, groupName, features, firebase: scenario ? STUB_CONFIG : null });
 
     const seeded = {
@@ -160,9 +169,16 @@ export class AppHarness {
       { seeded, scenario, voice },
     );
 
-    await this.page.goto("/");
+    await this.page.goto(path);
     if (waitForApp) await this.splash.waitFor({ state: "detached", timeout: 20_000 });
     return this;
+  }
+
+  /* Open the app at another address on the same tab, the way a bookmark or an
+   * installed copy's start_url would (see src/landing.js). */
+  async open(path) {
+    await this.page.goto(path);
+    await this.splash.waitFor({ state: "detached", timeout: 20_000 });
   }
 
   /* A second visit on the same device: whatever the app saved is still there. */
@@ -216,6 +232,9 @@ export class AppHarness {
   }
   get board() {
     return this.page.locator(".board-page");
+  }
+  get today() {
+    return this.page.locator(".today-page");
   }
   get dialog() {
     return this.page.locator(".dialog");
